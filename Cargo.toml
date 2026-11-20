@@ -7,4 +7,5 @@ description = "A native developer tool for inspecting GNOME Shell"
 
 [dependencies]
 adw = { package = "libadwaita", version = "0.8" }
+gio = "0.21"
 gtk = { package = "gtk4", version = "0.10" }

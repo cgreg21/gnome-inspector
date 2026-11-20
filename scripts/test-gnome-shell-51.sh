@@ -42,22 +42,35 @@ cp -R extension/. "$extension_dir/"
 gnome-shell --headless --virtual-monitor 1280x720 >"$LOG_FILE" 2>&1 &
 SHELL_PID=$!
 
-enabled=false
+ready=false
 for _ in $(seq 1 30); do
     if ! kill -0 "$SHELL_PID" 2>/dev/null; then
         echo "GNOME Shell exited during startup" >&2
         cat "$LOG_FILE" >&2
         exit 1
     fi
-    if timeout 3s gnome-extensions enable "$UUID" >/dev/null 2>&1; then
-        enabled=true
+    if timeout 3s gdbus call --session \
+        --dest org.gnome.Shell \
+        --object-path /org/gnome/Shell \
+        --method org.freedesktop.DBus.Peer.Ping >/dev/null 2>&1; then
+        ready=true
         break
     fi
     sleep 1
 done
 
-if [[ "$enabled" != true ]]; then
-    echo "Could not enable the GNOME Inspector extension" >&2
+if [[ "$ready" != true ]]; then
+    echo "GNOME Shell did not export its D-Bus interface" >&2
+    cat "$LOG_FILE" >&2
+    exit 1
+fi
+
+enabled="$(timeout 5s gdbus call --session \
+    --dest org.gnome.Shell \
+    --object-path /org/gnome/Shell \
+    --method org.gnome.Shell.Extensions.EnableExtension "$UUID")"
+if [[ "$enabled" != *"true"* ]]; then
+    echo "Could not enable the GNOME Inspector extension: $enabled" >&2
     cat "$LOG_FILE" >&2
     exit 1
 fi

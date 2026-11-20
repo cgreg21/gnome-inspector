@@ -30,5 +30,7 @@ jobs:
         run: cargo test --all-targets
       - name: Lint
         run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Validate extension JavaScript syntax
+        run: node --input-type=module --check < extension/extension.js
       - name: Validate extension metadata
         run: python3 -m json.tool extension/metadata.json > /dev/null

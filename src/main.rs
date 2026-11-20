@@ -1,13 +1,15 @@
 use adw::prelude::*;
-use gtk::prelude::*;
 
 const BUS_NAME: &str = "io.github.cgreg21.GnomeInspector";
 const OBJECT_PATH: &str = "/io/github/cgreg21/GnomeInspector";
 const INTERFACE: &str = "io.github.cgreg21.GnomeInspector";
 
 fn shell_call(method: &str) -> Result<glib::Variant, String> {
-    let connection =
-        gio::bus_get_sync(gio::BusType::Session, None).map_err(|error| error.to_string())?;
+    let connection = gio::bus_get_sync(
+        gio::BusType::Session,
+        None::<&gio::Cancellable>,
+    )
+    .map_err(|error| error.to_string())?;
 
     connection
         .call_sync(

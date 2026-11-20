@@ -1,5 +1,6 @@
 export function buildActorTree(root) {
     const budget = { count: 1, truncated: false, incomplete: false };
+    const visited = new WeakSet();
 
     function visit(actor, depth) {
         if (!actor || typeof actor !== 'object') {
@@ -17,6 +18,23 @@ export function buildActorTree(root) {
                 actorError: 'Child is not an actor object',
             };
         }
+
+        if (visited.has(actor)) {
+            budget.incomplete = true;
+            return {
+                name: 'Repeated actor',
+                type: 'Unknown',
+                visible: false,
+                reactive: false,
+                x: 0,
+                y: 0,
+                width: 0,
+                height: 0,
+                children: [],
+                actorError: 'Actor was already visited',
+            };
+        }
+        visited.add(actor);
 
         const propertyErrors = {};
         const read = (property, getter, fallback) => {

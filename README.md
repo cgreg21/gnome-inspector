@@ -18,7 +18,8 @@ that accesses Shell-specific APIs.
 - [ ] Network and performance inspection
 
 The actor snapshot is read-only and deliberately bounded to 1,000 actors and 12 levels.
-Its response includes an actor count and a truncation flag. The desktop app currently
+Its response includes an actor count, a truncation flag, and an `incomplete` flag when
+an actor's child list cannot be read. A per-actor `childrenError` explains that failure. The desktop app currently
 displays JSON rather than a full interactive object inspector.
 
 ## Requirements
@@ -115,7 +116,8 @@ the application started, and **Refresh actor tree** to request a fresh snapshot.
 - Object path: `/io/github/cgreg21/GnomeInspector`
 - Interface: `io.github.cgreg21.GnomeInspector`
 - `Ping() -> s`: running GNOME Shell version
-- `GetActorTree() -> s`: bounded JSON snapshot of the Shell stage and its descendants
+- `GetActorTree() -> s`: bounded JSON snapshot of the Shell stage and its descendants,
+  including truncation and traversal-failure indicators
 
 ## Design constraints
 

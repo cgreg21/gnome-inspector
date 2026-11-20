@@ -108,3 +108,32 @@ test('rejects an invalid child list without aborting the snapshot', () => {
     assert.equal(result.root.children[0].childrenError,
         'get_children() did not return an array');
 });
+
+test('uses safe geometry values for non-finite and non-numeric properties', () => {
+    const broken = new FakeActor('broken');
+    broken.x = Number.NaN;
+    broken.y = '12';
+    broken.width = Number.POSITIVE_INFINITY;
+
+    const result = buildActorTree(new FakeActor('root', [broken]));
+    const node = result.root.children[0];
+
+    assert.equal(result.incomplete, true);
+    assert.equal(node.x, 0);
+    assert.equal(node.y, 0);
+    assert.equal(node.width, 0);
+    assert.deepEqual(node.propertyErrors, {
+        x: 'Property is not a finite number',
+        y: 'Property is not a finite number',
+        width: 'Property is not a finite number',
+    });
+});
+
+test('keeps an invalid child entry as an explicit incomplete node', () => {
+    const result = buildActorTree(new FakeActor('root', [null]));
+
+    assert.equal(result.actorCount, 2);
+    assert.equal(result.incomplete, true);
+    assert.equal(result.root.children[0].actorError,
+        'Child is not an actor object');
+});

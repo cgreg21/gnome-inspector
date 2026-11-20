@@ -59,3 +59,18 @@ test('caps traversal depth at 12 levels', () => {
     assert.equal(result.actorCount, 13);
     assert.equal(result.truncated, true);
 });
+
+test('marks the snapshot incomplete when a child list cannot be read', () => {
+    const broken = new FakeActor('broken');
+    broken.get_children = () => {
+        throw new Error('children unavailable');
+    };
+
+    const result = buildActorTree(new FakeActor('root', [broken]));
+
+    assert.equal(result.actorCount, 2);
+    assert.equal(result.incomplete, true);
+    assert.equal(result.truncated, false);
+    assert.equal(result.root.children[0].childrenError, 'children unavailable');
+    assert.deepEqual(result.root.children[0].children, []);
+});

@@ -122,6 +122,14 @@ jobs:
           dnf install --assumeyes gnome-shell gjs dbus-daemon glib2 nodejs python3 shadow-utils util-linux
           gnome-shell --version
 
+      - name: Start the system D-Bus daemon
+        run: |
+          mkdir -p /run/dbus
+          dbus-daemon --system --fork --nopidfile
+          gdbus call --system --dest org.freedesktop.DBus \
+            --object-path /org/freedesktop/DBus \
+            --method org.freedesktop.DBus.ListNames > /dev/null
+
       - name: Create unprivileged test account
         run: |
           useradd --create-home --shell /bin/bash ci

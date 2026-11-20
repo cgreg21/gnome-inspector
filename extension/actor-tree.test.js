@@ -74,3 +74,37 @@ test('marks the snapshot incomplete when a child list cannot be read', () => {
     assert.equal(result.root.children[0].childrenError, 'children unavailable');
     assert.deepEqual(result.root.children[0].children, []);
 });
+
+test('keeps the snapshot when an actor property getter throws', () => {
+    const broken = new FakeActor('broken');
+    Object.defineProperty(broken, 'width', {
+        get() {
+            throw new Error('width unavailable');
+        },
+    });
+    broken.get_name = () => {
+        throw new Error('name unavailable');
+    };
+
+    const result = buildActorTree(new FakeActor('root', [broken]));
+    const node = result.root.children[0];
+
+    assert.equal(result.incomplete, true);
+    assert.equal(node.name, 'FakeActor');
+    assert.equal(node.width, 0);
+    assert.deepEqual(node.propertyErrors, {
+        name: 'name unavailable',
+        width: 'width unavailable',
+    });
+});
+
+test('rejects an invalid child list without aborting the snapshot', () => {
+    const broken = new FakeActor('broken');
+    broken.get_children = () => null;
+
+    const result = buildActorTree(new FakeActor('root', [broken]));
+
+    assert.equal(result.incomplete, true);
+    assert.equal(result.root.children[0].childrenError,
+        'get_children() did not return an array');
+});

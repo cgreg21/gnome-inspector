@@ -1,0 +1,7 @@
+{
+  "uuid": "gnome-inspector@cgreg21",
+  "name": "GNOME Inspector",
+  "description": "A development companion for GNOME Shell inspection.",
+  "version": 1,
+  "shell-version": ["51"]
+}

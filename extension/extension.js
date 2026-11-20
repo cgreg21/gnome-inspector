@@ -14,8 +14,40 @@ const INTERFACE_XML = `
     <method name="Ping">
       <arg type="s" direction="out"/>
     </method>
+    <method name="GetActorTree">
+      <arg type="s" direction="out"/>
+    </method>
   </interface>
 </node>`;
+const MAX_ACTORS = 1000;
+const MAX_DEPTH = 12;
+
+function actorInfo(actor, depth, budget) {
+    const info = {
+        name: actor.get_name() || actor.constructor.name || 'Actor',
+        type: actor.constructor.name || 'Actor',
+        visible: actor.visible,
+        reactive: actor.reactive,
+        x: Math.round(actor.x),
+        y: Math.round(actor.y),
+        width: Math.round(actor.width),
+        height: Math.round(actor.height),
+        children: [],
+    };
+
+    if (depth >= MAX_DEPTH || budget.count >= MAX_ACTORS)
+        return info;
+
+    for (const child of actor.get_children()) {
+        if (budget.count >= MAX_ACTORS)
+            break;
+
+        budget.count++;
+        info.children.push(actorInfo(child, depth + 1, budget));
+    }
+
+    return info;
+}
 
 export default class GnomeInspectorExtension extends Extension {
     enable() {
@@ -47,6 +79,11 @@ export default class GnomeInspectorExtension extends Extension {
 
     Ping() {
         return Config.PACKAGE_VERSION;
+    }
+
+    GetActorTree() {
+        const budget = { count: 1 };
+        return JSON.stringify(actorInfo(global.stage, 0, budget));
     }
 
     disable() {

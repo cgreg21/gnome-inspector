@@ -18,7 +18,8 @@ that accesses Shell-specific APIs.
 - [ ] Network and performance inspection
 
 The actor snapshot is read-only and deliberately bounded to 1,000 actors and 12 levels.
-It currently displays JSON rather than a full interactive object inspector.
+Its response includes an actor count and a truncation flag. The desktop app currently
+displays JSON rather than a full interactive object inspector.
 
 ## Requirements
 
@@ -46,6 +47,7 @@ Run checks:
 cargo fmt --check
 cargo test
 cargo clippy --all-targets --all-features -- -D warnings
+node --test extension/actor-tree.test.js
 ```
 
 ## Install the development extension

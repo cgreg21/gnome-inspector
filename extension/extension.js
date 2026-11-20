@@ -5,6 +5,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as Config from 'resource:///org/gnome/shell/misc/config.js';
+import { buildActorTree } from './actor-tree.js';
 
 const BUS_NAME = 'io.github.cgreg21.GnomeInspector';
 const OBJECT_PATH = '/io/github/cgreg21/GnomeInspector';
@@ -19,35 +20,6 @@ const INTERFACE_XML = `
     </method>
   </interface>
 </node>`;
-const MAX_ACTORS = 1000;
-const MAX_DEPTH = 12;
-
-function actorInfo(actor, depth, budget) {
-    const info = {
-        name: actor.get_name() || actor.constructor.name || 'Actor',
-        type: actor.constructor.name || 'Actor',
-        visible: actor.visible,
-        reactive: actor.reactive,
-        x: Math.round(actor.x),
-        y: Math.round(actor.y),
-        width: Math.round(actor.width),
-        height: Math.round(actor.height),
-        children: [],
-    };
-
-    if (depth >= MAX_DEPTH || budget.count >= MAX_ACTORS)
-        return info;
-
-    for (const child of actor.get_children()) {
-        if (budget.count >= MAX_ACTORS)
-            break;
-
-        budget.count++;
-        info.children.push(actorInfo(child, depth + 1, budget));
-    }
-
-    return info;
-}
 
 export default class GnomeInspectorExtension extends Extension {
     enable() {
@@ -82,8 +54,7 @@ export default class GnomeInspectorExtension extends Extension {
     }
 
     GetActorTree() {
-        const budget = { count: 1 };
-        return JSON.stringify(actorInfo(global.stage, 0, budget));
+        return JSON.stringify(buildActorTree(global.stage));
     }
 
     disable() {

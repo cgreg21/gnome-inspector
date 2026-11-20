@@ -6,8 +6,8 @@ const OBJECT_PATH: &str = "/io/github/cgreg21/GnomeInspector";
 const INTERFACE: &str = "io.github.cgreg21.GnomeInspector";
 
 fn shell_version() -> Result<String, String> {
-    let connection = gio::bus_get_sync(gio::BusType::Session, None)
-        .map_err(|error| error.to_string())?;
+    let connection =
+        gio::bus_get_sync(gio::BusType::Session, None).map_err(|error| error.to_string())?;
 
     let reply = connection
         .call_sync(

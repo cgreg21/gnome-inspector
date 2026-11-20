@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+UUID="gnome-inspector@cgreg21"
+LOG_FILE="${GNOME_TEST_LOG:-$PWD/gnome-shell-51.log}"
+HOME_DIR="$(mktemp -d)"
+RUNTIME_DIR="$(mktemp -d)"
+SHELL_PID=""
+
+mkdir -p "$(dirname "$LOG_FILE")"
+chmod 700 "$RUNTIME_DIR"
+export HOME="$HOME_DIR"
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_DATA_HOME="$HOME/.local/share"
+export XDG_CACHE_HOME="$HOME/.cache"
+export XDG_RUNTIME_DIR="$RUNTIME_DIR"
+export GSETTINGS_BACKEND=memory
+export G_MESSAGES_DEBUG=all
+export SHELL_DEBUG=all
+export LIBGL_ALWAYS_SOFTWARE=1
+export MUTTER_DEBUG_DUMMY_MODE_SPECS=1280x720
+
+cleanup() {
+    if [[ -n "$SHELL_PID" ]] && kill -0 "$SHELL_PID" 2>/dev/null; then
+        kill "$SHELL_PID" 2>/dev/null || true
+        wait "$SHELL_PID" 2>/dev/null || true
+    fi
+    rm -rf "$HOME_DIR" "$RUNTIME_DIR"
+}
+trap cleanup EXIT
+
+version="$(gnome-shell --version)"
+echo "Testing $version"
+if [[ ! "$version" =~ GNOME\ Shell\ 51([.]|$) ]]; then
+    echo "Expected GNOME Shell 51, got: $version" >&2
+    exit 1
+fi
+
+extension_dir="$XDG_DATA_HOME/gnome-shell/extensions/$UUID"
+mkdir -p "$extension_dir"
+cp -R extension/. "$extension_dir/"
+gnome-extensions enable "$UUID" >/dev/null 2>&1 || true
+
+gnome-shell --headless --debug >"$LOG_FILE" 2>&1 &
+SHELL_PID=$!
+
+enabled=false
+for _ in $(seq 1 60); do
+    if ! kill -0 "$SHELL_PID" 2>/dev/null; then
+        echo "GNOME Shell exited during startup" >&2
+        cat "$LOG_FILE" >&2
+        exit 1
+    fi
+    if gnome-extensions enable "$UUID" >/dev/null 2>&1; then
+        enabled=true
+        break
+    fi
+    sleep 1
+done
+
+if [[ "$enabled" != true ]]; then
+    echo "Could not enable the GNOME Inspector extension" >&2
+    cat "$LOG_FILE" >&2
+    exit 1
+fi
+
+ping=""
+for _ in $(seq 1 60); do
+    ping="$(gdbus call --session \
+        --dest io.github.cgreg21.GnomeInspector \
+        --object-path /io/github/cgreg21/GnomeInspector \
+        --method io.github.cgreg21.GnomeInspector.Ping 2>/dev/null || true)"
+    if [[ -n "$ping" ]]; then
+        break
+    fi
+    sleep 1
+done
+
+if [[ -z "$ping" ]]; then
+    echo "GNOME Inspector did not acquire its D-Bus name" >&2
+    cat "$LOG_FILE" >&2
+    exit 1
+fi
+
+echo "D-Bus Ping: $ping"
+if [[ ! "$ping" =~ 51([.]|\\'|$) ]]; then
+    echo "The extension did not report GNOME Shell 51" >&2
+    exit 1
+fi
+
+tree="$(gdbus call --session \
+    --dest io.github.cgreg21.GnomeInspector \
+    --object-path /io/github/cgreg21/GnomeInspector \
+    --method io.github.cgreg21.GnomeInspector.GetActorTree)"
+
+grep -q 'actorCount' <<<"$tree"
+grep -q 'truncated' <<<"$tree"
+grep -q 'root' <<<"$tree"
+echo "Actor tree D-Bus snapshot: OK"
+
+if grep -E 'JS ERROR|Gjs-CRITICAL|Error while loading.*extension|Failed to load extension' "$LOG_FILE"; then
+    echo "GNOME Shell reported an extension/runtime error" >&2
+    exit 1
+fi
+
+echo "GNOME Shell 51 headless session integration test passed."

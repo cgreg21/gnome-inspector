@@ -66,8 +66,8 @@ if [[ "$ready" != true ]]; then
 fi
 
 enabled="$(timeout 5s gdbus call --session \
-    --dest org.gnome.Shell \
-    --object-path /org/gnome/Shell \
+    --dest org.gnome.Shell.Extensions \
+    --object-path /org/gnome/Shell/Extensions \
     --method org.gnome.Shell.Extensions.EnableExtension "$UUID")"
 if [[ "$enabled" != *"true"* ]]; then
     echo "Could not enable the GNOME Inspector extension: $enabled" >&2

@@ -1,0 +1,10 @@
+[package]
+name = "gnome-inspector"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "A native developer tool for inspecting GNOME Shell"
+
+[dependencies]
+adw = { package = "libadwaita", version = "0.8" }
+gtk = { package = "gtk4", version = "0.10" }

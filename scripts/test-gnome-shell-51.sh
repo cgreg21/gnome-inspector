@@ -49,7 +49,7 @@ for _ in $(seq 1 60); do
         cat "$LOG_FILE" >&2
         exit 1
     fi
-    if gnome-extensions enable "$UUID" >/dev/null 2>&1; then
+    if timeout 5s gnome-extensions enable "$UUID" >/dev/null 2>&1; then
         enabled=true
         break
     fi
@@ -64,7 +64,7 @@ fi
 
 ping=""
 for _ in $(seq 1 60); do
-    ping="$(gdbus call --session \
+    ping="$(timeout 5s gdbus call --session \
         --dest io.github.cgreg21.GnomeInspector \
         --object-path /io/github/cgreg21/GnomeInspector \
         --method io.github.cgreg21.GnomeInspector.Ping 2>/dev/null || true)"
@@ -86,7 +86,7 @@ if [[ "$ping" != *"51."* ]]; then
     exit 1
 fi
 
-tree="$(gdbus call --session \
+tree="$(timeout 10s gdbus call --session \
     --dest io.github.cgreg21.GnomeInspector \
     --object-path /io/github/cgreg21/GnomeInspector \
     --method io.github.cgreg21.GnomeInspector.GetActorTree)"

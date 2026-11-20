@@ -18,7 +18,6 @@ export GSETTINGS_BACKEND=memory
 export G_MESSAGES_DEBUG=all
 export SHELL_DEBUG=all
 export LIBGL_ALWAYS_SOFTWARE=1
-export MUTTER_DEBUG_DUMMY_MODE_SPECS=1280x720
 
 cleanup() {
     if [[ -n "$SHELL_PID" ]] && kill -0 "$SHELL_PID" 2>/dev/null; then
@@ -40,7 +39,7 @@ extension_dir="$XDG_DATA_HOME/gnome-shell/extensions/$UUID"
 mkdir -p "$extension_dir"
 cp -R extension/. "$extension_dir/"
 
-gnome-shell --headless --debug >"$LOG_FILE" 2>&1 &
+gnome-shell --headless --virtual-monitor 1280x720 >"$LOG_FILE" 2>&1 &
 SHELL_PID=$!
 
 enabled=false

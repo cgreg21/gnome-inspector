@@ -121,7 +121,6 @@ fn main() {
     app.run();
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::string_reply;

@@ -7,10 +7,7 @@ import St from 'gi://St';
 export default class GnomeInspectorExtension extends Extension {
     enable() {
         this._indicator = new PanelMenu.Button(0.0, this.metadata.name);
-        this._indicator.add_child(new St.Label({
-            text: 'Inspector',
-            y_align: 2,
-        }));
+        this._indicator.add_child(new St.Label({ text: 'Inspector' }));
         this._indicator.menu.addMenuItem(
             new PopupMenu.PopupMenuItem('GNOME Inspector agent enabled')
         );

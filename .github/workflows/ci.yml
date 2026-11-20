@@ -15,30 +15,131 @@ permissions:
 
 jobs:
   rust:
+    name: Rust checks and diagnostics
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Install native dependencies
         run: |
           sudo apt-get update
           sudo apt-get install --yes build-essential pkg-config libgtk-4-dev libadwaita-1-dev
-      - name: Install Rust
+
+      - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt, clippy
+          components: rustfmt, clippy, llvm-tools-preview
+
       - name: Check formatting
         run: cargo fmt --all -- --check
-      - name: Check
-        run: cargo check --all-targets
-      - name: Test
-        run: cargo test --all-targets
+
+      - name: Check all targets
+        run: cargo check --all-targets --all-features
+
+      - name: Run Rust tests with backtraces
+        env:
+          RUST_BACKTRACE: full
+          RUST_LOG: debug
+        run: cargo test --all-targets --all-features -- --nocapture
+
+      - name: Run documentation tests
+        env:
+          RUST_BACKTRACE: full
+        run: cargo test --doc --all-features
+
       - name: Lint
         run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Inspect dependency tree
+        run: cargo tree --duplicates
+
+      - name: Install Rust diagnostic tools
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest,cargo-llvm-cov,cargo-audit,cargo-machete
+
+      - name: Run nextest
+        env:
+          RUST_BACKTRACE: full
+        run: cargo nextest run --all-targets --all-features --no-fail-fast
+
+      - name: Generate coverage report
+        run: cargo llvm-cov --all-features --lcov --output-path lcov.info
+
+      - name: Audit Rust dependencies
+        run: |
+          cargo generate-lockfile
+          cargo audit
+
+      - name: Detect unused dependencies
+        run: cargo machete
+
+      - name: Upload Rust coverage
+        if: always() && hashFiles('lcov.info') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-coverage
+          path: lcov.info
+          if-no-files-found: ignore
+
+  extension:
+    name: Extension tests and static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install diagnostics
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes nodejs npm shellcheck python3
+
       - name: Test actor tree traversal
-        run: node --test extension/actor-tree.test.js
-      - name: Validate extension JavaScript syntax
+        run: node --test --test-reporter=spec extension/actor-tree.test.js
+
+      - name: Validate JavaScript syntax
         run: |
           node --input-type=module --check < extension/extension.js
           node --input-type=module --check < extension/actor-tree.js
+          node --check extension/actor-tree.test.js
+
       - name: Validate extension metadata
         run: python3 -m json.tool extension/metadata.json > /dev/null
+
+      - name: ShellCheck integration scripts
+        run: shellcheck scripts/test-gnome-shell-51.sh
+
+      - name: Validate workflow syntax
+        uses: rhysd/actionlint@v1
+
+  gnome-shell-51:
+    name: GNOME Shell 51 virtual session
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install GNOME Shell 51 runtime
+        run: |
+          dnf install --assumeyes gnome-shell gjs dbus-daemon glib2 nodejs python3 shadow-utils util-linux
+          gnome-shell --version
+
+      - name: Create unprivileged test account
+        run: |
+          useradd --create-home --shell /bin/bash ci
+          chown -R ci:ci "$GITHUB_WORKSPACE"
+
+      - name: Start virtual headless session and test extension
+        env:
+          GNOME_TEST_LOG: ${{ github.workspace }}/gnome-shell-51.log
+        run: |
+          runuser -u ci -- env GNOME_TEST_LOG="$GNOME_TEST_LOG" \
+            bash "$GITHUB_WORKSPACE/scripts/test-gnome-shell-51.sh"
+
+      - name: Upload GNOME Shell diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gnome-shell-51-logs
+          path: gnome-shell-51.log
+          if-no-files-found: warn

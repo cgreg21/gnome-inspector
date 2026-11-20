@@ -137,3 +137,17 @@ test('keeps an invalid child entry as an explicit incomplete node', () => {
     assert.equal(result.root.children[0].actorError,
         'Child is not an actor object');
 });
+
+test('stops cyclic actor references without recursing forever', () => {
+    const root = new FakeActor('root');
+    const child = new FakeActor('child');
+    root._children = [child];
+    child._children = [root];
+
+    const result = buildActorTree(root);
+
+    assert.equal(result.actorCount, 3);
+    assert.equal(result.incomplete, true);
+    assert.equal(result.root.children[0].children[0].actorError,
+        'Actor was already visited');
+});

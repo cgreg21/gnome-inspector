@@ -18,7 +18,7 @@ fn shell_call(method: &str) -> Result<glib::Variant, String> {
             None,
             gio::DBusCallFlags::NONE,
             1_500,
-            None,
+            None::<&gio::Cancellable>,
         )
         .map_err(|error| error.to_string())
 }

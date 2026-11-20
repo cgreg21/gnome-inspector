@@ -1,8 +1,21 @@
+import Gio from 'gi://Gio';
+import St from 'gi://St';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
-import St from 'gi://St';
+import * as Config from 'resource:///org/gnome/shell/misc/config.js';
+
+const BUS_NAME = 'io.github.cgreg21.GnomeInspector';
+const OBJECT_PATH = '/io/github/cgreg21/GnomeInspector';
+const INTERFACE_XML = `
+<node>
+  <interface name="io.github.cgreg21.GnomeInspector">
+    <method name="Ping">
+      <arg type="s" direction="out"/>
+    </method>
+  </interface>
+</node>`;
 
 export default class GnomeInspectorExtension extends Extension {
     enable() {
@@ -11,11 +24,31 @@ export default class GnomeInspectorExtension extends Extension {
         this._indicator.menu.addMenuItem(
             new PopupMenu.PopupMenuItem('GNOME Inspector agent enabled')
         );
-
         Main.panel.addToStatusArea(this.metadata.uuid, this._indicator);
+
+        this._dbus = Gio.DBusExportedObject.wrapJSObject(INTERFACE_XML, this);
+        this._dbus.export(Gio.DBus.session, OBJECT_PATH);
+        this._nameOwnerId = Gio.bus_own_name(
+            Gio.BusType.SESSION,
+            BUS_NAME,
+            Gio.BusNameOwnerFlags.NONE,
+            null,
+            null,
+            null
+        );
+    }
+
+    Ping() {
+        return Config.PACKAGE_VERSION;
     }
 
     disable() {
+        if (this._nameOwnerId) {
+            Gio.bus_unown_name(this._nameOwnerId);
+            this._nameOwnerId = null;
+        }
+        this._dbus?.unexport();
+        this._dbus = null;
         this._indicator?.destroy();
         this._indicator = null;
     }

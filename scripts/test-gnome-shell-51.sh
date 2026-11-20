@@ -39,7 +39,6 @@ fi
 extension_dir="$XDG_DATA_HOME/gnome-shell/extensions/$UUID"
 mkdir -p "$extension_dir"
 cp -R extension/. "$extension_dir/"
-gnome-extensions enable "$UUID" >/dev/null 2>&1 || true
 
 gnome-shell --headless --debug >"$LOG_FILE" 2>&1 &
 SHELL_PID=$!
@@ -83,7 +82,7 @@ if [[ -z "$ping" ]]; then
 fi
 
 echo "D-Bus Ping: $ping"
-if [[ ! "$ping" =~ 51([.]|\\'|$) ]]; then
+if [[ "$ping" != *"51."* ]]; then
     echo "The extension did not report GNOME Shell 51" >&2
     exit 1
 fi

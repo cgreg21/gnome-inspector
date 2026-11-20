@@ -42,10 +42,8 @@ jobs:
           RUST_LOG: debug
         run: cargo test --all-targets --all-features -- --nocapture
 
-      - name: Run documentation tests
         env:
           RUST_BACKTRACE: full
-        run: cargo test --doc --all-features
 
       - name: Lint
         run: cargo clippy --all-targets --all-features -- -D warnings

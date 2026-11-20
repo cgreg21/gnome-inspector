@@ -136,7 +136,7 @@ jobs:
           GNOME_TEST_LOG: ${{ github.workspace }}/gnome-shell-51.log
         run: |
           runuser -u ci -- env GNOME_TEST_LOG="$GNOME_TEST_LOG" \
-            bash "$GITHUB_WORKSPACE/scripts/test-gnome-shell-51.sh"
+            dbus-run-session -- bash "$GITHUB_WORKSPACE/scripts/test-gnome-shell-51.sh"
 
       - name: Upload GNOME Shell diagnostics
         if: always()

@@ -43,13 +43,13 @@ gnome-shell --headless --virtual-monitor 1280x720 >"$LOG_FILE" 2>&1 &
 SHELL_PID=$!
 
 enabled=false
-for _ in $(seq 1 60); do
+for _ in $(seq 1 30); do
     if ! kill -0 "$SHELL_PID" 2>/dev/null; then
         echo "GNOME Shell exited during startup" >&2
         cat "$LOG_FILE" >&2
         exit 1
     fi
-    if timeout 5s gnome-extensions enable "$UUID" >/dev/null 2>&1; then
+    if timeout 3s gnome-extensions enable "$UUID" >/dev/null 2>&1; then
         enabled=true
         break
     fi
@@ -63,8 +63,8 @@ if [[ "$enabled" != true ]]; then
 fi
 
 ping=""
-for _ in $(seq 1 60); do
-    ping="$(timeout 5s gdbus call --session \
+for _ in $(seq 1 30); do
+    ping="$(timeout 3s gdbus call --session \
         --dest io.github.cgreg21.GnomeInspector \
         --object-path /io/github/cgreg21/GnomeInspector \
         --method io.github.cgreg21.GnomeInspector.Ping 2>/dev/null || true)"

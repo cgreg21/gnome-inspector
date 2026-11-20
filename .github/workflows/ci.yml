@@ -109,7 +109,9 @@ jobs:
         run: shellcheck scripts/test-gnome-shell-51.sh
 
       - name: Validate workflow syntax
-        uses: rhysd/actionlint@v1
+        uses: docker://rhysd/actionlint:1.7.11
+        with:
+          args: -color
 
   gnome-shell-51:
     name: GNOME Shell 51 virtual session

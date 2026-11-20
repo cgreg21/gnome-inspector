@@ -1,8 +1,7 @@
 export function buildActorTree(root) {
-    const budget = { count: 1, truncated: false };
+    const budget = { count: 1, truncated: false, incomplete: false };
 
     function visit(actor, depth) {
-        const children = actor.get_children();
         const node = {
             name: actor.get_name() || actor.constructor.name || 'Actor',
             type: actor.constructor.name || 'Actor',
@@ -14,6 +13,15 @@ export function buildActorTree(root) {
             height: Math.round(actor.height),
             children: [],
         };
+
+        let children;
+        try {
+            children = actor.get_children();
+        } catch (error) {
+            budget.incomplete = true;
+            node.childrenError = error.message || String(error);
+            return node;
+        }
 
         if (depth >= 12) {
             budget.truncated ||= children.length > 0;
@@ -33,10 +41,10 @@ export function buildActorTree(root) {
         return node;
     }
 
-    const tree = visit(root, 0);
     return {
         actorCount: budget.count,
         truncated: budget.truncated,
-        root: tree,
+        incomplete: budget.incomplete,
+        root: visit(root, 0),
     };
 }

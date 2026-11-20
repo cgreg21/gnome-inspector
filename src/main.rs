@@ -23,18 +23,21 @@ fn shell_call(method: &str) -> Result<glib::Variant, String> {
         .map_err(|error| error.to_string())
 }
 
-fn shell_version() -> Result<String, String> {
-    shell_call("Ping")?
+fn string_reply(reply: &glib::Variant, error: &str) -> Result<String, String> {
+    reply
         .get::<(String,)>()
-        .map(|(version,)| version)
-        .ok_or_else(|| "The Shell agent returned an invalid version.".to_string())
+        .map(|(value,)| value)
+        .ok_or_else(|| error.to_string())
+}
+
+fn shell_version() -> Result<String, String> {
+    let reply = shell_call("Ping")?;
+    string_reply(&reply, "The Shell agent returned an invalid version.")
 }
 
 fn actor_tree() -> Result<String, String> {
-    shell_call("GetActorTree")?
-        .get::<(String,)>()
-        .map(|(tree,)| tree)
-        .ok_or_else(|| "The Shell agent returned an invalid actor tree.".to_string())
+    let reply = shell_call("GetActorTree")?;
+    string_reply(&reply, "The Shell agent returned an invalid actor tree.")
 }
 
 fn refresh_status(status: &gtk::Label) {
@@ -116,4 +119,28 @@ fn main() {
 
     app.connect_activate(build_ui);
     app.run();
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::string_reply;
+    use glib::variant::ToVariant;
+
+    #[test]
+    fn reads_string_from_dbus_reply() {
+        let reply = ("51.1",).to_variant();
+
+        assert_eq!(string_reply(&reply, "invalid reply").unwrap(), "51.1");
+    }
+
+    #[test]
+    fn rejects_dbus_reply_with_wrong_type() {
+        let reply = 51u32.to_variant();
+
+        assert_eq!(
+            string_reply(&reply, "invalid reply"),
+            Err("invalid reply".to_string())
+        );
+    }
 }

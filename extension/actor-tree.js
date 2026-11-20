@@ -41,10 +41,11 @@ export function buildActorTree(root) {
         return node;
     }
 
+    const tree = visit(root, 0);
     return {
         actorCount: budget.count,
         truncated: budget.truncated,
         incomplete: budget.incomplete,
-        root: visit(root, 0),
+        root: tree,
     };
 }

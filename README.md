@@ -79,6 +79,8 @@ The test installs and enables the extension in a temporary home directory, then 
 4. `GetActorTree` returns the expected bounded JSON snapshot.
 5. The Shell log contains no GJS extension errors or criticals.
 
+The mocked logind service log is uploaded alongside the Shell log for diagnostics.
+
 The job uploads `gnome-shell-51.log` even when the test fails, so startup and extension
 errors remain available for diagnosis. Run the same test locally on Fedora 45 with:
 

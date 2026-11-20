@@ -19,8 +19,9 @@ that accesses Shell-specific APIs.
 
 The actor snapshot is read-only and deliberately bounded to 1,000 actors and 12 levels.
 Its response includes an actor count, a truncation flag, and an `incomplete` flag when
-an actor property or child list cannot be read. Per-actor `propertyErrors` and
-`childrenError` and `actorError` fields explain failures; unreadable or invalid geometry values use safe fallback values. The desktop app currently
+an actor property or child list cannot be read. Per-actor `propertyErrors`, `childrenError`,
+and `actorError` fields explain failures. Invalid geometry uses safe fallback values, and
+repeated actor references are reported instead of being traversed again. The desktop app currently
 displays JSON rather than a full interactive object inspector.
 
 ## Requirements

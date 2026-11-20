@@ -26,15 +26,22 @@ export default class GnomeInspectorExtension extends Extension {
         );
         Main.panel.addToStatusArea(this.metadata.uuid, this._indicator);
 
-        this._dbus = Gio.DBusExportedObject.wrapJSObject(INTERFACE_XML, this);
-        this._dbus.export(Gio.DBus.session, OBJECT_PATH);
         this._nameOwnerId = Gio.bus_own_name(
             Gio.BusType.SESSION,
             BUS_NAME,
             Gio.BusNameOwnerFlags.NONE,
+            connection => {
+                this._dbus = Gio.DBusExportedObject.wrapJSObject(
+                    INTERFACE_XML,
+                    this
+                );
+                this._dbus.export(connection, OBJECT_PATH);
+            },
             null,
-            null,
-            null
+            () => {
+                this._dbus?.unexport();
+                this._dbus = null;
+            }
         );
     }
 

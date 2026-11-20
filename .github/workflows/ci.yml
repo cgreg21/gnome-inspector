@@ -42,7 +42,6 @@ jobs:
           RUST_LOG: debug
         run: cargo test --all-targets --all-features -- --nocapture
 
-        env:
           RUST_BACKTRACE: full
 
       - name: Lint

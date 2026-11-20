@@ -2,6 +2,22 @@ export function buildActorTree(root) {
     const budget = { count: 1, truncated: false, incomplete: false };
 
     function visit(actor, depth) {
+        if (!actor || typeof actor !== 'object') {
+            budget.incomplete = true;
+            return {
+                name: 'Unavailable actor',
+                type: 'Unknown',
+                visible: false,
+                reactive: false,
+                x: 0,
+                y: 0,
+                width: 0,
+                height: 0,
+                children: [],
+                actorError: 'Child is not an actor object',
+            };
+        }
+
         const propertyErrors = {};
         const read = (property, getter, fallback) => {
             try {
@@ -12,6 +28,15 @@ export function buildActorTree(root) {
                 return fallback;
             }
         };
+        const readNumber = (property, getter) => {
+            const value = read(property, getter, 0);
+            if (typeof value !== 'number' || !Number.isFinite(value)) {
+                budget.incomplete = true;
+                propertyErrors[property] ||= 'Property is not a finite number';
+                return 0;
+            }
+            return Math.round(value);
+        };
 
         const type = read('type', () => actor.constructor.name, 'Actor');
         const node = {
@@ -19,10 +44,10 @@ export function buildActorTree(root) {
             type,
             visible: read('visible', () => actor.visible, false),
             reactive: read('reactive', () => actor.reactive, false),
-            x: Math.round(read('x', () => actor.x, 0)),
-            y: Math.round(read('y', () => actor.y, 0)),
-            width: Math.round(read('width', () => actor.width, 0)),
-            height: Math.round(read('height', () => actor.height, 0)),
+            x: readNumber('x', () => actor.x),
+            y: readNumber('y', () => actor.y),
+            width: readNumber('width', () => actor.width),
+            height: readNumber('height', () => actor.height),
             children: [],
         };
 

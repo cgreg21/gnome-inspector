@@ -30,7 +30,11 @@ jobs:
         run: cargo test --all-targets
       - name: Lint
         run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Test actor tree traversal
+        run: node --test extension/actor-tree.test.js
       - name: Validate extension JavaScript syntax
-        run: node --input-type=module --check < extension/extension.js
+        run: |
+          node --input-type=module --check < extension/extension.js
+          node --input-type=module --check < extension/actor-tree.js
       - name: Validate extension metadata
         run: python3 -m json.tool extension/metadata.json > /dev/null

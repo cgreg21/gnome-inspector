@@ -79,6 +79,8 @@ export default class GnomeInspectorExtension extends Extension {
                 this._dbus = null;
             }
         );
+
+        this._startPerformanceMonitoring();
     }
 
     Ping() {
@@ -187,10 +189,58 @@ export default class GnomeInspectorExtension extends Extension {
         }
     }
 
+    _startPerformanceMonitoring() {
+        this._performance = {
+            presentedFrames: 0,
+            lastPresentedFrames: 0,
+            lastSampleAt: GLib.get_monotonic_time(),
+            history: [],
+        };
+        this._performanceSignalId = global.stage.connect('presented', () => {
+            this._performance.presentedFrames++;
+        });
+        this._performanceTimer = GLib.timeout_add_seconds(
+            GLib.PRIORITY_DEFAULT,
+            1,
+            () => {
+                const now = GLib.get_monotonic_time();
+                const elapsedUs = now - this._performance.lastSampleAt;
+                const frames = this._performance.presentedFrames
+                    - this._performance.lastPresentedFrames;
+                if (elapsedUs > 0) {
+                    this._performance.history.push({
+                        sampledAt: GLib.get_real_time(),
+                        intervalUs: elapsedUs,
+                        presentedFrames: frames,
+                        framesPerSecond: Math.round(frames * 100000000 / elapsedUs) / 100,
+                    });
+                    if (this._performance.history.length > 60)
+                        this._performance.history.shift();
+                }
+                this._performance.lastSampleAt = now;
+                this._performance.lastPresentedFrames = this._performance.presentedFrames;
+                return GLib.SOURCE_CONTINUE;
+            }
+        );
+    }
+
+    _stopPerformanceMonitoring() {
+        if (this._performanceTimer) {
+            GLib.Source.remove(this._performanceTimer);
+            this._performanceTimer = null;
+        }
+        if (this._performanceSignalId) {
+            global.stage.disconnect(this._performanceSignalId);
+            this._performanceSignalId = null;
+        }
+        this._performance = null;
+    }
+
     GetPerformance() {
         const started = GLib.get_monotonic_time();
         const snapshot = buildActorTree(global.stage);
         const duration = GLib.get_monotonic_time() - started;
+        const history = this._performance?.history || [];
         return JSON.stringify({
             sampledAt: GLib.get_real_time(),
             captureDurationUs: duration,
@@ -202,10 +252,14 @@ export default class GnomeInspectorExtension extends Extension {
                 height: global.stage.height,
             },
             monitorCount: Main.layoutManager.monitors.length,
+            presentedFrames: this._performance?.presentedFrames || 0,
+            framesPerSecond: history.at(-1)?.framesPerSecond ?? null,
+            performanceHistory: history,
         });
     }
 
     disable() {
+        this._stopPerformanceMonitoring();
         if (this._nameOwnerId) {
             Gio.bus_unown_name(this._nameOwnerId);
             this._nameOwnerId = null;

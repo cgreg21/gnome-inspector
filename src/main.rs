@@ -599,12 +599,17 @@ fn styles_page() -> gtk::Box {
         };
         match set_actor_inline_style(&path, style_for_apply.text().as_str()) {
             Ok(reply) => match serde_json::from_str::<serde_json::Value>(&reply) {
-                Ok(result) if result.get("ok").and_then(serde_json::Value::as_bool) == Some(true) => {
+                Ok(result)
+                    if result.get("ok").and_then(serde_json::Value::as_bool) == Some(true) =>
+                {
                     status_for_style.set_text("Style inline appliqué.");
                     status_for_style.remove_css_class("error");
                 }
                 Ok(result) => {
-                    let error = result.get("error").and_then(serde_json::Value::as_str).unwrap_or("Erreur inconnue");
+                    let error = result
+                        .get("error")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or("Erreur inconnue");
                     status_for_style.set_text(&format!("Modification refusée : {error}"));
                     status_for_style.add_css_class("error");
                 }
@@ -621,7 +626,6 @@ fn styles_page() -> gtk::Box {
     });
     style_row.append(&style_input);
     style_row.append(&apply_style);
-
 
     let computed_details = gtk::TextView::new();
     computed_details.set_editable(false);
@@ -654,7 +658,8 @@ fn styles_page() -> gtk::Box {
         }) {
             Ok(report) => {
                 computed_view.buffer().set_text(&report);
-                computed_status.set_text("Style calculé actualisé (dimensions en pixels physiques).");
+                computed_status
+                    .set_text("Style calculé actualisé (dimensions en pixels physiques).");
                 computed_status.remove_css_class("error");
             }
             Err(error) => {

@@ -432,8 +432,14 @@ fn format_actor_details(node: &serde_json::Value) -> String {
                 .and_then(serde_json::Value::as_str)
                 .unwrap_or("?");
             let access = [
-                ("R", property.get("readable").and_then(serde_json::Value::as_bool)),
-                ("W", property.get("writable").and_then(serde_json::Value::as_bool)),
+                (
+                    "R",
+                    property.get("readable").and_then(serde_json::Value::as_bool),
+                ),
+                (
+                    "W",
+                    property.get("writable").and_then(serde_json::Value::as_bool),
+                ),
             ]
             .iter()
             .filter_map(|(flag, enabled)| (*enabled == Some(true)).then_some(*flag))
@@ -446,7 +452,9 @@ fn format_actor_details(node: &serde_json::Value) -> String {
                 .and_then(serde_json::Value::as_str)
                 .map(|error| format!("<erreur: {error}>"))
                 .unwrap_or_else(|| {
-                    if property.get("readable").and_then(serde_json::Value::as_bool)
+                    if property
+                        .get("readable")
+                        .and_then(serde_json::Value::as_bool)
                         == Some(false)
                     {
                         "<non lisible>".to_string()

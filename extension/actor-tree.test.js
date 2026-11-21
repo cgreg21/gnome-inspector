@@ -14,7 +14,7 @@ class FakeActor {
         this.height = 40;
     }
 
-    get_name() {
+    static list_properties() {\n        return [];\n    }\n\n    get_name() {
         return this._name;
     }
 
@@ -211,4 +211,68 @@ test('assigns stable child-index paths to every actor', () => {
     assert.equal(result.root.path, '');
     assert.equal(result.root.children[0].path, '0');
     assert.equal(result.root.children[1].path, '1');
+});
+
+test('includes readable GObject properties and access flags', () => {
+    class PropertyActor extends FakeActor {
+        static list_properties() {
+            return [
+                { name: 'label', value_type: { name: 'gchararray' }, flags: 3 },
+                { name: 'opacity', value_type: { name: 'guint' }, flags: 1 },
+                { name: 'write-only', value_type: { name: 'gint' }, flags: 2 },
+            ];
+        }
+
+        get_property(name) {
+            return { label: 'Inspector', opacity: 180 }[name];
+        }
+    }
+
+    const result = buildActorTree(new PropertyActor('properties'));
+    assert.deepEqual(result.root.properties, [
+        { name: 'label', type: 'gchararray', readable: true, writable: true, value: 'Inspector' },
+        { name: 'opacity', type: 'guint', readable: true, writable: false, value: 180 },
+        { name: 'write-only', type: 'gint', readable: false, writable: true },
+    ]);
+    assert.equal(result.root.propertyCount, 3);
+    assert.equal(result.incomplete, false);
+});
+
+test('limits property values and records getter failures', () => {
+    class PropertyActor extends FakeActor {
+        static list_properties() {
+            return [
+                { name: 'long-text', value_type: { name: 'gchararray' }, flags: 1 },
+                { name: 'broken', value_type: { name: 'gint' }, flags: 1 },
+            ];
+        }
+
+        get_property(name) {
+            if (name === 'broken')
+                throw new Error('property unavailable');
+            return 'x'.repeat(300);
+        }
+    }
+
+    const result = buildActorTree(new PropertyActor('properties'));
+    assert.equal(result.incomplete, true);
+    assert.equal(result.root.properties[0].value.length, 257);
+    assert.equal(result.root.properties[1].error, 'property unavailable');
+});
+
+test('caps the number of actor properties returned', () => {
+    class PropertyActor extends FakeActor {
+        static list_properties() {
+            return Array.from({ length: 70 }, (_, index) => ({
+                name: `property-${index}`,
+                value_type: { name: 'gint' },
+                flags: 0,
+            }));
+        }
+    }
+
+    const result = buildActorTree(new PropertyActor('properties'));
+    assert.equal(result.root.propertyCount, 70);
+    assert.equal(result.root.properties.length, 64);
+    assert.equal(result.root.propertiesTruncated, true);
 });

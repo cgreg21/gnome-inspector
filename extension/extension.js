@@ -6,6 +6,7 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as Config from 'resource:///org/gnome/shell/misc/config.js';
 import { buildActorTree } from './actor-tree.js';
+import { buildStyleTree } from './style-tree.js';
 
 const BUS_NAME = 'io.github.cgreg21.GnomeInspector';
 const OBJECT_PATH = '/io/github/cgreg21/GnomeInspector';
@@ -16,6 +17,9 @@ const INTERFACE_XML = `
       <arg type="s" direction="out"/>
     </method>
     <method name="GetActorTree">
+      <arg type="s" direction="out"/>
+    </method>
+    <method name="GetStyleTree">
       <arg type="s" direction="out"/>
     </method>
   </interface>
@@ -55,6 +59,10 @@ export default class GnomeInspectorExtension extends Extension {
 
     GetActorTree() {
         return JSON.stringify(buildActorTree(global.stage));
+    }
+
+    GetStyleTree() {
+        return JSON.stringify(buildStyleTree(global.stage));
     }
 
     disable() {

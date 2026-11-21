@@ -1760,8 +1760,9 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        actor_detail_summary, actor_matches, filter_computed_style, flatten_actors,
-        format_computed_style, format_console_entry, remember_console_command, string_reply,
+        actor_detail_summary, actor_matches, extension_is_discovered, filter_computed_style,
+        flatten_actors, format_computed_style, format_console_entry, remember_console_command,
+        string_reply,
     };
     use glib::variant::ToVariant;
 

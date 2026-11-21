@@ -23,6 +23,14 @@ const INTERFACE_XML = `
     <method name="GetStyleTree">
       <arg type="s" direction="out"/>
     </method>
+    <method name="GetThemeInfo">
+      <arg type="s" direction="out"/>
+    </method>
+    <method name="SetActorStyleClass">
+      <arg type="s" direction="in"/>
+      <arg type="s" direction="in"/>
+      <arg type="s" direction="out"/>
+    </method>
     <method name="SetActorInlineStyle">
       <arg type="s" direction="in"/>
       <arg type="s" direction="in"/>
@@ -79,6 +87,44 @@ export default class GnomeInspectorExtension extends Extension {
 
     GetStyleTree() {
         return JSON.stringify(buildStyleTree(global.stage));
+    }
+
+    GetThemeInfo() {
+        const theme = St.ThemeContext.get_for_stage(global.stage)?.get_theme();
+        if (!theme)
+            return JSON.stringify({ available: false });
+
+        const pathOf = file => {
+            try {
+                return file?.get_path?.() || file?.get_uri?.() || null;
+            } catch {
+                return null;
+            }
+        };
+
+        return JSON.stringify({
+            available: true,
+            applicationStylesheet: pathOf(theme.get_application_stylesheet()),
+            themeStylesheet: pathOf(theme.get_theme_stylesheet()),
+            defaultStylesheet: pathOf(theme.get_default_stylesheet()),
+            customStylesheets: theme.get_custom_stylesheets(),
+        });
+    }
+
+    SetActorStyleClass(path, styleClass) {
+        if (typeof styleClass !== 'string' || styleClass.length > 512)
+            return JSON.stringify({ ok: false, error: 'CSS class list must be at most 512 characters.' });
+
+        const actor = resolveActorPath(global.stage, path);
+        if (!actor || typeof actor.set_style_class_name !== 'function')
+            return JSON.stringify({ ok: false, error: 'Actor path is invalid or the actor does not support CSS classes.' });
+
+        try {
+            actor.set_style_class_name(styleClass);
+            return JSON.stringify({ ok: true, path, styleClass });
+        } catch (error) {
+            return JSON.stringify({ ok: false, error: error?.message || String(error) });
+        }
     }
 
     SetActorInlineStyle(path, css) {

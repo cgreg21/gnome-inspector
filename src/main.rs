@@ -40,6 +40,10 @@ fn actor_tree() -> Result<String, String> {
     string_reply(&shell_call("GetActorTree")?, "Invalid actor tree reply.")
 }
 
+fn style_tree() -> Result<String, String> {
+    string_reply(&shell_call("GetStyleTree")?, "Invalid style tree reply.")
+}
+
 fn page_heading(title: &str, description: &str) -> gtk::Box {
     let heading = gtk::Box::new(gtk::Orientation::Vertical, 6);
     heading.set_margin_top(24);
@@ -251,6 +255,125 @@ fn actors_page() -> gtk::Box {
     page
 }
 
+fn styles_page() -> gtk::Box {
+    let page = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    page.append(&page_heading(
+        "CSS et thèmes",
+        "Parcourez les classes CSS, pseudo-classes et styles inline des acteurs GNOME Shell.",
+    ));
+
+    let status = gtk::Label::new(Some("Aucune capture CSS effectuée."));
+    status.set_halign(gtk::Align::Start);
+    status.set_margin_start(24);
+    status.add_css_class("dim-label");
+
+    let list = gtk::ListBox::new();
+    list.set_selection_mode(gtk::SelectionMode::Single);
+    list.add_css_class("navigation-sidebar");
+    let list_scroll = gtk::ScrolledWindow::builder()
+        .min_content_width(300)
+        .max_content_width(420)
+        .vexpand(true)
+        .child(&list)
+        .build();
+
+    let details = gtk::TextView::new();
+    details.set_editable(false);
+    details.set_cursor_visible(false);
+    details.set_monospace(true);
+    details.set_wrap_mode(gtk::WrapMode::WordChar);
+    details.set_left_margin(12);
+    details.set_top_margin(12);
+    let details_scroll = gtk::ScrolledWindow::builder()
+        .hexpand(true)
+        .vexpand(true)
+        .child(&details)
+        .build();
+
+    let selected_nodes = Rc::new(RefCell::new(Vec::<serde_json::Value>::new()));
+    let nodes_for_selection = selected_nodes.clone();
+    let details_for_selection = details.clone();
+    list.connect_row_selected(move |_, row| {
+        if let Some(row) = row {
+            if let Some(node) = nodes_for_selection.borrow().get(row.index() as usize) {
+                show_actor_details(&details_for_selection, node);
+            }
+        }
+    });
+
+    let list_for_refresh = list.clone();
+    let details_for_refresh = details.clone();
+    let nodes_for_refresh = selected_nodes.clone();
+    let status_for_refresh = status.clone();
+    let refresh = gtk::Button::with_label("Actualiser les styles");
+    refresh.add_css_class("suggested-action");
+    refresh.set_halign(gtk::Align::Start);
+    refresh.connect_clicked(move |_| {
+        match style_tree().and_then(|json| {
+            serde_json::from_str::<serde_json::Value>(&json).map_err(|error| error.to_string())
+        }) {
+            Ok(snapshot) => {
+                let mut rows = Vec::new();
+                if let Some(root) = snapshot.get("root") {
+                    flatten_actors(root, 0, &mut rows);
+                }
+                while let Some(child) = list_for_refresh.first_child() {
+                    list_for_refresh.remove(&child);
+                }
+
+                let nodes = rows.iter().map(|(node, _)| node.clone()).collect::<Vec<_>>();
+                *nodes_for_refresh.borrow_mut() = nodes;
+                for (node, depth) in rows {
+                    let name = node.get("name").and_then(serde_json::Value::as_str).unwrap_or("Acteur");
+                    let classes = node.get("styleClass").and_then(serde_json::Value::as_str).unwrap_or("");
+                    let label = gtk::Label::new(Some(&format!("{}{}  ·  {}", "  ".repeat(depth), name, classes)));
+                    label.set_halign(gtk::Align::Start);
+                    label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+                    label.set_margin_top(5);
+                    label.set_margin_bottom(5);
+                    label.set_margin_start(8);
+                    label.set_margin_end(8);
+                    list_for_refresh.append(&label);
+                }
+
+                let count = snapshot.get("actorCount").and_then(serde_json::Value::as_u64).unwrap_or(0);
+                let truncated = snapshot.get("truncated").and_then(serde_json::Value::as_bool).unwrap_or(false);
+                status_for_refresh.set_text(&format!(
+                    "{count} acteurs inspectés{}",
+                    if truncated { " · capture tronquée" } else { "" }
+                ));
+                if let Some(root) = nodes_for_refresh.borrow().first() {
+                    show_actor_details(&details_for_refresh, root);
+                } else {
+                    details_for_refresh.buffer().set_text("Aucun style trouvé.");
+                }
+                status_for_refresh.remove_css_class("error");
+            }
+            Err(error) => {
+                status_for_refresh.set_text(&format!("Échec de l’inspection CSS : {error}"));
+                status_for_refresh.add_css_class("error");
+            }
+        }
+    });
+
+    let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    actions.set_margin_start(24);
+    actions.set_margin_end(24);
+    actions.append(&refresh);
+
+    let split = gtk::Paned::new(gtk::Orientation::Horizontal);
+    split.set_start_child(Some(&list_scroll));
+    split.set_end_child(Some(&details_scroll));
+    split.set_resize_start_child(false);
+    split.set_shrink_start_child(false);
+    split.set_position(340);
+
+    page.append(&actions);
+    page.append(&status);
+    page.append(&split);
+    page
+}
+
 fn overview_page(connection: &gtk::Label) -> gtk::Box {
     let page = gtk::Box::new(gtk::Orientation::Vertical, 12);
     page.append(&page_heading(
@@ -306,15 +429,7 @@ fn build_ui(app: &adw::Application) {
 
     stack.add_titled(&overview_page(&connection), Some("overview"), "Vue d’ensemble");
     stack.add_titled(&actors_page(), Some("actors"), "Acteurs");
-    stack.add_titled(
-        &info_page(
-            "CSS et thèmes",
-            "Inspectez les styles GNOME Shell, les classes CSS et les thèmes actifs.",
-            "Le moteur d’inspection CSS sera connecté à l’agent Shell.",
-        ),
-        Some("styles"),
-        "CSS et thèmes",
-    );
+    stack.add_titled(&styles_page(), Some("styles"), "CSS et thèmes");
     stack.add_titled(
         &info_page(
             "Console GJS",

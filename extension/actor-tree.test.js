@@ -202,3 +202,13 @@ test('formats unusual thrown values without aborting the snapshot', () => {
     assert.equal(node.propertyErrors.width, 'null');
     assert.equal(node.childrenError, 'Unknown error');
 });
+
+test('assigns stable child-index paths to every actor', () => {
+    const target = new FakeActor('target');
+    const root = new FakeActor('root', [new FakeActor('sibling'), target]);
+    const result = buildActorTree(root);
+
+    assert.equal(result.root.path, '');
+    assert.equal(result.root.children[0].path, '0');
+    assert.equal(result.root.children[1].path, '1');
+});

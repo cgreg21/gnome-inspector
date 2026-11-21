@@ -748,22 +748,63 @@ fn styles_page() -> gtk::Box {
     });
     theme_actions.append(&theme_refresh);
 
+    let inspector = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    inspector.set_margin_top(8);
+    inspector.set_margin_bottom(8);
+    inspector.set_margin_start(12);
+    inspector.set_margin_end(12);
+
+    let properties_title = gtk::Label::new(Some("Propriétés"));
+    properties_title.add_css_class("heading");
+    properties_title.set_halign(gtk::Align::Start);
+    inspector.append(&properties_title);
+    inspector.append(&details_scroll);
+
+    let styles_title = gtk::Label::new(Some("Styles"));
+    styles_title.add_css_class("heading");
+    styles_title.set_halign(gtk::Align::Start);
+    inspector.append(&styles_title);
+    inspector.append(&class_row);
+    inspector.append(&style_row);
+
+    let computed_title = gtk::Label::new(Some("Style calculé"));
+    computed_title.add_css_class("heading");
+    computed_title.set_halign(gtk::Align::Start);
+    inspector.append(&computed_actions);
+    inspector.append(&computed_scroll);
+
+    let theme_title = gtk::Label::new(Some("Thème"));
+    theme_title.add_css_class("heading");
+    theme_title.set_halign(gtk::Align::Start);
+    inspector.append(&theme_title);
+    inspector.append(&theme_actions);
+    inspector.append(&theme_scroll);
+
+    let inspector_scroll = gtk::ScrolledWindow::builder()
+        .min_content_width(340)
+        .hexpand(true)
+        .vexpand(true)
+        .child(&inspector)
+        .build();
+
+    let detail_split = gtk::Paned::new(gtk::Orientation::Horizontal);
+    detail_split.set_start_child(Some(&details_scroll));
+    detail_split.set_end_child(Some(&inspector_scroll));
+    detail_split.set_resize_start_child(true);
+    detail_split.set_shrink_start_child(false);
+    detail_split.set_position(360);
+
     let split = gtk::Paned::new(gtk::Orientation::Horizontal);
     split.set_start_child(Some(&list_scroll));
-    split.set_end_child(Some(&details_scroll));
+    split.set_end_child(Some(&detail_split));
     split.set_resize_start_child(false);
     split.set_shrink_start_child(false);
-    split.set_position(340);
+    split.set_position(280);
+    split.set_vexpand(true);
 
     page.append(&actions);
     page.append(&status);
     page.append(&split);
-    page.append(&class_row);
-    page.append(&style_row);
-    page.append(&theme_actions);
-    page.append(&theme_scroll);
-    page.append(&computed_actions);
-    page.append(&computed_scroll);
     page
 }
 

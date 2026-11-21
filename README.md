@@ -16,7 +16,8 @@ that accesses Shell-specific APIs.
 - [x] Actor hierarchy navigation and property JSON inspection
 - [ ] Dedicated property editor and live actor selection
 - [x] Actor CSS classes, pseudo-classes and inline-style snapshots
-- [ ] Theme stylesheet discovery and live CSS editing
+- [x] Explicit per-actor inline CSS editing
+- [ ] Theme stylesheet discovery and global theme editing
 - [x] Interactive GJS console (explicit code execution)
 - [x] GNOME Shell session diagnostics
 - [x] Shell scene capture metrics (duration, actor count, stage and monitors)
@@ -27,7 +28,7 @@ Its response includes an actor count, a truncation flag, and an `incomplete` fla
 an actor property or child list cannot be read. Per-actor `propertyErrors`, `childrenError`,
 and `actorError` fields explain failures. Invalid geometry uses safe fallback values, and
 repeated actor references are reported instead of being traversed again. The desktop app currently provides a navigable workspace for Overview, Actors, CSS and themes,
-GJS Console, Diagnostics, and Performance. The actor module displays the hierarchy as a selectable list and shows the selected actor's properties as formatted JSON. The CSS module now retrieves style classes, pseudo-classes and inline styles over D-Bus and presents a selectable actor list with details. Theme stylesheet discovery and live editing, performance engine provides live scene-capture duration, actor count, stage dimensions and monitor count; frame timing and resource history remain to be implemented. The GJS console executes user-supplied code in the connected Shell process; it is intentionally powerful and must only be used with trusted code. The Diagnostics module retrieves the Shell version, session/display environment, stage dimensions, monitor count, and extension metadata from the live Shell agent.
+GJS Console, Diagnostics, and Performance. The actor module displays the hierarchy as a selectable list and shows the selected actor's properties as formatted JSON. The CSS module retrieves style classes, pseudo-classes and inline styles over D-Bus, presents a selectable actor list, and supports explicit inline-style updates for the selected actor. Updates are limited to 4,096 characters and resolve actors through a bounded child-index path. Theme stylesheet discovery and global theme editing remain to be implemented. The performance module provides live scene-capture duration, actor count, stage dimensions and monitor count; frame timing and resource history remain to be implemented. The GJS console executes user-supplied code in the connected Shell process; it is intentionally powerful and must only be used with trusted code. The Diagnostics module retrieves the Shell version, session/display environment, stage dimensions, monitor count, and extension metadata from the live Shell agent.
 
 ## Requirements
 
@@ -57,7 +58,7 @@ cargo check --all-targets --all-features
 RUST_BACKTRACE=full cargo test --all-targets --all-features -- --nocapture
 cargo test --doc --all-features
 cargo clippy --all-targets --all-features -- -D warnings
-node --test --test-reporter=spec extension/actor-tree.test.js
+node --test --test-reporter=spec extension/*.test.js
 shellcheck scripts/test-gnome-shell-51.sh
 ```
 
@@ -85,7 +86,7 @@ The test installs and enables the extension in a temporary home directory, then 
 2. The extension loads and owns its D-Bus service.
 3. `Ping` returns the Shell version.
 4. `GetActorTree` returns the expected bounded JSON snapshot.
-5. The Shell log contains no GJS extension errors or criticals.
+5. `GetStyleTree`, `GetDiagnostics`, `EvaluateGjs`, and `GetPerformance` respond.\n6. Invalid CSS actor paths are rejected.\n7. The Shell log contains no GJS extension errors or criticals.
 
 The mocked logind service log is uploaded alongside the Shell log for diagnostics.
 

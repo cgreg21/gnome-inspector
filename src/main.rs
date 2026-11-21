@@ -353,50 +353,6 @@ fn actors_page() -> gtk::Box {
     actions.set_margin_end(24);
     actions.append(&refresh);
 
-    let editor_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    editor_row.set_margin_start(24);
-    editor_row.set_margin_end(24);
-    let apply_style = gtk::Button::with_label("Appliquer le style inline");
-    let input_for_apply = style_input.clone();
-    let path_for_apply = selected_path.clone();
-    let status_for_apply = status.clone();
-    apply_style.connect_clicked(move |_| {
-        let path = path_for_apply.borrow().clone();
-        let Some(path) = path else {
-            status_for_apply.set_text("Sélectionnez d’abord un acteur.");
-            status_for_apply.add_css_class("error");
-            return;
-        };
-        match set_actor_inline_style(&path, input_for_apply.text().as_str()) {
-            Ok(reply) => match serde_json::from_str::<serde_json::Value>(&reply) {
-                Ok(result)
-                    if result.get("ok").and_then(serde_json::Value::as_bool) == Some(true) =>
-                {
-                    status_for_apply.set_text("Style inline appliqué dans GNOME Shell.");
-                    status_for_apply.remove_css_class("error");
-                }
-                Ok(result) => {
-                    let error = result
-                        .get("error")
-                        .and_then(serde_json::Value::as_str)
-                        .unwrap_or("Erreur inconnue");
-                    status_for_apply.set_text(&format!("Modification refusée : {error}"));
-                    status_for_apply.add_css_class("error");
-                }
-                Err(error) => {
-                    status_for_apply.set_text(&format!("Réponse invalide : {error}"));
-                    status_for_apply.add_css_class("error");
-                }
-            },
-            Err(error) => {
-                status_for_apply.set_text(&format!("Échec de la modification CSS : {error}"));
-                status_for_apply.add_css_class("error");
-            }
-        }
-    });
-    editor_row.append(&style_input);
-    editor_row.append(&apply_style);
-
     let split = gtk::Paned::new(gtk::Orientation::Horizontal);
     split.set_start_child(Some(&list_scroll));
     split.set_end_child(Some(&details_scroll));

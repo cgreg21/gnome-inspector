@@ -13,8 +13,8 @@ that accesses Shell-specific APIs.
 - [x] Session D-Bus name and version handshake
 - [x] Bounded Shell actor-tree snapshot (JSON)
 - [x] Native application shell with module navigation
-- [x] Actor snapshot display with formatted JSON
-- [ ] Interactive actor selection and property inspection
+- [x] Actor hierarchy navigation and property JSON inspection
+- [ ] Dedicated property editor and live actor selection
 - [ ] St theme/CSS inspection
 - [ ] GJS console and diagnostics
 - [ ] Network and performance inspection
@@ -24,8 +24,7 @@ Its response includes an actor count, a truncation flag, and an `incomplete` fla
 an actor property or child list cannot be read. Per-actor `propertyErrors`, `childrenError`,
 and `actorError` fields explain failures. Invalid geometry uses safe fallback values, and
 repeated actor references are reported instead of being traversed again. The desktop app currently provides a navigable workspace for Overview, Actors, CSS and themes,
-GJS Console, Diagnostics, and Performance. The actor module displays a formatted JSON snapshot;
-interactive actor selection and the other inspection engines are still under development.
+GJS Console, Diagnostics, and Performance. The actor module displays the hierarchy as a selectable list and shows the selected actor's properties as formatted JSON. CSS, console, diagnostics, and performance engines remain under development.
 
 ## Requirements
 

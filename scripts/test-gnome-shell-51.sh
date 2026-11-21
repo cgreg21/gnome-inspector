@@ -109,6 +109,28 @@ grep -q 'truncated' <<<"$tree"
 grep -q 'root' <<<"$tree"
 echo "Actor tree D-Bus snapshot: OK"
 
+picker_start="$(timeout 10s gdbus call --session \
+    --dest io.github.cgreg21.GnomeInspector.Shell \
+    --object-path /io/github/cgreg21/GnomeInspector \
+    --method io.github.cgreg21.GnomeInspector.StartActorPicker)"
+grep -q 'true' <<<"$picker_start"
+picker_pending="$(timeout 10s gdbus call --session \
+    --dest io.github.cgreg21.GnomeInspector.Shell \
+    --object-path /io/github/cgreg21/GnomeInspector \
+    --method io.github.cgreg21.GnomeInspector.GetActorPickerResult)"
+grep -q 'pending' <<<"$picker_pending"
+picker_cancel="$(timeout 10s gdbus call --session \
+    --dest io.github.cgreg21.GnomeInspector.Shell \
+    --object-path /io/github/cgreg21/GnomeInspector \
+    --method io.github.cgreg21.GnomeInspector.CancelActorPicker)"
+grep -q 'true' <<<"$picker_cancel"
+picker_result="$(timeout 10s gdbus call --session \
+    --dest io.github.cgreg21.GnomeInspector.Shell \
+    --object-path /io/github/cgreg21/GnomeInspector \
+    --method io.github.cgreg21.GnomeInspector.GetActorPickerResult)"
+grep -q 'cancelled' <<<"$picker_result"
+echo "Visual actor picker start, status and cancellation: OK"
+
 styles="$(timeout 10s gdbus call --session \
     --dest io.github.cgreg21.GnomeInspector.Shell \
     --object-path /io/github/cgreg21/GnomeInspector \

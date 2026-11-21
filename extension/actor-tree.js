@@ -11,10 +11,11 @@ export function buildActorTree(root) {
         }
     };
 
-    function visit(actor, depth) {
+    function visit(actor, depth, path) {
         if (!actor || typeof actor !== 'object') {
             budget.incomplete = true;
             return {
+                path,
                 name: 'Unavailable actor',
                 type: 'Unknown',
                 visible: false,
@@ -31,6 +32,7 @@ export function buildActorTree(root) {
         if (visited.has(actor)) {
             budget.incomplete = true;
             return {
+                path,
                 name: 'Repeated actor',
                 type: 'Unknown',
                 visible: false,
@@ -85,6 +87,7 @@ export function buildActorTree(root) {
 
         const type = readString('type', () => actor.constructor.name, 'Actor');
         const node = {
+            path,
             name: readString('name', () => actor.get_name(), type),
             type,
             visible: readBoolean('visible', () => actor.visible),
@@ -115,20 +118,22 @@ export function buildActorTree(root) {
             return node;
         }
 
-        for (const child of children) {
+        for (let index = 0; index < children.length; index++) {
+            const child = children[index];
             if (budget.count >= 1000) {
                 budget.truncated = true;
                 break;
             }
 
             budget.count++;
-            node.children.push(visit(child, depth + 1));
+            const childPath = path === '' ? String(index) : `${path}/${index}`;
+            node.children.push(visit(child, depth + 1, childPath));
         }
 
         return node;
     }
 
-    const tree = visit(root, 0);
+    const tree = visit(root, 0, '');
     return {
         actorCount: budget.count,
         truncated: budget.truncated,

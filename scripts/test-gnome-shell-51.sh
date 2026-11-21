@@ -172,10 +172,10 @@ performance="$(timeout 10s gdbus call --session \
 grep -q 'captureDurationUs' <<<"$performance"
 grep -q 'actorCount' <<<"$performance"
 grep -q 'monitorCount' <<<"$performance"
-grep -q 'presentedFrames' <<<"$performance"
+grep -q 'renderedFrames' <<<"$performance"
 grep -q 'framesPerSecond' <<<"$performance"
 grep -q 'performanceHistory' <<<"$performance"
-echo "GNOME Shell rolling frame-rate history: OK"
+echo "GNOME Shell rolling rendered-frame-rate history: OK"
 
 style_update="$(timeout 10s gdbus call --session \
     --dest io.github.cgreg21.GnomeInspector \

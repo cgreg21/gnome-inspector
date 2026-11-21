@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 mkdir -p screenshots
 
-gjs scripts/mock-inspector-dbus.js > /tmp/gnome-inspector-mock.log 2>&1 &
+gjs -m scripts/mock-inspector-dbus.js > /tmp/gnome-inspector-mock.log 2>&1 &
 mock_pid=$!
 app_pid=""
 
@@ -17,14 +17,21 @@ cleanup() {
 }
 trap cleanup EXIT
 
+mock_ready=false
 for _ in $(seq 1 20); do
     if gdbus call --session --dest io.github.cgreg21.GnomeInspector.Shell \
         --object-path /io/github/cgreg21/GnomeInspector \
         --method io.github.cgreg21.GnomeInspector.Ping >/dev/null 2>&1; then
+        mock_ready=true
         break
     fi
     sleep 0.5
 done
+if [[ "$mock_ready" != true ]]; then
+    echo "Screenshot D-Bus mock did not become ready" >&2
+    cat /tmp/gnome-inspector-mock.log >&2
+    exit 1
+fi
 
 echo "Building GNOME Inspector for screenshots"
 cargo build --release

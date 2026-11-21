@@ -431,13 +431,34 @@ fn format_actor_details(node: &serde_json::Value) -> String {
                 .get("type")
                 .and_then(serde_json::Value::as_str)
                 .unwrap_or("?");
+            let access = [
+                ("R", property.get("readable").and_then(serde_json::Value::as_bool)),
+                ("W", property.get("writable").and_then(serde_json::Value::as_bool)),
+            ]
+            .iter()
+            .filter_map(|(flag, enabled)| (*enabled == Some(true)).then_some(*flag))
+            .collect::<Vec<_>>()
+            .join(",");
+
             let value = property.get("value").unwrap_or(&serde_json::Value::Null);
-            let readable = value
-                .as_str()
-                .map(str::to_string)
-                .unwrap_or_else(|| value.to_string());
+            let readable = property
+                .get("error")
+                .and_then(serde_json::Value::as_str)
+                .map(|error| format!("<erreur: {error}>"))
+                .unwrap_or_else(|| {
+                    if property.get("readable").and_then(serde_json::Value::as_bool)
+                        == Some(false)
+                    {
+                        "<non lisible>".to_string()
+                    } else {
+                        value
+                            .as_str()
+                            .map(str::to_string)
+                            .unwrap_or_else(|| value.to_string())
+                    }
+                });
             let readable = readable.replace('\n', "\\n");
-            lines.push(format!("{name} ({kind}) = {readable}"));
+            lines.push(format!("{name} ({kind}; {access}) = {readable}"));
         }
     }
 
@@ -1889,7 +1910,7 @@ mod tests {
             "name": "target",
             "type": "StButton",
             "visible": true,
-            "properties": [{ "name": "label", "type": "gchararray", "value": "OK" }],
+            "properties": [{ "name": "label", "type": "gchararray", "readable": true, "writable": false, "value": "OK" }],
             "children": [{ "name": "nested", "children": [] }]
         });
 
@@ -1901,7 +1922,7 @@ mod tests {
 
         let formatted = format_actor_details(&node);
         assert!(formatted.contains("Propriétés (1)"));
-        assert!(formatted.contains("label (gchararray) = OK"));
+        assert!(formatted.contains("label (gchararray; R) = OK"));
         assert!(!formatted.contains("nested"));
     }
 

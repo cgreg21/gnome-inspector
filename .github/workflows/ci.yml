@@ -103,7 +103,7 @@ jobs:
         run: python3 -m json.tool extension/metadata.json > /dev/null
 
       - name: ShellCheck integration scripts
-        run: shellcheck scripts/test-gnome-shell-51.sh scripts/capture-readme-screenshots.sh
+        run: shellcheck scripts/test-gnome-shell-51.sh scripts/capture-readme-screenshots.sh scripts/install-extension.sh
 
       - name: Validate workflow syntax
         uses: docker://rhysd/actionlint:1.7.11

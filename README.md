@@ -56,6 +56,28 @@ and uploads the `gnome-inspector-readme-screenshots` artifact for review. To pub
 refreshed PNGs into the repository, run the workflow manually with
 `workflow_dispatch`; that run commits the updated captures.
 
+## Install and enable the GNOME Shell extension
+
+The desktop application communicates with a small GNOME Shell agent. From the
+repository root, install it for the current user and enable it with:
+
+```sh
+bash scripts/install-extension.sh
+```
+
+The script checks that `gnome-extensions` is available, copies the extension to
+`~/.local/share/gnome-shell/extensions/gnome-inspector@cgreg21`, and requests
+activation. You can also enable it manually with:
+
+```sh
+gnome-extensions enable gnome-inspector@cgreg21
+```
+
+Open GNOME Inspector and use **Tester la connexion** on the Overview page. If
+GNOME Shell refuses activation, verify that GNOME Shell 51 is running; on Wayland,
+log out and back in if the extension does not load immediately. The app now shows
+these installation steps whenever its D-Bus agent is unavailable.
+
 ## Requirements
 
 - Rust stable and Cargo

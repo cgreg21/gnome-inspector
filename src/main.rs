@@ -161,17 +161,19 @@ fn page_heading(title: &str, description: &str) -> gtk::Box {
     heading
 }
 
-fn refresh_connection(status: &gtk::Label) {
+fn refresh_connection(status: &gtk::Label, setup: &gtk::Box) {
     match shell_version() {
         Ok(version) => {
             status.set_text(&format!("Connecté à GNOME Shell {version}"));
             status.remove_css_class("error");
             status.add_css_class("success");
+            setup.set_visible(false);
         }
         Err(error) => {
-            status.set_text(&format!("Déconnecté — {error}"));
+            status.set_text(&format!("Extension GNOME Shell indisponible — {error}"));
             status.remove_css_class("success");
             status.add_css_class("error");
+            setup.set_visible(true);
         }
     }
 }
@@ -1128,10 +1130,53 @@ fn overview_page(connection: &gtk::Label) -> gtk::Box {
     details.set_margin_end(16);
     details.append(connection);
 
+    let setup = gtk::Box::new(gtk::Orientation::Vertical, 8);
+    setup.set_margin_top(8);
+    setup.set_visible(false);
+    let setup_title = gtk::Label::new(Some("Installer ou activer l’extension"));
+    setup_title.add_css_class("heading");
+    setup_title.set_halign(gtk::Align::Start);
+    let setup_help = gtk::Label::new(Some(
+        "GNOME Inspector nécessite son agent dans GNOME Shell. Depuis la racine du dépôt, exécutez la commande ci-dessous. Elle installe l’extension dans votre compte puis tente de l’activer.",
+    ));
+    setup_help.set_halign(gtk::Align::Start);
+    setup_help.set_wrap(true);
+    setup_help.set_xalign(0.0);
+    let install_command = "bash scripts/install-extension.sh";
+    let command_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let command = gtk::Label::new(Some(install_command));
+    command.set_selectable(true);
+    command.set_hexpand(true);
+    command.set_halign(gtk::Align::Start);
+    command.add_css_class("monospace");
+    let copy = gtk::Button::with_label("Copier");
+    copy.set_tooltip_text(Some("Copier la commande d’installation"));
+    copy.connect_clicked(move |button| {
+        if let Some(display) = gtk::gdk::Display::default() {
+            display.clipboard().set_text(install_command);
+            button.set_label("Copié");
+        }
+    });
+    command_row.append(&command);
+    command_row.append(&copy);
+    let manual_help = gtk::Label::new(Some(
+        "Si l’activation est refusée, vérifiez la version GNOME Shell (51), puis activez « GNOME Inspector » avec gnome-extensions enable gnome-inspector@cgreg21. Sous Wayland, une déconnexion/reconnexion peut être nécessaire après l’installation.",
+    ));
+    manual_help.set_halign(gtk::Align::Start);
+    manual_help.set_wrap(true);
+    manual_help.set_xalign(0.0);
+    manual_help.add_css_class("dim-label");
+    setup.append(&setup_title);
+    setup.append(&setup_help);
+    setup.append(&command_row);
+    setup.append(&manual_help);
+    details.append(&setup);
+
     let retry = gtk::Button::with_label("Tester la connexion");
     retry.set_halign(gtk::Align::Start);
     let connection_for_retry = connection.clone();
-    retry.connect_clicked(move |_| refresh_connection(&connection_for_retry));
+    let setup_for_retry = setup.clone();
+    retry.connect_clicked(move |_| refresh_connection(&connection_for_retry, &setup_for_retry));
     details.append(&retry);
     card.set_child(Some(&details));
     card.set_margin_start(24);
@@ -1159,7 +1204,6 @@ fn build_ui(app: &adw::Application) {
 
     let connection = gtk::Label::new(Some("Vérification de la connexion…"));
     connection.set_halign(gtk::Align::Start);
-    refresh_connection(&connection);
 
     let stack = adw::ViewStack::new();
     stack.set_hexpand(true);

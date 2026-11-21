@@ -1748,6 +1748,7 @@ mod tests {
         assert!(format_computed_style("[]").is_err());
     }
 
+    #[test]
     fn reads_string_from_dbus_reply() {
         let reply = ("51.1",).to_variant();
 

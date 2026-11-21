@@ -14,7 +14,8 @@ that accesses Shell-specific APIs.
 - [x] Bounded Shell actor-tree snapshot (JSON)
 - [x] Native application shell with adaptive libadwaita navigation tabs in the HeaderBar
 - [x] Actor hierarchy navigation with expand/collapse, contextual search, and property JSON inspection
-- [ ] Dedicated property editor and live actor selection
+- [x] Live actor selection from GNOME Shell with actor highlighting and synchronized tree selection
+- [ ] Dedicated property editor
 - [x] Actor CSS classes, pseudo-classes and inline-style snapshots
 - [x] Computed actor theme metrics (font, dimensions, spacing and CSS node identity)
 - [x] Explicit per-actor inline CSS editing
@@ -35,7 +36,7 @@ repeated actor references are reported instead of being traversed again. The des
 GJS Console, Diagnostics, and Performance. The actor module displays the hierarchy as a selectable,
 expandable list. Searching expands the hierarchy and retains ancestor rows when a descendant matches,
 so matching actors remain visible in their tree context; clearing the search restores the default
-collapsed state. Selecting an actor shows its properties as formatted JSON. The CSS module retrieves style classes, pseudo-classes and inline styles over D-Bus, presents a searchable actor list filtered by actor name or CSS classes with stable selection while filtering, exposes computed theme-node metrics (font, dimensions, spacing and CSS node identity), and supports explicit class and inline-style updates for the selected actor. Updates are limited to 512 characters for class lists and 4,096 characters for inline CSS, and resolve actors through a bounded child-index path. Active application, theme, default and custom stylesheet paths can be discovered; editing global theme stylesheets remains to be implemented. The performance module presents scene-capture duration, actor count, stage dimensions, monitor count and rendered frames per second in a native dashboard, with a readable rolling 60-sample history. The frame rate is aggregated across monitor views. Rendered-frame events are aggregated across monitor views; CPU and memory history remain to be implemented. The GJS console executes user-supplied code in the connected Shell process; it is intentionally powerful and must only be used with trusted code. The Diagnostics module retrieves the Shell version, session/display environment, stage dimensions, monitor count, and extension metadata from the live Shell agent.
+collapsed state. Selecting an actor shows its properties as formatted JSON. The **Sélectionner dans Shell** action starts a 15-second visual picker: click an actor in GNOME Shell to select it, press Escape to cancel, and the desktop tree follows the selected stable child-index path. The selected actor is highlighted with a temporary blue outline. The CSS module retrieves style classes, pseudo-classes and inline styles over D-Bus, presents a searchable actor list filtered by actor name or CSS classes with stable selection while filtering, exposes computed theme-node metrics (font, dimensions, spacing and CSS node identity), and supports explicit class and inline-style updates for the selected actor. Updates are limited to 512 characters for class lists and 4,096 characters for inline CSS, and resolve actors through a bounded child-index path. Active application, theme, default and custom stylesheet paths can be discovered; editing global theme stylesheets remains to be implemented. The performance module presents scene-capture duration, actor count, stage dimensions, monitor count and rendered frames per second in a native dashboard, with a readable rolling 60-sample history. The frame rate is aggregated across monitor views. Rendered-frame events are aggregated across monitor views; CPU and memory history remain to be implemented. The GJS console executes user-supplied code in the connected Shell process; it is intentionally powerful and must only be used with trusted code. The Diagnostics module retrieves the Shell version, session/display environment, stage dimensions, monitor count, and extension metadata from the live Shell agent.
 
 ## Screenshots
 
@@ -202,7 +203,7 @@ The test installs and enables the extension in a temporary home directory, then 
 3. `Ping` returns the Shell version.
 4. `GetActorTree` returns the expected bounded JSON snapshot.
 5. `GetStyleTree`, `GetDiagnostics`, `EvaluateGjs`, and `GetPerformance` respond.
-6. Invalid CSS actor and class paths are rejected.
+6. Visual actor picker can start, report its pending state, and cancel cleanly.\n7. Invalid CSS actor and class paths are rejected.
 7. The Shell log contains no GJS extension errors or criticals.
 
 The mocked logind service log is uploaded alongside the Shell log for diagnostics.
@@ -241,7 +242,7 @@ the application started, and the refresh buttons in each module to request fresh
 - Object path: `/io/github/cgreg21/GnomeInspector`
 - Interface: `io.github.cgreg21.GnomeInspector`
 - `Ping() -> s`: running GNOME Shell version
-- `GetActorTree() -> s`: bounded JSON snapshot of the Shell stage and its descendants,
+- `StartActorPicker() -> s`, `GetActorPickerResult() -> s`, `CancelActorPicker() -> s`: start, inspect, and cancel visual actor selection\n- `GetActorTree() -> s`: bounded JSON snapshot of the Shell stage and its descendants,
   including truncation, incomplete-capture status, and per-property failure details
 - `GetStyleTree() -> s`: bounded actor CSS snapshot with stable child-index paths
 - `GetActorComputedStyle(s) -> s`: computed theme-node metrics for one actor (physical-pixel dimensions and spacing)

@@ -22,7 +22,7 @@ that accesses Shell-specific APIs.
 - [x] Active theme stylesheet discovery
 - [x] Per-actor CSS class editing
 - [ ] Global theme stylesheet editing
-- [x] Interactive GJS console (explicit code execution)
+- [x] Interactive GJS console (explicit code execution, 50-command history with Up/Down navigation)
 - [x] GNOME Shell session diagnostics
 - [x] Shell scene capture metrics (duration, actor count, stage and monitors)
 - [x] Rolling rendered-frame-rate history (last 60 samples)

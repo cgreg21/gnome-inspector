@@ -2,6 +2,7 @@ use adw::prelude::*;
 use glib::variant::ToVariant;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::process::Command;
 
 const BUS_NAME: &str = "io.github.cgreg21.GnomeInspector.Shell";
 const OBJECT_PATH: &str = "/io/github/cgreg21/GnomeInspector";
@@ -161,6 +162,40 @@ fn page_heading(title: &str, description: &str) -> gtk::Box {
     heading
 }
 
+fn install_extension() -> Result<(), String> {
+    let data_dir = std::env::var_os("XDG_DATA_HOME")
+        .map(std::path::PathBuf::from)
+        .or_else(|| {
+            std::env::var_os("HOME")
+                .map(|home| std::path::PathBuf::from(home).join(".local/share"))
+        })
+        .ok_or_else(|| "Impossible de déterminer le dossier de données utilisateur.".to_string())?;
+    let extension_dir = data_dir
+        .join("gnome-shell/extensions")
+        .join("gnome-inspector@cgreg21");
+
+    std::fs::create_dir_all(&extension_dir).map_err(|error| error.to_string())?;
+    for (name, contents) in [
+        ("metadata.json", include_str!("../extension/metadata.json")),
+        ("extension.js", include_str!("../extension/extension.js")),
+        ("actor-tree.js", include_str!("../extension/actor-tree.js")),
+        ("style-tree.js", include_str!("../extension/style-tree.js")),
+    ] {
+        std::fs::write(extension_dir.join(name), contents).map_err(|error| error.to_string())?;
+    }
+
+    let output = Command::new("gnome-extensions")
+        .arg("enable")
+        .arg("gnome-inspector@cgreg21")
+        .output()
+        .map_err(|error| format!("Impossible de lancer gnome-extensions : {error}"))?;
+    if !output.status.success() {
+        let error = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Activation refusée : {}", error.trim()));
+    }
+    Ok(())
+}
+
 fn refresh_connection(status: &gtk::Label, setup: &gtk::Box) {
     match shell_version() {
         Ok(version) => {
@@ -169,11 +204,50 @@ fn refresh_connection(status: &gtk::Label, setup: &gtk::Box) {
             status.add_css_class("success");
             setup.set_visible(false);
         }
-        Err(error) => {
-            status.set_text(&format!("Extension GNOME Shell indisponible — {error}"));
+        Err(connection_error) => {
+            status.set_text("Installation et activation automatiques de l’extension…");
+            status.remove_css_class("error");
             status.remove_css_class("success");
-            status.add_css_class("error");
-            setup.set_visible(true);
+            match install_extension() {
+                Ok(()) => {
+                    status.set_text("Extension installée. Attente de la connexion à GNOME Shell…");
+                    setup.set_visible(false);
+                    let status_retry = status.clone();
+                    let setup_retry = setup.clone();
+                    let mut attempts = 5;
+                    glib::timeout_add_seconds_local(2, move || {
+                        match shell_version() {
+                            Ok(version) => {
+                                status_retry.set_text(&format!("Connecté à GNOME Shell {version}"));
+                                status_retry.remove_css_class("error");
+                                status_retry.add_css_class("success");
+                                setup_retry.set_visible(false);
+                                glib::ControlFlow::Break
+                            }
+                            Err(error) => {
+                                attempts -= 1;
+                                if attempts == 0 {
+                                    status_retry.set_text(&format!(
+                                        "Extension installée, mais connexion impossible — {error}"
+                                    ));
+                                    status_retry.add_css_class("error");
+                                    setup_retry.set_visible(true);
+                                    glib::ControlFlow::Break
+                                } else {
+                                    glib::ControlFlow::Continue
+                                }
+                            }
+                        }
+                    });
+                }
+                Err(error) => {
+                    status.set_text(&format!(
+                        "Installation automatique impossible — {error} (connexion : {connection_error})"
+                    ));
+                    status.add_css_class("error");
+                    setup.set_visible(true);
+                }
+            }
         }
     }
 }
@@ -1180,16 +1254,16 @@ fn overview_page(connection: &gtk::Label) -> gtk::Box {
     let setup = gtk::Box::new(gtk::Orientation::Vertical, 8);
     setup.set_margin_top(8);
     setup.set_visible(false);
-    let setup_title = gtk::Label::new(Some("Installer ou activer l’extension"));
+    let setup_title = gtk::Label::new(Some("Activation manuelle requise"));
     setup_title.add_css_class("heading");
     setup_title.set_halign(gtk::Align::Start);
     let setup_help = gtk::Label::new(Some(
-        "GNOME Inspector nécessite son agent dans GNOME Shell. Depuis la racine du dépôt, exécutez la commande ci-dessous. Elle installe l’extension dans votre compte puis tente de l’activer.",
+        "L’installation ou l’activation automatique n’a pas abouti. Vérifiez que GNOME Shell 51 est disponible et que gnome-extensions est installé, puis réessayez la commande ci-dessous.",
     ));
     setup_help.set_halign(gtk::Align::Start);
     setup_help.set_wrap(true);
     setup_help.set_xalign(0.0);
-    let install_command = "bash scripts/install-extension.sh";
+    let install_command = "gnome-extensions enable gnome-inspector@cgreg21";
     let command_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     let command = gtk::Label::new(Some(install_command));
     command.set_selectable(true);
@@ -1197,7 +1271,7 @@ fn overview_page(connection: &gtk::Label) -> gtk::Box {
     command.set_halign(gtk::Align::Start);
     command.add_css_class("monospace");
     let copy = gtk::Button::with_label("Copier");
-    copy.set_tooltip_text(Some("Copier la commande d’installation"));
+    copy.set_tooltip_text(Some("Copier la commande d’activation"));
     copy.connect_clicked(move |button| {
         if let Some(display) = gtk::gdk::Display::default() {
             display.clipboard().set_text(install_command);
@@ -1207,7 +1281,7 @@ fn overview_page(connection: &gtk::Label) -> gtk::Box {
     command_row.append(&command);
     command_row.append(&copy);
     let manual_help = gtk::Label::new(Some(
-        "Si l’activation est refusée, vérifiez la version GNOME Shell (51), puis activez « GNOME Inspector » avec gnome-extensions enable gnome-inspector@cgreg21. Sous Wayland, une déconnexion/reconnexion peut être nécessaire après l’installation.",
+        "Sous Wayland, GNOME Shell peut nécessiter une reconnexion de session pour charger une extension nouvellement installée. GNOME Inspector ne demande jamais de privilèges administrateur : l’extension est installée uniquement dans votre compte.",
     ));
     manual_help.set_halign(gtk::Align::Start);
     manual_help.set_wrap(true);

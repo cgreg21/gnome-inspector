@@ -78,6 +78,22 @@ GNOME Shell refuses activation, verify that GNOME Shell 51 is running; on Waylan
 log out and back in if the extension does not load immediately. The app now shows
 these installation steps whenever its D-Bus agent is unavailable.
 
+## Install and enable the GNOME Shell extension
+
+The desktop app embeds the extension files and automatically installs them in the
+current user's GNOME extensions directory when the Shell agent is unavailable. It
+then requests activation with `gnome-extensions enable` and retries the D-Bus
+connection. No terminal command or administrator privilege is required in the
+normal case. The installation is per-user and does not modify system files.
+
+If automatic activation is blocked by the session or the extension tooling is
+missing, the Overview page shows the error and a manual activation command. On
+Wayland, a logout/login may be needed for GNOME Shell to load a newly installed
+extension. The extension targets GNOME Shell 51.
+
+The repository also provides `bash scripts/install-extension.sh` for manual
+installation when working from a source checkout.
+
 ## Requirements
 
 - Rust stable and Cargo

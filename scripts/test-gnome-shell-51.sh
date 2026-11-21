@@ -137,6 +137,16 @@ evaluation="$(timeout 10s gdbus call --session \
 grep -q '2' <<<"$evaluation"
 echo "GJS console evaluation: OK"
 
+performance="$(timeout 10s gdbus call --session \
+    --dest io.github.cgreg21.GnomeInspector \
+    --object-path /io/github/cgreg21/GnomeInspector \
+    --method io.github.cgreg21.GnomeInspector.GetPerformance)"
+
+grep -q 'captureDurationUs' <<<"$performance"
+grep -q 'actorCount' <<<"$performance"
+grep -q 'monitorCount' <<<"$performance"
+echo "GNOME Shell performance metrics: OK"
+
 if grep -E 'JS ERROR|Gjs-CRITICAL|Error while loading.*extension|Failed to load extension' "$LOG_FILE"; then
     echo "GNOME Shell reported an extension/runtime error" >&2
     exit 1

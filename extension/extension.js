@@ -26,6 +26,10 @@ const INTERFACE_XML = `
     <method name="GetDiagnostics">
       <arg type="s" direction="out"/>
     </method>
+    <method name="EvaluateGjs">
+      <arg type="s" direction="in"/>
+      <arg type="s" direction="out"/>
+    </method>
   </interface>
 </node>`;
 
@@ -86,6 +90,19 @@ export default class GnomeInspectorExtension extends Extension {
                 path: this.path,
             },
         });
+    }
+
+    EvaluateGjs(source) {
+        try {
+            const result = eval(source);
+            if (result === undefined)
+                return 'undefined';
+            if (typeof result === 'string')
+                return result;
+            return JSON.stringify(result, null, 2) ?? String(result);
+        } catch (error) {
+            return error?.stack || String(error);
+        }
     }
 
     disable() {

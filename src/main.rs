@@ -298,8 +298,36 @@ fn actor_matches(node: &serde_json::Value, query: &str) -> bool {
             .is_some_and(|children| children.iter().any(|child| actor_matches(child, query)))
 }
 
+fn actor_detail_summary(node: &serde_json::Value) -> serde_json::Value {
+    let mut details = serde_json::Map::new();
+    for key in [
+        "path",
+        "name",
+        "type",
+        "visible",
+        "reactive",
+        "x",
+        "y",
+        "width",
+        "height",
+        "properties",
+        "propertyCount",
+        "propertiesTruncated",
+        "propertyErrors",
+        "propertiesError",
+        "childrenError",
+        "actorError",
+    ] {
+        if let Some(value) = node.get(key) {
+            details.insert(key.to_string(), value.clone());
+        }
+    }
+    serde_json::Value::Object(details)
+}
+
 fn show_actor_details(view: &gtk::TextView, node: &serde_json::Value) {
-    let details = serde_json::to_string_pretty(node).unwrap_or_else(|_| node.to_string());
+    let summary = actor_detail_summary(node);
+    let details = serde_json::to_string_pretty(&summary).unwrap_or_else(|_| summary.to_string());
     view.buffer().set_text(&details);
 }
 
@@ -1613,7 +1641,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{actor_matches, flatten_actors, string_reply};
+    use super::{actor_detail_summary, actor_matches, flatten_actors, string_reply};
     use glib::variant::ToVariant;
 
     #[test]
@@ -1641,6 +1669,24 @@ mod tests {
         assert!(actor_matches(&tree["children"][0], "target"));
         assert!(actor_matches(&tree["children"][0]["children"][0], "target"));
         assert!(!actor_matches(&tree, "missing"));
+    }
+
+    #[test]
+    fn actor_details_include_properties_without_descendant_subtrees() {
+        let node = serde_json::json!({
+            "path": "2/1",
+            "name": "target",
+            "type": "StButton",
+            "visible": true,
+            "properties": [{ "name": "label", "type": "gchararray", "value": "OK" }],
+            "children": [{ "name": "nested", "children": [] }]
+        });
+
+        let details = actor_detail_summary(&node);
+
+        assert_eq!(details["path"], "2/1");
+        assert_eq!(details["properties"][0]["value"], "OK");
+        assert!(details.get("children").is_none());
     }
 
     #[test]

@@ -1170,6 +1170,7 @@ fn overview_page(connection: &gtk::Label) -> gtk::Box {
     setup.append(&setup_help);
     setup.append(&command_row);
     setup.append(&manual_help);
+    refresh_connection(connection, &setup);
     details.append(&setup);
 
     let retry = gtk::Button::with_label("Tester la connexion");

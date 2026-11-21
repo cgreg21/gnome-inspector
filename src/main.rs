@@ -425,21 +425,21 @@ fn styles_page() -> gtk::Box {
         if let Some(row) = row
             && let Some(node) = nodes_for_selection.borrow().get(row.index() as usize)
         {
-                show_actor_details(&details_for_selection, node);
-                *path_for_selection.borrow_mut() = node
-                    .get("path")
+            show_actor_details(&details_for_selection, node);
+            *path_for_selection.borrow_mut() = node
+                .get("path")
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_string);
+            class_for_selection.set_text(
+                node.get("styleClass")
                     .and_then(serde_json::Value::as_str)
-                    .map(str::to_string);
-                class_for_selection.set_text(
-                    node.get("styleClass")
-                        .and_then(serde_json::Value::as_str)
-                        .unwrap_or(""),
-                );
-                style_for_selection.set_text(
-                    node.get("inlineStyle")
-                        .and_then(serde_json::Value::as_str)
-                        .unwrap_or(""),
-                );
+                    .unwrap_or(""),
+            );
+            style_for_selection.set_text(
+                node.get("inlineStyle")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or(""),
+            );
         }
     });
 

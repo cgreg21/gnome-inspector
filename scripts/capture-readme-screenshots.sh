@@ -64,19 +64,19 @@ capture() {
 }
 
 click_page() {
-    local y="$1"
-    xdotool mousemove --window "$window_id" 100 "$y" click 1
+    local x="$1"
+    xdotool mousemove --window "$window_id" "$x" 22 click 1
     sleep 1
 }
 
 capture overview
 
-click_page 108
+click_page 365
 xdotool mousemove --window "$window_id" 1020 168 click 1
 sleep 2
 capture actors
 
-click_page 144
+click_page 500
 xdotool mousemove --window "$window_id" 980 168 click 1
 sleep 2
 xdotool mousemove --window "$window_id" 300 250 click 1
@@ -87,17 +87,17 @@ xdotool mousemove --window "$window_id" 350 585 click 1
 sleep 1
 capture css-themes
 
-click_page 180
+click_page 620
 xdotool mousemove --window "$window_id" 320 190 click 1
 sleep 1
 capture gjs-console
 
-click_page 216
+click_page 760
 xdotool mousemove --window "$window_id" 350 170 click 1
 sleep 1
 capture diagnostics
 
-click_page 252
+click_page 900
 xdotool mousemove --window "$window_id" 350 410 click 1
 sleep 2
 capture performance

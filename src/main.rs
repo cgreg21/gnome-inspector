@@ -1161,34 +1161,40 @@ fn build_ui(app: &adw::Application) {
     connection.set_halign(gtk::Align::Start);
     refresh_connection(&connection);
 
-    let stack = gtk::Stack::new();
+    let stack = adw::ViewStack::new();
     stack.set_hexpand(true);
     stack.set_vexpand(true);
-    stack.set_transition_type(gtk::StackTransitionType::Crossfade);
 
-    stack.add_titled(
-        &overview_page(&connection),
-        Some("overview"),
-        "Vue d’ensemble",
-    );
-    stack.add_titled(&actors_page(), Some("actors"), "Acteurs");
-    stack.add_titled(&styles_page(), Some("styles"), "CSS et thèmes");
-    stack.add_titled(&console_page(), Some("console"), "Console GJS");
-    stack.add_titled(&diagnostics_page(), Some("diagnostics"), "Diagnostics");
-    stack.add_titled(&performance_page(), Some("performance"), "Performances");
+    stack
+        .add_titled(&overview_page(&connection), Some("overview"), "Accueil")
+        .set_icon_name(Some("go-home-symbolic"));
+    stack
+        .add_titled(&actors_page(), Some("actors"), "Acteurs")
+        .set_icon_name(Some("view-list-symbolic"));
+    stack
+        .add_titled(&styles_page(), Some("styles"), "CSS")
+        .set_icon_name(Some("applications-graphics-symbolic"));
+    stack
+        .add_titled(&console_page(), Some("console"), "Console")
+        .set_icon_name(Some("utilities-terminal-symbolic"));
+    stack
+        .add_titled(&diagnostics_page(), Some("diagnostics"), "Diagnostics")
+        .set_icon_name(Some("dialog-information-symbolic"));
+    stack
+        .add_titled(&performance_page(), Some("performance"), "Performances")
+        .set_icon_name(Some("utilities-system-monitor-symbolic"));
 
-    let sidebar = gtk::StackSidebar::new();
-    sidebar.set_stack(&stack);
-    sidebar.set_size_request(210, -1);
+    let switcher = adw::ViewSwitcher::builder()
+        .stack(&stack)
+        .policy(adw::ViewSwitcherPolicy::Wide)
+        .build();
+
+    let header = adw::HeaderBar::new();
+    header.set_title_widget(Some(&switcher));
 
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    content.append(&adw::HeaderBar::new());
-
-    let body = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    body.append(&sidebar);
-    body.append(&gtk::Separator::new(gtk::Orientation::Vertical));
-    body.append(&stack);
-    content.append(&body);
+    content.append(&header);
+    content.append(&stack);
 
     window.set_content(Some(&content));
     window.present();

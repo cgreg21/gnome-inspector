@@ -262,6 +262,18 @@ fn flatten_actors(
     }
 }
 
+fn actor_matches(node: &serde_json::Value, query: &str) -> bool {
+    let matches_self = ["name", "type"]
+        .iter()
+        .filter_map(|key| node.get(*key).and_then(serde_json::Value::as_str))
+        .any(|value| value.to_lowercase().contains(query));
+    matches_self
+        || node
+            .get("children")
+            .and_then(serde_json::Value::as_array)
+            .is_some_and(|children| children.iter().any(|child| actor_matches(child, query)))
+}
+
 fn show_actor_details(view: &gtk::TextView, node: &serde_json::Value) {
     let details = serde_json::to_string_pretty(node).unwrap_or_else(|_| node.to_string());
     view.buffer().set_text(&details);
@@ -477,16 +489,17 @@ fn actors_page() -> gtk::Box {
     let query = Rc::new(RefCell::new(String::new()));
     let expander_widgets = Rc::new(RefCell::new(Vec::<gtk::ToggleButton>::new()));
     let query_for_filter = query.clone();
+    let nodes_for_filter = selected_nodes.clone();
     list.set_filter_func(move |row| {
         let query = query_for_filter.borrow();
         if query.is_empty() {
             return true;
         }
-        row.child()
-            .and_then(|child| child.downcast::<gtk::Box>().ok())
-            .and_then(|content| content.last_child())
-            .and_then(|child| child.downcast::<gtk::Label>().ok())
-            .is_some_and(|label| label.text().to_lowercase().contains(query.as_str()))
+        row.widget_name()
+            .parse::<usize>()
+            .ok()
+            .and_then(|index| nodes_for_filter.borrow().get(index).cloned())
+            .is_some_and(|node| actor_matches(&node, query.as_str()))
     });
 
     let nodes_for_selection = selected_nodes.clone();
@@ -1517,7 +1530,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{flatten_actors, string_reply};
+    use super::{actor_matches, flatten_actors, string_reply};
     use glib::variant::ToVariant;
 
     #[test]
@@ -1529,6 +1542,22 @@ mod tests {
         assert!(include_str!("../extension/extension.js").contains("GnomeInspectorExtension"));
         assert!(include_str!("../extension/actor-tree.js").contains("buildActorTree"));
         assert!(include_str!("../extension/style-tree.js").contains("buildStyleTree"));
+    }
+
+    #[test]
+    fn actor_search_keeps_matching_descendant_context() {
+        let tree = serde_json::json!({
+            "name": "stage",
+            "children": [{
+                "name": "panel",
+                "children": [{ "name": "target-button", "type": "StButton", "children": [] }]
+            }]
+        });
+
+        assert!(actor_matches(&tree, "target"));
+        assert!(actor_matches(&tree["children"][0], "target"));
+        assert!(actor_matches(&tree["children"][0]["children"][0], "target"));
+        assert!(!actor_matches(&tree, "missing"));
     }
 
     #[test]

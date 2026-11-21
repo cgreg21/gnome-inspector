@@ -13,7 +13,7 @@ that accesses Shell-specific APIs.
 - [x] Session D-Bus name and version handshake
 - [x] Bounded Shell actor-tree snapshot (JSON)
 - [x] Native application shell with adaptive libadwaita navigation tabs in the HeaderBar
-- [x] Actor hierarchy navigation with expand/collapse, contextual search, and readable property inspection
+- [x] Actor hierarchy navigation with expand/collapse, contextual search, readable property inspection, and actor-path copying
 - [x] Live actor selection from GNOME Shell with actor highlighting and synchronized tree selection
 - [ ] Dedicated property editor
 - [x] Actor CSS classes, pseudo-classes and inline-style snapshots

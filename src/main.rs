@@ -218,7 +218,7 @@ fn refresh_actor_tree(
                     .collect::<Vec<_>>();
                 *selected_nodes.borrow_mut() = nodes;
 
-                for (node, depth) in rows {
+                for (index, (node, depth)) in rows.into_iter().enumerate() {
                     let name = node
                         .get("name")
                         .and_then(serde_json::Value::as_str)
@@ -239,7 +239,11 @@ fn refresh_actor_tree(
                     label.set_margin_bottom(5);
                     label.set_margin_start(8);
                     label.set_margin_end(8);
-                    list.append(&label);
+
+                    let row = gtk::ListBoxRow::new();
+                    row.set_widget_name(&index.to_string());
+                    row.set_child(Some(&label));
+                    list.append(&row);
                 }
 
                 let actor_count = snapshot
@@ -327,15 +331,37 @@ fn actors_page() -> gtk::Box {
         .build();
 
     let selected_nodes = Rc::new(RefCell::new(Vec::<serde_json::Value>::new()));
+    let query = Rc::new(RefCell::new(String::new()));
+    let query_for_filter = query.clone();
+    list.set_filter_func(move |row| {
+        let query = query_for_filter.borrow();
+        if query.is_empty() {
+            return true;
+        }
+        row.child()
+            .and_then(|child| child.downcast::<gtk::Label>().ok())
+            .is_some_and(|label| label.text().to_lowercase().contains(query.as_str()))
+    });
+
     let nodes_for_selection = selected_nodes.clone();
     let details_for_selection = details.clone();
     list.connect_row_selected(move |_, row| {
-        if let Some(row) = row {
-            let index = row.index() as usize;
-            if let Some(node) = nodes_for_selection.borrow().get(index) {
-                show_actor_details(&details_for_selection, node);
-            }
+        if let Some(row) = row
+            && let Ok(index) = row.widget_name().parse::<usize>()
+            && let Some(node) = nodes_for_selection.borrow().get(index)
+        {
+            show_actor_details(&details_for_selection, node);
         }
+    });
+
+    let search = gtk::SearchEntry::new();
+    search.set_placeholder_text(Some("Rechercher un acteur ou un type…"));
+    search.set_hexpand(true);
+    let query_for_search = query.clone();
+    let list_for_search = list.clone();
+    search.connect_search_changed(move |entry| {
+        *query_for_search.borrow_mut() = entry.text().to_lowercase();
+        list_for_search.invalidate_filter();
     });
 
     let refresh = gtk::Button::with_label("Actualiser");
@@ -357,6 +383,7 @@ fn actors_page() -> gtk::Box {
     let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     actions.set_margin_start(24);
     actions.set_margin_end(24);
+    actions.append(&search);
     actions.append(&refresh);
 
     let split = gtk::Paned::new(gtk::Orientation::Horizontal);

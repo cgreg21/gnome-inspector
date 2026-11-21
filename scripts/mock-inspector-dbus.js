@@ -160,14 +160,19 @@ class MockInspector {
     }
 }
 
-const connection = Gio.bus_get_sync(Gio.BusType.SESSION, null);
-const exported = Gio.DBusExportedObject.wrapJSObject(XML, new MockInspector());
-exported.export(connection, OBJECT_PATH);
-Gio.bus_own_name_on_connection(
-    connection,
+let exported = null;
+Gio.bus_own_name(
+    Gio.BusType.SESSION,
     BUS_NAME,
     Gio.BusNameOwnerFlags.NONE,
+    connection => {
+        exported = Gio.DBusExportedObject.wrapJSObject(XML, new MockInspector());
+        exported.export(connection, OBJECT_PATH);
+    },
     null,
-    null
+    () => {
+        exported?.unexport();
+        exported = null;
+    }
 );
 GLib.MainLoop.new(null, false).run();

@@ -115,8 +115,8 @@ Then log out and back in (or restart GNOME Shell where supported), and enable it
 gnome-extensions enable gnome-inspector@cgreg21
 ```
 
-Start GNOME Inspector. Use **Retry connection** if the extension was enabled after
-the application started, and **Refresh actor tree** to request a fresh snapshot.
+Start GNOME Inspector. Use **Tester la connexion** if the extension was enabled after
+the application started, and the refresh buttons in each module to request fresh snapshots.
 
 ## D-Bus interface
 
@@ -126,6 +126,11 @@ the application started, and **Refresh actor tree** to request a fresh snapshot.
 - `Ping() -> s`: running GNOME Shell version
 - `GetActorTree() -> s`: bounded JSON snapshot of the Shell stage and its descendants,
   including truncation, incomplete-capture status, and per-property failure details
+- `GetStyleTree() -> s`: bounded actor CSS snapshot with stable child-index paths
+- `SetActorInlineStyle(ss) -> s`: explicitly update one actor's inline CSS (4,096-character limit)
+- `GetDiagnostics() -> s`: report session, stage, monitor, and extension information
+- `EvaluateGjs(s) -> s`: execute trusted JavaScript in the Shell process
+- `GetPerformance() -> s`: measure actor snapshot duration and report scene dimensions
 
 ## Design constraints
 

@@ -1,12 +1,14 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
+import Clutter from 'gi://Clutter';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as Config from 'resource:///org/gnome/shell/misc/config.js';
 import { buildActorTree } from './actor-tree.js';
+import { findActorPath } from './actor-picker.js';
 import { buildComputedStyle, buildStyleTree, resolveActorPath } from './style-tree.js';
 
 const BUS_NAME = 'io.github.cgreg21.GnomeInspector.Shell';
@@ -18,6 +20,15 @@ const INTERFACE_XML = `
       <arg type="s" direction="out"/>
     </method>
     <method name="GetActorTree">
+      <arg type="s" direction="out"/>
+    </method>
+    <method name="StartActorPicker">
+      <arg type="s" direction="out"/>
+    </method>
+    <method name="GetActorPickerResult">
+      <arg type="s" direction="out"/>
+    </method>
+    <method name="CancelActorPicker">
       <arg type="s" direction="out"/>
     </method>
     <method name="GetStyleTree">
@@ -89,6 +100,75 @@ export default class GnomeInspectorExtension extends Extension {
 
     GetActorTree() {
         return JSON.stringify(buildActorTree(global.stage));
+    }
+
+    StartActorPicker() {
+        this._finishActorPicker({ status: 'cancelled' });
+        this._actorPickerResult = { status: 'pending' };
+        this._actorPickerSignalId = global.stage.connect('captured-event', (stage, event) => {
+            const type = event.type();
+            if (type === Clutter.EventType.KEY_PRESS
+                && event.get_key_symbol() === Clutter.KEY_Escape) {
+                this._finishActorPicker({ status: 'cancelled' });
+                return Clutter.EVENT_STOP;
+            }
+            if (type !== Clutter.EventType.BUTTON_PRESS)
+                return Clutter.EVENT_PROPAGATE;
+
+            const [x, y] = event.get_coords();
+            const actor = stage.get_actor_at_pos(Clutter.PickMode.ALL, x, y);
+            const path = findActorPath(global.stage, actor);
+            if (path === null)
+                return Clutter.EVENT_PROPAGATE;
+
+            this._highlightActor(actor);
+            this._finishActorPicker({ status: 'selected', path });
+            return Clutter.EVENT_STOP;
+        });
+        this._actorPickerTimeout = GLib.timeout_add_seconds(
+            GLib.PRIORITY_DEFAULT,
+            15,
+            () => {
+                this._finishActorPicker({ status: 'timeout' });
+                return GLib.SOURCE_REMOVE;
+            }
+        );
+        return JSON.stringify({ ok: true });
+    }
+
+    GetActorPickerResult() {
+        return JSON.stringify(this._actorPickerResult || { status: 'idle' });
+    }
+
+    CancelActorPicker() {
+        this._finishActorPicker({ status: 'cancelled' });
+        return JSON.stringify({ ok: true });
+    }
+
+    _finishActorPicker(result) {
+        if (this._actorPickerSignalId) {
+            global.stage.disconnect(this._actorPickerSignalId);
+            this._actorPickerSignalId = null;
+        }
+        if (this._actorPickerTimeout) {
+            GLib.Source.remove(this._actorPickerTimeout);
+            this._actorPickerTimeout = null;
+        }
+        this._actorPickerResult = result;
+    }
+
+    _highlightActor(actor) {
+        this._actorHighlight?.destroy();
+        const [x, y] = actor.get_transformed_position();
+        const [width, height] = actor.get_transformed_size();
+        this._actorHighlight = new St.Widget({
+            reactive: false,
+            can_focus: false,
+            style: 'border: 2px solid #3584e4; background-color: rgba(53, 132, 228, 0.12);',
+        });
+        this._actorHighlight.set_position(x, y);
+        this._actorHighlight.set_size(width, height);
+        Main.uiGroup.add_child(this._actorHighlight);
     }
 
     GetStyleTree() {
@@ -259,6 +339,9 @@ export default class GnomeInspectorExtension extends Extension {
     }
 
     disable() {
+        this._finishActorPicker({ status: 'cancelled' });
+        this._actorHighlight?.destroy();
+        this._actorHighlight = null;
         this._stopPerformanceMonitoring();
         if (this._nameOwnerId) {
             Gio.bus_unown_name(this._nameOwnerId);

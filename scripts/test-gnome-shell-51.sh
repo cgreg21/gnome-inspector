@@ -147,6 +147,14 @@ grep -q 'actorCount' <<<"$performance"
 grep -q 'monitorCount' <<<"$performance"
 echo "GNOME Shell performance metrics: OK"
 
+style_update="$(timeout 10s gdbus call --session \
+    --dest io.github.cgreg21.GnomeInspector \
+    --object-path /io/github/cgreg21/GnomeInspector \
+    --method io.github.cgreg21.GnomeInspector.SetActorInlineStyle 'invalid/path' 'color: red;')"
+
+grep -q 'false' <<<"$style_update"
+echo "Invalid CSS actor path rejected: OK"
+
 if grep -E 'JS ERROR|Gjs-CRITICAL|Error while loading.*extension|Failed to load extension' "$LOG_FILE"; then
     echo "GNOME Shell reported an extension/runtime error" >&2
     exit 1

@@ -360,7 +360,10 @@ fn actor_matches(node: &serde_json::Value, query: &str) -> bool {
                     .iter()
                     .filter_map(|key| property.get(*key))
                     .any(|value| {
-                        let value = value.as_str().map(str::to_string).unwrap_or_else(|| value.to_string());
+                        let value = value
+                            .as_str()
+                            .map(str::to_string)
+                            .unwrap_or_else(|| value.to_string());
                         value.to_lowercase().contains(query)
                     })
             })

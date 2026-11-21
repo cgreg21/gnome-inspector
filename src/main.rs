@@ -45,6 +45,26 @@ fn style_tree() -> Result<String, String> {
     string_reply(&shell_call("GetStyleTree")?, "Invalid style tree reply.")
 }
 
+fn actor_computed_style(path: &str) -> Result<String, String> {
+    let connection = gio::bus_get_sync(gio::BusType::Session, None::<&gio::Cancellable>)
+        .map_err(|error| error.to_string())?;
+    let parameters = (path.to_string(),).to_variant();
+    let reply = connection
+        .call_sync(
+            Some(BUS_NAME),
+            OBJECT_PATH,
+            INTERFACE,
+            "GetActorComputedStyle",
+            Some(&parameters),
+            None,
+            gio::DBusCallFlags::NONE,
+            1_500,
+            None::<&gio::Cancellable>,
+        )
+        .map_err(|error| error.to_string())?;
+    string_reply(&reply, "Invalid computed CSS reply.")
+}
+
 fn set_actor_style_class(path: &str, style_class: &str) -> Result<String, String> {
     let connection = gio::bus_get_sync(gio::BusType::Session, None::<&gio::Cancellable>)
         .map_err(|error| error.to_string())?;
@@ -602,6 +622,49 @@ fn styles_page() -> gtk::Box {
     style_row.append(&style_input);
     style_row.append(&apply_style);
 
+
+    let computed_details = gtk::TextView::new();
+    computed_details.set_editable(false);
+    computed_details.set_cursor_visible(false);
+    computed_details.set_monospace(true);
+    computed_details.set_wrap_mode(gtk::WrapMode::WordChar);
+    computed_details.set_left_margin(12);
+    computed_details.set_top_margin(12);
+    let computed_scroll = gtk::ScrolledWindow::builder()
+        .min_content_height(100)
+        .max_content_height(160)
+        .child(&computed_details)
+        .build();
+    let computed_actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    computed_actions.set_margin_start(24);
+    let computed_refresh = gtk::Button::with_label("Lire le style calculé de l’acteur");
+    let computed_view = computed_details.clone();
+    let computed_path = selected_path.clone();
+    let computed_status = status.clone();
+    computed_refresh.connect_clicked(move |_| {
+        let Some(path) = computed_path.borrow().clone() else {
+            computed_status.set_text("Sélectionnez d’abord un acteur.");
+            computed_status.add_css_class("error");
+            return;
+        };
+        match actor_computed_style(&path).and_then(|json| {
+            serde_json::from_str::<serde_json::Value>(&json)
+                .and_then(|value| serde_json::to_string_pretty(&value))
+                .map_err(|error| error.to_string())
+        }) {
+            Ok(report) => {
+                computed_view.buffer().set_text(&report);
+                computed_status.set_text("Style calculé actualisé (dimensions en pixels physiques).");
+                computed_status.remove_css_class("error");
+            }
+            Err(error) => {
+                computed_status.set_text(&format!("Échec de lecture du style calculé : {error}"));
+                computed_status.add_css_class("error");
+            }
+        }
+    });
+    computed_actions.append(&computed_refresh);
+
     let theme_details = gtk::TextView::new();
     theme_details.set_editable(false);
     theme_details.set_cursor_visible(false);
@@ -652,6 +715,8 @@ fn styles_page() -> gtk::Box {
     page.append(&style_row);
     page.append(&theme_actions);
     page.append(&theme_scroll);
+    page.append(&computed_actions);
+    page.append(&computed_scroll);
     page
 }
 

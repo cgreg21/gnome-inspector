@@ -151,3 +151,30 @@ test('stops cyclic actor references without recursing forever', () => {
     assert.equal(result.root.children[0].children[0].actorError,
         'Actor was already visited');
 });
+
+test('uses safe values for invalid names, types, and boolean properties', () => {
+    const broken = new FakeActor('broken');
+    broken.get_name = () => Symbol('invalid name');
+    broken.visible = 'yes';
+    broken.reactive = 1;
+    Object.defineProperty(broken, 'constructor', {
+        get() {
+            return { name: 42 };
+        },
+    });
+
+    const result = buildActorTree(new FakeActor('root', [broken]));
+    const node = result.root.children[0];
+
+    assert.equal(result.incomplete, true);
+    assert.equal(node.name, 'Actor');
+    assert.equal(node.type, 'Actor');
+    assert.equal(node.visible, false);
+    assert.equal(node.reactive, false);
+    assert.deepEqual(node.propertyErrors, {
+        type: 'Property is not a string',
+        name: 'Property is not a string',
+        visible: 'Property is not a boolean',
+        reactive: 'Property is not a boolean',
+    });
+});

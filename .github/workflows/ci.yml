@@ -90,12 +90,13 @@ jobs:
           sudo apt-get install --yes nodejs npm shellcheck python3
 
       - name: Test actor tree traversal
-        run: node --test --test-reporter=spec extension/actor-tree.test.js
+        run: node --test --test-reporter=spec extension/*.test.js
 
       - name: Validate JavaScript syntax
         run: |
           node --input-type=module --check < extension/extension.js
           node --input-type=module --check < extension/actor-tree.js
+          node --input-type=module --check < extension/style-tree.js
           node --check extension/actor-tree.test.js
 
       - name: Validate extension metadata

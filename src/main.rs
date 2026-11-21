@@ -916,13 +916,162 @@ fn diagnostics_page() -> gtk::Box {
     )
 }
 
+fn performance_metric(title: &str) -> (gtk::Frame, gtk::Label) {
+    let value = gtk::Label::new(Some("—"));
+    value.add_css_class("title-2");
+    value.set_halign(gtk::Align::Start);
+
+    let content = gtk::Box::new(gtk::Orientation::Vertical, 6);
+    content.set_margin_top(12);
+    content.set_margin_bottom(12);
+    content.set_margin_start(12);
+    content.set_margin_end(12);
+    let caption = gtk::Label::new(Some(title));
+    caption.add_css_class("dim-label");
+    caption.set_halign(gtk::Align::Start);
+    content.append(&caption);
+    content.append(&value);
+
+    let frame = gtk::Frame::new(None);
+    frame.set_child(Some(&content));
+    (frame, value)
+}
+
 fn performance_page() -> gtk::Box {
-    json_report_page(
+    let page = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    page.append(&page_heading(
         "Performances",
-        "Mesurez le temps de capture de la scène, le nombre d’acteurs et les dimensions d’affichage.",
-        "Mesurer la scène",
-        performance,
-    )
+        "Suivez le rendu de GNOME Shell, la taille de la scène et le coût de capture.",
+    ));
+
+    let grid = gtk::Grid::new();
+    grid.set_column_spacing(12);
+    grid.set_row_spacing(12);
+    grid.set_margin_start(24);
+    grid.set_margin_end(24);
+
+    let (fps_card, fps) = performance_metric("Images rendues / seconde");
+    let (frames_card, frames) = performance_metric("Images rendues depuis activation");
+    let (duration_card, duration) = performance_metric("Durée de capture");
+    let (actors_card, actors) = performance_metric("Acteurs");
+    let (stage_card, stage) = performance_metric("Dimensions de la scène");
+    let (monitors_card, monitors) = performance_metric("Moniteurs");
+
+    for (index, card) in [
+        &fps_card, &frames_card, &duration_card, &actors_card, &stage_card, &monitors_card,
+    ].iter().enumerate() {
+        grid.attach(card, (index % 2) as i32, (index / 2) as i32, 1, 1);
+    }
+
+    let status = gtk::Label::new(Some("Aucune mesure effectuée."));
+    status.set_halign(gtk::Align::Start);
+    status.set_margin_start(24);
+    status.add_css_class("dim-label");
+
+    let history = gtk::TextView::new();
+    history.set_editable(false);
+    history.set_cursor_visible(false);
+    history.set_monospace(true);
+    history.set_wrap_mode(gtk::WrapMode::WordChar);
+    history.set_left_margin(12);
+    history.set_top_margin(12);
+    let history_scroll = gtk::ScrolledWindow::builder()
+        .min_content_height(180)
+        .vexpand(true)
+        .hexpand(true)
+        .child(&history)
+        .build();
+
+    let refresh = gtk::Button::with_label("Actualiser les mesures");
+    refresh.add_css_class("suggested-action");
+    refresh.set_halign(gtk::Align::Start);
+    let fps_value = fps.clone();
+    let frames_value = frames.clone();
+    let duration_value = duration.clone();
+    let actors_value = actors.clone();
+    let stage_value = stage.clone();
+    let monitors_value = monitors.clone();
+    let history_value = history.clone();
+    let status_value = status.clone();
+
+    refresh.connect_clicked(move |_| {
+        let result = performance().and_then(|json| {
+            serde_json::from_str::<serde_json::Value>(&json)
+                .map_err(|error| error.to_string())
+        });
+        match result {
+            Ok(report) => {
+                let number = |key: &str| report.get(key).and_then(serde_json::Value::as_u64);
+                let fps = report.get("framesPerSecond")
+                    .and_then(serde_json::Value::as_f64)
+                    .map(|value| format!("{value:.1} FPS"))
+                    .unwrap_or_else(|| "En attente d’échantillon".to_string());
+                fps_value.set_text(&fps);
+                frames_value.set_text(&number("renderedFrames")
+                    .map(|value| value.to_string()).unwrap_or_else(|| "—".to_string()));
+                duration_value.set_text(&number("captureDurationUs")
+                    .map(|value| format!("{:.2} ms", value as f64 / 1000.0))
+                    .unwrap_or_else(|| "—".to_string()));
+                actors_value.set_text(&number("actorCount")
+                    .map(|value| value.to_string()).unwrap_or_else(|| "—".to_string()));
+                let dimensions = report.get("stage").map(|stage| format!(
+                    "{} × {} px",
+                    stage.get("width").and_then(serde_json::Value::as_u64).unwrap_or(0),
+                    stage.get("height").and_then(serde_json::Value::as_u64).unwrap_or(0),
+                )).unwrap_or_else(|| "—".to_string());
+                stage_value.set_text(&dimensions);
+                monitors_value.set_text(&number("monitorCount")
+                    .map(|value| value.to_string()).unwrap_or_else(|| "—".to_string()));
+
+                let rows = report.get("performanceHistory")
+                    .and_then(serde_json::Value::as_array)
+                    .map(|samples| {
+                        let mut output = String::from("Images rendues     FPS\n");
+                        for sample in samples {
+                            let count = sample.get("renderedFrames")
+                                .and_then(serde_json::Value::as_u64).unwrap_or(0);
+                            let rate = sample.get("framesPerSecond")
+                                .and_then(serde_json::Value::as_f64).unwrap_or(0.0);
+                            output.push_str(&format!("{count:>14}  {rate:>6.1}\n"));
+                        }
+                        output
+                    })
+                    .unwrap_or_else(|| "Aucun échantillon disponible.".to_string());
+                history_value.buffer().set_text(&rows);
+                let incomplete = report.get("incomplete")
+                    .and_then(serde_json::Value::as_bool).unwrap_or(false);
+                let truncated = report.get("truncated")
+                    .and_then(serde_json::Value::as_bool).unwrap_or(false);
+                status_value.set_text(if incomplete || truncated {
+                    "Mesure actualisée — capture de scène partielle ou limitée."
+                } else {
+                    "Mesure actualisée. Le débit d’images est agrégé sur les vues des moniteurs."
+                });
+                status_value.remove_css_class("error");
+            }
+            Err(error) => {
+                status_value.set_text(&format!("Échec de la mesure : {error}"));
+                status_value.add_css_class("error");
+            }
+        }
+    });
+
+    let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    actions.set_margin_start(24);
+    actions.set_margin_end(24);
+    actions.append(&refresh);
+
+    let history_title = gtk::Label::new(Some("Historique récent"));
+    history_title.add_css_class("title-3");
+    history_title.set_halign(gtk::Align::Start);
+    history_title.set_margin_start(24);
+
+    page.append(&grid);
+    page.append(&actions);
+    page.append(&status);
+    page.append(&history_title);
+    page.append(&history_scroll);
+    page
 }
 
 fn overview_page(connection: &gtk::Label) -> gtk::Box {

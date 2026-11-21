@@ -165,6 +165,10 @@ fn actor_picker_result() -> Result<serde_json::Value, String> {
     serde_json::from_str(&reply).map_err(|error| error.to_string())
 }
 
+fn format_console_entry(source: &str, result: &str) -> String {
+    format!("> {source}\n{result}\n\n")
+}
+
 fn evaluate_gjs(source: &str) -> Result<String, String> {
     let connection = gio::bus_get_sync(gio::BusType::Session, None::<&gio::Cancellable>)
         .map_err(|error| error.to_string())?;
@@ -1623,7 +1627,7 @@ fn build_ui(app: &adw::Application) {
         let result = evaluate_gjs(source.as_str()).unwrap_or_else(|error| error);
         let buffer = output_for_run.buffer();
         let mut end = buffer.end_iter();
-        buffer.insert(&mut end, &format!("> {source}\\n{result}\\n\\n"));
+        buffer.insert(&mut end, &format_console_entry(&source, &result));
         command_for_run.set_text("");
         command_for_run.grab_focus();
     });
@@ -1680,7 +1684,7 @@ fn main() {
 mod tests {
     use super::{
         actor_detail_summary, actor_matches, filter_computed_style, flatten_actors,
-        format_computed_style, string_reply,
+        format_computed_style, format_console_entry, string_reply,
     };
     use glib::variant::ToVariant;
 
@@ -1741,6 +1745,11 @@ mod tests {
         );
         assert_eq!(filter_computed_style(&report, ""), report);
         assert_eq!(filter_computed_style(&report, "missing"), "");
+    }
+
+    #[test]
+    fn formats_console_entries_with_real_line_breaks() {
+        assert_eq!(format_console_entry("1 + 1", "2"), "> 1 + 1\n2\n\n");
     }
 
     #[test]

@@ -167,3 +167,30 @@ jobs:
             gnome-shell-51.log
             login1-mock.log
           if-no-files-found: warn
+
+  screenshots:
+    name: Capture README screenshots
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install GTK, D-Bus and screenshot tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential pkg-config libgtk-4-dev libadwaita-1-dev \
+            gjs dbus-x11 xvfb xdotool imagemagick
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Capture each application module
+        run: |
+          dbus-run-session -- xvfb-run -a -s "-screen 0 1280x800x24" \
+            bash scripts/capture-readme-screenshots.sh
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: gnome-inspector-readme-screenshots
+          path: screenshots/*.png
+          if-no-files-found: error

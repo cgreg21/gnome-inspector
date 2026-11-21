@@ -435,6 +435,28 @@ fn styles_page() -> gtk::Box {
         .build();
 
     let selected_nodes = Rc::new(RefCell::new(Vec::<serde_json::Value>::new()));
+    let query = Rc::new(RefCell::new(String::new()));
+    let query_for_filter = query.clone();
+    list.set_filter_func(move |row| {
+        let query = query_for_filter.borrow();
+        if query.is_empty() {
+            return true;
+        }
+        row.child()
+            .and_then(|child| child.downcast::<gtk::Label>().ok())
+            .is_some_and(|label| label.text().to_lowercase().contains(query.as_str()))
+    });
+
+    let search = gtk::SearchEntry::new();
+    search.set_placeholder_text(Some("Rechercher un acteur ou une classe CSS…"));
+    search.set_hexpand(true);
+    let query_for_search = query.clone();
+    let list_for_search = list.clone();
+    search.connect_search_changed(move |entry| {
+        *query_for_search.borrow_mut() = entry.text().to_lowercase();
+        list_for_search.invalidate_filter();
+    });
+
     let selected_path = Rc::new(RefCell::new(None::<String>));
     let class_input = gtk::Entry::new();
     class_input.set_placeholder_text(Some("Classes CSS : button primary"));
@@ -450,7 +472,8 @@ fn styles_page() -> gtk::Box {
     let style_for_selection = style_input.clone();
     list.connect_row_selected(move |_, row| {
         if let Some(row) = row
-            && let Some(node) = nodes_for_selection.borrow().get(row.index() as usize)
+            && let Ok(index) = row.widget_name().parse::<usize>()
+            && let Some(node) = nodes_for_selection.borrow().get(index)
         {
             show_actor_details(&details_for_selection, node);
             *path_for_selection.borrow_mut() = node
@@ -495,7 +518,7 @@ fn styles_page() -> gtk::Box {
                     .map(|(node, _)| node.clone())
                     .collect::<Vec<_>>();
                 *nodes_for_refresh.borrow_mut() = nodes;
-                for (node, depth) in rows {
+                for (index, (node, depth)) in rows.into_iter().enumerate() {
                     let name = node
                         .get("name")
                         .and_then(serde_json::Value::as_str)
@@ -516,7 +539,10 @@ fn styles_page() -> gtk::Box {
                     label.set_margin_bottom(5);
                     label.set_margin_start(8);
                     label.set_margin_end(8);
-                    list_for_refresh.append(&label);
+                    let row = gtk::ListBoxRow::new();
+                    row.set_widget_name(&index.to_string());
+                    row.set_child(Some(&label));
+                    list_for_refresh.append(&row);
                 }
 
                 let count = snapshot
@@ -552,6 +578,7 @@ fn styles_page() -> gtk::Box {
     let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     actions.set_margin_start(24);
     actions.set_margin_end(24);
+    actions.append(&search);
     actions.append(&refresh);
 
     let class_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);

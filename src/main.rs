@@ -40,7 +40,7 @@ fn format_computed_style(json: &str) -> Result<String, String> {
     let object = value
         .as_object()
         .ok_or_else(|| "Computed style is not an object.".to_string())?;
-    Ok(object.iter().map(|(key, value)| format!("{key}: {value}")).collect::<Vec<_>>().join("\n"))
+    Ok(object\n        .iter()\n        .map(|(key, value)| format!("{key}: {value}"))\n        .collect::<Vec<_>>()\n        .join("\n"))
 }
 
 fn filter_computed_style(report: &str, query: &str) -> String {
@@ -48,7 +48,7 @@ fn filter_computed_style(report: &str, query: &str) -> String {
         return report.to_string();
     }
     let query = query.to_lowercase();
-    report.lines().filter(|line| line.to_lowercase().contains(&query)).collect::<Vec<_>>().join("\n")
+    report\n        .lines()\n        .filter(|line| line.to_lowercase().contains(&query))\n        .collect::<Vec<_>>()\n        .join("\n")
 }
 
 fn shell_version() -> Result<String, String> {
@@ -1669,7 +1669,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{actor_detail_summary, actor_matches, filter_computed_style, flatten_actors, format_computed_style, string_reply};
+    use super::{\n        actor_detail_summary, actor_matches, filter_computed_style, flatten_actors,\n        format_computed_style, string_reply,\n    };
     use glib::variant::ToVariant;
 
     #[test]

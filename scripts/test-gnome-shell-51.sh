@@ -109,6 +109,16 @@ grep -q 'truncated' <<<"$tree"
 grep -q 'root' <<<"$tree"
 echo "Actor tree D-Bus snapshot: OK"
 
+styles="$(timeout 10s gdbus call --session \
+    --dest io.github.cgreg21.GnomeInspector \
+    --object-path /io/github/cgreg21/GnomeInspector \
+    --method io.github.cgreg21.GnomeInspector.GetStyleTree)"
+
+grep -q 'actorCount' <<<"$styles"
+grep -q 'styleClass' <<<"$styles"
+grep -q 'root' <<<"$styles"
+echo "Actor CSS style D-Bus snapshot: OK"
+
 if grep -E 'JS ERROR|Gjs-CRITICAL|Error while loading.*extension|Failed to load extension' "$LOG_FILE"; then
     echo "GNOME Shell reported an extension/runtime error" >&2
     exit 1

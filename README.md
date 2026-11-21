@@ -203,8 +203,10 @@ The test installs and enables the extension in a temporary home directory, then 
 3. `Ping` returns the Shell version.
 4. `GetActorTree` returns the expected bounded JSON snapshot.
 5. `GetStyleTree`, `GetDiagnostics`, `EvaluateGjs`, and `GetPerformance` respond.
-6. Visual actor picker can start, report its pending state, and cancel cleanly.\n7. Invalid CSS actor and class paths are rejected.
-7. The Shell log contains no GJS extension errors or criticals.
+6. Visual actor picker can start, report its pending state, and cancel cleanly.
+7. Actor snapshots expose GObject property metadata.
+8. Invalid CSS actor and class paths are rejected.
+9. The Shell log contains no GJS extension errors or criticals.
 
 The mocked logind service log is uploaded alongside the Shell log for diagnostics.
 
@@ -242,7 +244,8 @@ the application started, and the refresh buttons in each module to request fresh
 - Object path: `/io/github/cgreg21/GnomeInspector`
 - Interface: `io.github.cgreg21.GnomeInspector`
 - `Ping() -> s`: running GNOME Shell version
-- `StartActorPicker() -> s`, `GetActorPickerResult() -> s`, `CancelActorPicker() -> s`: start, inspect, and cancel visual actor selection\n- `GetActorTree() -> s`: bounded JSON snapshot of the Shell stage and its descendants,
+- `StartActorPicker() -> s`, `GetActorPickerResult() -> s`, `CancelActorPicker() -> s`: start, inspect, and cancel visual actor selection
+- `GetActorTree() -> s`: bounded JSON snapshot of the Shell stage and its descendants,
   including truncation, incomplete-capture status, and per-property failure details
 - `GetStyleTree() -> s`: bounded actor CSS snapshot with stable child-index paths
 - `GetActorComputedStyle(s) -> s`: computed theme-node metrics for one actor (physical-pixel dimensions and spacing)

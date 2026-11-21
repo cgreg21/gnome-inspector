@@ -950,7 +950,7 @@ fn build_ui(app: &adw::Application) {
     stack.add_titled(&performance_page(), Some("performance"), "Performances");
 
     let sidebar = gtk::StackSidebar::new();
-    sidebar.set_stack(Some(&stack));
+    sidebar.set_stack(&stack);
     sidebar.set_size_request(210, -1);
 
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);

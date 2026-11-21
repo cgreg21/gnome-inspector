@@ -129,6 +129,7 @@ export default class GnomeInspectorExtension extends Extension {
             GLib.PRIORITY_DEFAULT,
             15,
             () => {
+                this._actorPickerTimeout = null;
                 this._finishActorPicker({ status: 'timeout' });
                 return GLib.SOURCE_REMOVE;
             }

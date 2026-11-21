@@ -161,20 +161,6 @@ fn page_heading(title: &str, description: &str) -> gtk::Box {
     heading
 }
 
-fn info_page(title: &str, description: &str, status: &str) -> gtk::Box {
-    let page = gtk::Box::new(gtk::Orientation::Vertical, 12);
-    page.append(&page_heading(title, description));
-
-    let message = gtk::Label::new(Some(status));
-    message.set_wrap(true);
-    message.set_xalign(0.0);
-    message.set_margin_start(24);
-    message.set_margin_end(24);
-    message.add_css_class("dim-label");
-    page.append(&message);
-    page
-}
-
 fn refresh_connection(status: &gtk::Label) {
     match shell_version() {
         Ok(version) => {
@@ -259,7 +245,7 @@ fn refresh_actor_tree(
                 let actor_count = snapshot
                     .get("actorCount")
                     .and_then(serde_json::Value::as_u64)
-                    .unwrap_or(rows_len(&selected_nodes));
+                    .unwrap_or(rows_len(selected_nodes));
                 let incomplete = snapshot
                     .get("incomplete")
                     .and_then(serde_json::Value::as_bool)
@@ -436,8 +422,9 @@ fn styles_page() -> gtk::Box {
     let class_for_selection = class_input.clone();
     let style_for_selection = style_input.clone();
     list.connect_row_selected(move |_, row| {
-        if let Some(row) = row {
-            if let Some(node) = nodes_for_selection.borrow().get(row.index() as usize) {
+        if let Some(row) = row
+            && let Some(node) = nodes_for_selection.borrow().get(row.index() as usize)
+        {
                 show_actor_details(&details_for_selection, node);
                 *path_for_selection.borrow_mut() = node
                     .get("path")
@@ -453,7 +440,6 @@ fn styles_page() -> gtk::Box {
                         .and_then(serde_json::Value::as_str)
                         .unwrap_or(""),
                 );
-            }
         }
     });
 

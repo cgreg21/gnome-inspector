@@ -49,6 +49,10 @@ fn diagnostics() -> Result<String, String> {
     string_reply(&shell_call("GetDiagnostics")?, "Invalid diagnostics reply.")
 }
 
+fn performance() -> Result<String, String> {
+    string_reply(&shell_call("GetPerformance")?, "Invalid performance reply.")
+}
+
 fn evaluate_gjs(source: &str) -> Result<String, String> {
     let connection = gio::bus_get_sync(gio::BusType::Session, None::<&gio::Cancellable>)
         .map_err(|error| error.to_string())?;
@@ -479,12 +483,14 @@ fn console_page() -> gtk::Box {
     page
 }
 
-fn diagnostics_page() -> gtk::Box {
+fn json_report_page(
+    title: &str,
+    description: &str,
+    button_label: &str,
+    fetch: fn() -> Result<String, String>,
+) -> gtk::Box {
     let page = gtk::Box::new(gtk::Orientation::Vertical, 12);
-    page.append(&page_heading(
-        "Diagnostics",
-        "Informations sur la session GNOME Shell, l’affichage et l’agent GNOME Inspector.",
-    ));
+    page.append(&page_heading(title, description));
 
     let status = gtk::Label::new(Some("Aucune collecte effectuée."));
     status.set_halign(gtk::Align::Start);
@@ -504,20 +510,20 @@ fn diagnostics_page() -> gtk::Box {
         .child(&view)
         .build();
 
-    let refresh = gtk::Button::with_label("Collecter les diagnostics");
+    let refresh = gtk::Button::with_label(button_label);
     refresh.add_css_class("suggested-action");
     refresh.set_halign(gtk::Align::Start);
     let view_for_refresh = view.clone();
     let status_for_refresh = status.clone();
     refresh.connect_clicked(move |_| {
-        match diagnostics().and_then(|json| {
+        match fetch().and_then(|json| {
             serde_json::from_str::<serde_json::Value>(&json)
                 .and_then(|value| serde_json::to_string_pretty(&value))
                 .map_err(|error| error.to_string())
         }) {
             Ok(report) => {
                 view_for_refresh.buffer().set_text(&report);
-                status_for_refresh.set_text("Diagnostics actualisés.");
+                status_for_refresh.set_text("Collecte actualisée.");
                 status_for_refresh.remove_css_class("error");
             }
             Err(error) => {
@@ -535,6 +541,24 @@ fn diagnostics_page() -> gtk::Box {
     page.append(&status);
     page.append(&scroll);
     page
+}
+
+fn diagnostics_page() -> gtk::Box {
+    json_report_page(
+        "Diagnostics",
+        "Informations sur la session GNOME Shell, l’affichage et l’agent GNOME Inspector.",
+        "Collecter les diagnostics",
+        diagnostics,
+    )
+}
+
+fn performance_page() -> gtk::Box {
+    json_report_page(
+        "Performances",
+        "Mesurez le temps de capture de la scène, le nombre d’acteurs et les dimensions d’affichage.",
+        "Mesurer la scène",
+        performance,
+    )
 }
 
 fn overview_page(connection: &gtk::Label) -> gtk::Box {
@@ -595,15 +619,7 @@ fn build_ui(app: &adw::Application) {
     stack.add_titled(&styles_page(), Some("styles"), "CSS et thèmes");
     stack.add_titled(&console_page(), Some("console"), "Console GJS");
     stack.add_titled(&diagnostics_page(), Some("diagnostics"), "Diagnostics");
-    stack.add_titled(
-        &info_page(
-            "Performances",
-            "Suivez les ressources, les délais de rendu et l’activité de GNOME Shell.",
-            "Les mesures de performances et leur historique seront ajoutés ici.",
-        ),
-        Some("performance"),
-        "Performances",
-    );
+    stack.add_titled(&performance_page(), Some("performance"), "Performances");
 
     let sidebar = gtk::StackSidebar::new();
     sidebar.set_stack(Some(&stack));

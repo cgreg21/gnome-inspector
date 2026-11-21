@@ -470,6 +470,8 @@ fn actors_page() -> gtk::Box {
             return true;
         }
         row.child()
+            .and_then(|child| child.downcast::<gtk::Box>().ok())
+            .and_then(|content| content.last_child())
             .and_then(|child| child.downcast::<gtk::Label>().ok())
             .is_some_and(|label| label.text().to_lowercase().contains(query.as_str()))
     });

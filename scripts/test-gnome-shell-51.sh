@@ -119,6 +119,24 @@ grep -q 'styleClass' <<<"$styles"
 grep -q 'root' <<<"$styles"
 echo "Actor CSS style D-Bus snapshot: OK"
 
+theme_info="$(timeout 10s gdbus call --session \
+    --dest io.github.cgreg21.GnomeInspector \
+    --object-path /io/github/cgreg21/GnomeInspector \
+    --method io.github.cgreg21.GnomeInspector.GetThemeInfo)"
+
+grep -q 'available' <<<"$theme_info"
+grep -q 'themeStylesheet' <<<"$theme_info"
+grep -q 'customStylesheets' <<<"$theme_info"
+echo "Active GNOME theme stylesheet discovery: OK"
+
+class_update="$(timeout 10s gdbus call --session \
+    --dest io.github.cgreg21.GnomeInspector \
+    --object-path /io/github/cgreg21/GnomeInspector \
+    --method io.github.cgreg21.GnomeInspector.SetActorStyleClass 'invalid/path' 'inspector-test')"
+
+grep -q 'false' <<<"$class_update"
+echo "Invalid CSS class actor path rejected: OK"
+
 diagnostics="$(timeout 10s gdbus call --session \
     --dest io.github.cgreg21.GnomeInspector \
     --object-path /io/github/cgreg21/GnomeInspector \

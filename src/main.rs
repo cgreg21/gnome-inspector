@@ -1768,12 +1768,12 @@ mod tests {
 
     #[test]
     fn detects_only_an_exact_discovered_extension_uuid() {
-        let listed = "other@example.com\\ngnome-inspector@cgreg21\\n";
+        let listed = "other@example.com\ngnome-inspector@cgreg21\n";
 
         assert!(extension_is_discovered(listed, "gnome-inspector@cgreg21"));
         assert!(!extension_is_discovered(listed, "gnome-inspector"));
         assert!(!extension_is_discovered(
-            "other@example.com\\n",
+            "other@example.com\n",
             "gnome-inspector@cgreg21"
         ));
     }

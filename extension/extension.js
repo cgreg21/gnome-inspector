@@ -30,6 +30,9 @@ const INTERFACE_XML = `
       <arg type="s" direction="in"/>
       <arg type="s" direction="out"/>
     </method>
+    <method name="GetPerformance">
+      <arg type="s" direction="out"/>
+    </method>
   </interface>
 </node>`;
 
@@ -103,6 +106,24 @@ export default class GnomeInspectorExtension extends Extension {
         } catch (error) {
             return error?.stack || String(error);
         }
+    }
+
+    GetPerformance() {
+        const started = GLib.get_monotonic_time();
+        const snapshot = buildActorTree(global.stage);
+        const duration = GLib.get_monotonic_time() - started;
+        return JSON.stringify({
+            sampledAt: GLib.get_real_time(),
+            captureDurationUs: duration,
+            actorCount: snapshot.actorCount,
+            truncated: snapshot.truncated,
+            incomplete: snapshot.incomplete,
+            stage: {
+                width: global.stage.width,
+                height: global.stage.height,
+            },
+            monitorCount: Main.layoutManager.monitors.length,
+        });
     }
 
     disable() {

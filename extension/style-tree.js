@@ -11,7 +11,7 @@ export function buildStyleTree(root) {
         }
     }
 
-    function visit(actor, depth) {
+    function visit(actor, depth, path) {
         if (!actor || typeof actor !== 'object' || visited.has(actor))
             return null;
 
@@ -21,6 +21,7 @@ export function buildStyleTree(root) {
         const node = {
             name: read(actor, 'get_name') || actor.constructor?.name || 'Actor',
             type: actor.constructor?.name || 'Actor',
+            path,
             styleClass: read(actor, 'get_style_class_name'),
             pseudoClass: read(actor, 'get_style_pseudo_class'),
             inlineStyle: read(actor, 'get_inline_style'),
@@ -46,12 +47,14 @@ export function buildStyleTree(root) {
             return node;
         }
 
-        for (const child of children) {
+        for (let index = 0; index < children.length; index++) {
+            const child = children[index];
             if (budget.count >= 1000) {
                 budget.truncated = true;
                 break;
             }
-            const childNode = visit(child, depth + 1);
+            const childPath = path === '' ? String(index) : `${path}/${index}`;
+            const childNode = visit(child, depth + 1, childPath);
             if (childNode)
                 node.children.push(childNode);
         }
@@ -59,6 +62,33 @@ export function buildStyleTree(root) {
         return node;
     }
 
-    const tree = visit(root, 0);
+    const tree = visit(root, 0, '');
     return { actorCount: budget.count, truncated: budget.truncated, root: tree };
+}
+
+export function resolveActorPath(root, path) {
+    if (typeof path !== 'string' || path.length > 64)
+        return null;
+    if (path === '')
+        return root;
+
+    const indexes = path.split('/');
+    if (indexes.length > 12 || indexes.some(index => !/^(0|[1-9][0-9]*)$/.test(index)))
+        return null;
+
+    let actor = root;
+    for (const index of indexes) {
+        let children;
+        try {
+            children = actor?.get_children?.();
+        } catch {
+            return null;
+        }
+        const childIndex = Number(index);
+        if (!Array.isArray(children) || childIndex >= children.length)
+            return null;
+        actor = children[childIndex];
+    }
+
+    return actor ?? null;
 }

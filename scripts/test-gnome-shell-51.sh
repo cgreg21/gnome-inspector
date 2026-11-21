@@ -107,7 +107,8 @@ tree="$(timeout 10s gdbus call --session \
 grep -q 'actorCount' <<<"$tree"
 grep -q 'truncated' <<<"$tree"
 grep -q 'root' <<<"$tree"
-echo "Actor tree D-Bus snapshot: OK"
+grep -q 'properties' <<<"$tree"
+echo "Actor tree D-Bus snapshot and GObject properties: OK"
 
 picker_start="$(timeout 10s gdbus call --session \
     --dest io.github.cgreg21.GnomeInspector.Shell \

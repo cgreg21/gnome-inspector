@@ -1,7 +1,7 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
-const BUS_NAME = 'io.github.cgreg21.GnomeInspector';
+const BUS_NAME = 'io.github.cgreg21.GnomeInspector.Shell';
 const OBJECT_PATH = '/io/github/cgreg21/GnomeInspector';
 const XML = `
 <node>

@@ -1,4 +1,5 @@
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import St from 'gi://St';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -20,6 +21,9 @@ const INTERFACE_XML = `
       <arg type="s" direction="out"/>
     </method>
     <method name="GetStyleTree">
+      <arg type="s" direction="out"/>
+    </method>
+    <method name="GetDiagnostics">
       <arg type="s" direction="out"/>
     </method>
   </interface>
@@ -63,6 +67,25 @@ export default class GnomeInspectorExtension extends Extension {
 
     GetStyleTree() {
         return JSON.stringify(buildStyleTree(global.stage));
+    }
+
+    GetDiagnostics() {
+        return JSON.stringify({
+            shellVersion: Config.PACKAGE_VERSION,
+            sessionType: GLib.getenv('XDG_SESSION_TYPE') || 'unknown',
+            waylandDisplay: GLib.getenv('WAYLAND_DISPLAY') || null,
+            display: GLib.getenv('DISPLAY') || null,
+            stage: {
+                width: global.stage.width,
+                height: global.stage.height,
+            },
+            monitorCount: Main.layoutManager.monitors.length,
+            extension: {
+                uuid: this.metadata.uuid,
+                version: this.metadata.version,
+                path: this.path,
+            },
+        });
     }
 
     disable() {

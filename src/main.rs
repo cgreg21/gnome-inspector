@@ -377,6 +377,19 @@ fn actor_matches(node: &serde_json::Value, query: &str) -> bool {
             .is_some_and(|children| children.iter().any(|child| actor_matches(child, query)))
 }
 
+fn actor_style_label(node: &serde_json::Value, depth: usize) -> String {
+    let name = node
+        .get("name")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("Acteur");
+    let classes = node
+        .get("styleClass")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("");
+    let path = actor_path(node).unwrap_or("");
+    format!("{}{}  ·  {}  ·  {}", "  ".repeat(depth), name, classes, path)
+}
+
 fn actor_path(node: &serde_json::Value) -> Option<&str> {
     node.get("path").and_then(serde_json::Value::as_str)
 }
@@ -994,20 +1007,7 @@ fn styles_page() -> gtk::Box {
                     .collect::<Vec<_>>();
                 *nodes_for_refresh.borrow_mut() = nodes;
                 for (index, (node, depth)) in rows.into_iter().enumerate() {
-                    let name = node
-                        .get("name")
-                        .and_then(serde_json::Value::as_str)
-                        .unwrap_or("Acteur");
-                    let classes = node
-                        .get("styleClass")
-                        .and_then(serde_json::Value::as_str)
-                        .unwrap_or("");
-                    let label = gtk::Label::new(Some(&format!(
-                        "{}{}  ·  {}",
-                        "  ".repeat(depth),
-                        name,
-                        classes
-                    )));
+                    let label = gtk::Label::new(Some(&actor_style_label(&node, depth)));
                     label.set_halign(gtk::Align::Start);
                     label.set_ellipsize(gtk::pango::EllipsizeMode::End);
                     label.set_margin_top(5);
@@ -1951,6 +1951,19 @@ mod tests {
     }
 
     #[test]
+    fn css_actor_labels_include_stable_paths_for_search() {
+        let node = serde_json::json!({
+            "name": "button",
+            "styleClass": "suggested-action",
+            "path": "0/2/1"
+        });
+
+        assert_eq!(
+            actor_style_label(&node, 2),
+            "    button  ·  suggested-action  ·  0/2/1"
+        );
+    }
+
     fn reads_actor_path_for_clipboard_actions() {
         let node = serde_json::json!({ "path": "2/1" });
         let missing = serde_json::json!({ "name": "actor" });

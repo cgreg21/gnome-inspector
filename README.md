@@ -13,7 +13,7 @@ that accesses Shell-specific APIs.
 - [x] Session D-Bus name and version handshake
 - [x] Bounded Shell actor-tree snapshot (JSON)
 - [x] Native application shell with adaptive libadwaita navigation tabs in the HeaderBar
-- [x] Actor hierarchy navigation with expand/collapse, contextual search, and property JSON inspection
+- [x] Actor hierarchy navigation with expand/collapse, contextual search, and readable property inspection
 - [x] Live actor selection from GNOME Shell with actor highlighting and synchronized tree selection
 - [ ] Dedicated property editor
 - [x] Actor CSS classes, pseudo-classes and inline-style snapshots
@@ -36,7 +36,7 @@ repeated actor references are reported instead of being traversed again. The des
 GJS Console, Diagnostics, and Performance. The actor module displays the hierarchy as a selectable,
 expandable list. Searching matches actor names, types, and readable GObject property names or values; it expands the hierarchy and retains ancestor rows when a descendant matches,
 so matching actors remain visible in their tree context; clearing the search restores the default
-collapsed state. Selecting an actor shows a focused, human-readable property summary rather than repeating its descendant subtree, including up to 64 readable GObject properties with type, access flags and safely summarized values. The **Sélectionner dans Shell** action starts a 15-second visual picker: click an actor in GNOME Shell to select it, press Escape to cancel, and the desktop tree follows the selected stable child-index path. The selected actor is highlighted with a temporary blue outline. The CSS module retrieves style classes, pseudo-classes and inline styles over D-Bus, presents a searchable actor list filtered by actor name or CSS classes with stable selection while filtering, exposes computed theme-node metrics (font, dimensions, spacing and CSS node identity) in a property-oriented view with case-insensitive filtering by property name or value, and supports explicit class and inline-style updates for the selected actor. Updates are limited to 512 characters for class lists and 4,096 characters for inline CSS, and resolve actors through a bounded child-index path. Active application, theme, default and custom stylesheet paths can be discovered; editing global theme stylesheets remains to be implemented. The performance module presents scene-capture duration, actor count, stage dimensions, monitor count and rendered frames per second in a native dashboard, with a readable rolling 60-sample history. The frame rate is aggregated across monitor views. Rendered-frame events are aggregated across monitor views; CPU and memory history remain to be implemented. The GJS console executes user-supplied code in the connected Shell process; it is intentionally powerful and must only be used with trusted code. The Diagnostics module retrieves the Shell version, session/display environment, stage dimensions, monitor count, and extension metadata from the live Shell agent.
+collapsed state. Selecting an actor shows a focused, human-readable property summary rather than repeating its descendant subtree, including up to 64 readable GObject properties with type, read/write flags, error details and safely summarized values. The **Sélectionner dans Shell** action starts a 15-second visual picker: click an actor in GNOME Shell to select it, press Escape to cancel, and the desktop tree follows the selected stable child-index path. The selected actor is highlighted with a temporary blue outline. The CSS module retrieves style classes, pseudo-classes and inline styles over D-Bus, presents a searchable actor list filtered by actor name or CSS classes with stable selection while filtering, exposes computed theme-node metrics (font, dimensions, spacing and CSS node identity) in a property-oriented view with case-insensitive filtering by property name or value, and supports explicit class and inline-style updates for the selected actor. Updates are limited to 512 characters for class lists and 4,096 characters for inline CSS, and resolve actors through a bounded child-index path. Active application, theme, default and custom stylesheet paths can be discovered; editing global theme stylesheets remains to be implemented. The performance module presents scene-capture duration, actor count, stage dimensions, monitor count and rendered frames per second in a native dashboard, with a readable rolling 60-sample history. The frame rate is aggregated across monitor views. Rendered-frame events are aggregated across monitor views; CPU and memory history remain to be implemented. The GJS console executes user-supplied code in the connected Shell process; it is intentionally powerful and must only be used with trusted code. The Diagnostics module retrieves the Shell version, session/display environment, stage dimensions, monitor count, and extension metadata from the live Shell agent.
 
 ## Screenshots
 
@@ -82,22 +82,6 @@ Open GNOME Inspector and use **Tester la connexion** on the Overview page. If
 the extension is not discovered after installation, log out and back in so GNOME
 Shell rescans the extensions directory. The app reports this situation separately
 from an activation error.
-
-## Install and enable the GNOME Shell extension
-
-The desktop app embeds the extension files and automatically installs them in the
-current user's GNOME extensions directory when the Shell agent is unavailable. It
-then requests activation with `gnome-extensions enable` and retries the D-Bus
-connection. No terminal command or administrator privilege is required in the
-normal case. The installation is per-user and does not modify system files.
-
-If automatic activation is blocked by the session or the extension tooling is
-missing, the Overview page shows the error and a manual activation command. On
-Wayland, a logout/login may be needed for GNOME Shell to load a newly installed
-extension. The extension targets GNOME Shell 51.
-
-The repository also provides `bash scripts/install-extension.sh` for manual
-installation when working from a source checkout.
 
 ## Requirements
 
@@ -221,23 +205,6 @@ dbus-run-session -- bash scripts/test-gnome-shell-51.sh
 The CI session uses the headless Mutter backend; it validates the Shell process and
 extension/D-Bus integration, but it does not replace manual testing on a graphical
 Wayland session with real input and display hardware.
-
-## Install the development extension
-
-Copy `extension/` to:
-
-```
-~/.local/share/gnome-shell/extensions/gnome-inspector@cgreg21/
-```
-
-Then log out and back in (or restart GNOME Shell where supported), and enable it:
-
-```sh
-gnome-extensions enable gnome-inspector@cgreg21
-```
-
-Start GNOME Inspector. Use **Tester la connexion** if the extension was enabled after
-the application started, and the refresh buttons in each module to request fresh snapshots.
 
 ## D-Bus interface
 

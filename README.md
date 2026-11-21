@@ -12,6 +12,8 @@ that accesses Shell-specific APIs.
 - [x] GNOME Shell 51 extension
 - [x] Session D-Bus name and version handshake
 - [x] Bounded Shell actor-tree snapshot (JSON)
+- [x] Native application shell with module navigation
+- [x] Actor snapshot display with formatted JSON
 - [ ] Interactive actor selection and property inspection
 - [ ] St theme/CSS inspection
 - [ ] GJS console and diagnostics
@@ -21,8 +23,9 @@ The actor snapshot is read-only and deliberately bounded to 1,000 actors and 12 
 Its response includes an actor count, a truncation flag, and an `incomplete` flag when
 an actor property or child list cannot be read. Per-actor `propertyErrors`, `childrenError`,
 and `actorError` fields explain failures. Invalid geometry uses safe fallback values, and
-repeated actor references are reported instead of being traversed again. The desktop app currently
-displays JSON rather than a full interactive object inspector.
+repeated actor references are reported instead of being traversed again. The desktop app currently provides a navigable workspace for Overview, Actors, CSS and themes,
+GJS Console, Diagnostics, and Performance. The actor module displays a formatted JSON snapshot;
+interactive actor selection and the other inspection engines are still under development.
 
 ## Requirements
 

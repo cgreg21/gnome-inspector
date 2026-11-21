@@ -193,7 +193,7 @@ the application started, and the refresh buttons in each module to request fresh
 
 ## D-Bus interface
 
-- Bus name: `io.github.cgreg21.GnomeInspector`
+- Bus name: `io.github.cgreg21.GnomeInspector.Shell`
 - Object path: `/io/github/cgreg21/GnomeInspector`
 - Interface: `io.github.cgreg21.GnomeInspector`
 - `Ping() -> s`: running GNOME Shell version

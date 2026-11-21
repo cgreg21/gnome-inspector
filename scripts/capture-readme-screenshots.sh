@@ -71,12 +71,12 @@ click_page() {
 
 capture overview
 
-click_page 365
+click_page 283
 xdotool mousemove --window "$window_id" 1020 168 click 1
 sleep 2
 capture actors
 
-click_page 500
+click_page 437
 xdotool mousemove --window "$window_id" 980 168 click 1
 sleep 2
 xdotool mousemove --window "$window_id" 300 250 click 1
@@ -87,12 +87,12 @@ xdotool mousemove --window "$window_id" 350 585 click 1
 sleep 1
 capture css-themes
 
-click_page 620
+click_page 586
 xdotool mousemove --window "$window_id" 320 190 click 1
 sleep 1
 capture gjs-console
 
-click_page 760
+click_page 744
 xdotool mousemove --window "$window_id" 350 170 click 1
 sleep 1
 capture diagnostics

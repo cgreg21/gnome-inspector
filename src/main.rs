@@ -465,7 +465,10 @@ fn styles_page() -> gtk::Box {
                     list_for_refresh.remove(&child);
                 }
 
-                let nodes = rows.iter().map(|(node, _)| node.clone()).collect::<Vec<_>>();
+                let nodes = rows
+                    .iter()
+                    .map(|(node, _)| node.clone())
+                    .collect::<Vec<_>>();
                 *nodes_for_refresh.borrow_mut() = nodes;
                 for (node, depth) in rows {
                     let name = node

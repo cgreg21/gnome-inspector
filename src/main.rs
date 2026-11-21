@@ -169,6 +169,16 @@ fn format_console_entry(source: &str, result: &str) -> String {
     format!("> {source}\n{result}\n\n")
 }
 
+fn remember_console_command(history: &mut Vec<String>, source: &str) {
+    if history.last().is_some_and(|last| last == source) {
+        return;
+    }
+    history.push(source.to_string());
+    if history.len() > 50 {
+        history.remove(0);
+    }
+}
+
 fn evaluate_gjs(source: &str) -> Result<String, String> {
     let connection = gio::bus_get_sync(gio::BusType::Session, None::<&gio::Cancellable>)
         .map_err(|error| error.to_string())?;
@@ -1617,13 +1627,19 @@ fn build_ui(app: &adw::Application) {
     console_command.set_hexpand(true);
     let console_run = gtk::Button::with_label("Exécuter");
     console_run.add_css_class("suggested-action");
+    let console_history = Rc::new(RefCell::new(Vec::<String>::new()));
+    let history_position = Rc::new(RefCell::new(None::<usize>));
     let command_for_run = console_command.clone();
     let output_for_run = console_output.clone();
+    let history_for_run = console_history.clone();
+    let position_for_run = history_position.clone();
     let execute_console: Rc<dyn Fn()> = Rc::new(move || {
         let source = command_for_run.text();
         if source.trim().is_empty() {
             return;
         }
+        remember_console_command(&mut history_for_run.borrow_mut(), source.as_str());
+        *position_for_run.borrow_mut() = None;
         let result = evaluate_gjs(source.as_str()).unwrap_or_else(|error| error);
         let buffer = output_for_run.buffer();
         let mut end = buffer.end_iter();
@@ -1635,6 +1651,44 @@ fn build_ui(app: &adw::Application) {
     console_run.connect_clicked(move |_| execute_from_button());
     let execute_from_entry = execute_console.clone();
     console_command.connect_activate(move |_| execute_from_entry());
+
+    let history_keys = gtk::EventControllerKey::new();
+    let command_for_history = console_command.clone();
+    let history_for_keys = console_history.clone();
+    let position_for_keys = history_position.clone();
+    history_keys.connect_key_pressed(move |_, key, _, _| {
+        let history = history_for_keys.borrow();
+        if history.is_empty() {
+            return glib::Propagation::Proceed;
+        }
+        match key {
+            gtk::gdk::Key::Up => {
+                let index = position_for_keys
+                    .borrow()
+                    .unwrap_or(history.len())
+                    .saturating_sub(1);
+                *position_for_keys.borrow_mut() = Some(index);
+                command_for_history.set_text(&history[index]);
+                glib::Propagation::Stop
+            }
+            gtk::gdk::Key::Down => {
+                if let Some(index) = *position_for_keys.borrow() {
+                    if index + 1 < history.len() {
+                        *position_for_keys.borrow_mut() = Some(index + 1);
+                        command_for_history.set_text(&history[index + 1]);
+                    } else {
+                        *position_for_keys.borrow_mut() = None;
+                        command_for_history.set_text("");
+                    }
+                    glib::Propagation::Stop
+                } else {
+                    glib::Propagation::Proceed
+                }
+            }
+            _ => glib::Propagation::Proceed,
+        }
+    });
+    console_command.add_controller(history_keys);
 
     let console_actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     console_actions.set_margin_start(12);
@@ -1684,7 +1738,7 @@ fn main() {
 mod tests {
     use super::{
         actor_detail_summary, actor_matches, filter_computed_style, flatten_actors,
-        format_computed_style, format_console_entry, string_reply,
+        format_computed_style, format_console_entry, remember_console_command, string_reply,
     };
     use glib::variant::ToVariant;
 
@@ -1750,6 +1804,28 @@ mod tests {
     #[test]
     fn formats_console_entries_with_real_line_breaks() {
         assert_eq!(format_console_entry("1 + 1", "2"), "> 1 + 1\n2\n\n");
+    }
+
+    #[test]
+    fn remembers_console_commands_without_consecutive_duplicates() {
+        let mut history = Vec::new();
+        remember_console_command(&mut history, "1 + 1");
+        remember_console_command(&mut history, "1 + 1");
+        remember_console_command(&mut history, "2 + 2");
+
+        assert_eq!(history, vec!["1 + 1", "2 + 2"]);
+    }
+
+    #[test]
+    fn keeps_console_history_bounded_to_fifty_commands() {
+        let mut history = Vec::new();
+        for command in 0..51 {
+            remember_console_command(&mut history, &command.to_string());
+        }
+
+        assert_eq!(history.len(), 50);
+        assert_eq!(history.first().map(String::as_str), Some("1"));
+        assert_eq!(history.last().map(String::as_str), Some("50"));
     }
 
     #[test]

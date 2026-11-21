@@ -1672,7 +1672,8 @@ fn build_ui(app: &adw::Application) {
                 glib::Propagation::Stop
             }
             gtk::gdk::Key::Down => {
-                if let Some(index) = *position_for_keys.borrow() {
+                let position = *position_for_keys.borrow();
+                if let Some(index) = position {
                     if index + 1 < history.len() {
                         *position_for_keys.borrow_mut() = Some(index + 1);
                         command_for_history.set_text(&history[index + 1]);

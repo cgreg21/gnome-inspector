@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildStyleTree, resolveActorPath } from './style-tree.js';
+import { buildComputedStyle, buildStyleTree, resolveActorPath } from './style-tree.js';
 
 class FakeWidget {
     constructor(name, children = []) {
@@ -65,4 +65,46 @@ test('rejects malformed or out-of-range actor paths', () => {
     assert.equal(resolveActorPath(root, '../0'), null);
     assert.equal(resolveActorPath(root, '0'), null);
     assert.equal(resolveActorPath(root, '0/0/0/0/0/0/0/0/0/0/0/0/0'), null);
+});
+
+test('reads computed theme-node metrics safely', () => {
+    const actor = {
+        get_theme_node() {
+            return {
+                to_string: () => 'StWidget.button',
+                get_element_id: () => 'primary',
+                get_element_classes: () => ['button', 'suggested-action'],
+                get_pseudo_classes: () => ['hover'],
+                get_font: () => ({ to_string: () => 'Cantarell 11' }),
+                get_width: () => 120,
+                get_height: () => 32,
+                get_min_width: () => 80,
+                get_max_width: () => 240,
+                get_min_height: () => 24,
+                get_max_height: () => 48,
+                get_horizontal_padding: () => 20,
+                get_vertical_padding: () => 8,
+                get_letter_spacing: () => 0,
+            };
+        },
+    };
+
+    const result = buildComputedStyle(actor);
+
+    assert.equal(result.available, true);
+    assert.equal(result.node, 'StWidget.button');
+    assert.deepEqual(result.elementClasses, ['button', 'suggested-action']);
+    assert.deepEqual(result.pseudoClasses, ['hover']);
+    assert.equal(result.font, 'Cantarell 11');
+    assert.equal(result.width, 120);
+    assert.equal(result.horizontalPadding, 20);
+});
+
+test('returns a safe unavailable result when theme-node access fails', () => {
+    const result = buildComputedStyle({
+        get_theme_node() { throw new Error('not styled'); },
+    });
+
+    assert.equal(result.available, false);
+    assert.equal(result.error, 'Unable to read computed theme node');
 });

@@ -748,17 +748,22 @@ fn styles_page() -> gtk::Box {
     });
     theme_actions.append(&theme_refresh);
 
+    let properties_panel = gtk::Box::new(gtk::Orientation::Vertical, 8);
+    properties_panel.set_margin_top(8);
+    properties_panel.set_margin_bottom(8);
+    properties_panel.set_margin_start(12);
+    properties_panel.set_margin_end(12);
+    let properties_title = gtk::Label::new(Some("Propriétés"));
+    properties_title.add_css_class("heading");
+    properties_title.set_halign(gtk::Align::Start);
+    properties_panel.append(&properties_title);
+    properties_panel.append(&details_scroll);
+
     let inspector = gtk::Box::new(gtk::Orientation::Vertical, 10);
     inspector.set_margin_top(8);
     inspector.set_margin_bottom(8);
     inspector.set_margin_start(12);
     inspector.set_margin_end(12);
-
-    let properties_title = gtk::Label::new(Some("Propriétés"));
-    properties_title.add_css_class("heading");
-    properties_title.set_halign(gtk::Align::Start);
-    inspector.append(&properties_title);
-    inspector.append(&details_scroll);
 
     let styles_title = gtk::Label::new(Some("Styles"));
     styles_title.add_css_class("heading");
@@ -770,6 +775,7 @@ fn styles_page() -> gtk::Box {
     let computed_title = gtk::Label::new(Some("Style calculé"));
     computed_title.add_css_class("heading");
     computed_title.set_halign(gtk::Align::Start);
+    inspector.append(&computed_title);
     inspector.append(&computed_actions);
     inspector.append(&computed_scroll);
 
@@ -788,7 +794,7 @@ fn styles_page() -> gtk::Box {
         .build();
 
     let detail_split = gtk::Paned::new(gtk::Orientation::Horizontal);
-    detail_split.set_start_child(Some(&details_scroll));
+    detail_split.set_start_child(Some(&properties_panel));
     detail_split.set_end_child(Some(&inspector_scroll));
     detail_split.set_resize_start_child(true);
     detail_split.set_shrink_start_child(false);

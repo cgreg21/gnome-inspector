@@ -347,11 +347,27 @@ fn flatten_actors(
 }
 
 fn actor_matches(node: &serde_json::Value, query: &str) -> bool {
-    let matches_self = ["name", "type"]
+    let matches_identity = ["name", "type"]
         .iter()
         .filter_map(|key| node.get(*key).and_then(serde_json::Value::as_str))
         .any(|value| value.to_lowercase().contains(query));
-    matches_self
+    let matches_properties = node
+        .get("properties")
+        .and_then(serde_json::Value::as_array)
+        .is_some_and(|properties| {
+            properties.iter().any(|property| {
+                ["name", "value"]
+                    .iter()
+                    .filter_map(|key| property.get(*key))
+                    .any(|value| {
+                        let value = value.as_str().map(str::to_string).unwrap_or_else(|| value.to_string());
+                        value.to_lowercase().contains(query)
+                    })
+            })
+        });
+
+    matches_identity
+        || matches_properties
         || node
             .get("children")
             .and_then(serde_json::Value::as_array)
@@ -1795,7 +1811,12 @@ mod tests {
             "name": "stage",
             "children": [{
                 "name": "panel",
-                "children": [{ "name": "target-button", "type": "StButton", "children": [] }]
+                "children": [{
+                    "name": "target-button",
+                    "type": "StButton",
+                    "properties": [{ "name": "label", "value": "Confirm" }],
+                    "children": []
+                }]
             }]
         });
 
@@ -1803,6 +1824,8 @@ mod tests {
         assert!(actor_matches(&tree["children"][0], "target"));
         assert!(actor_matches(&tree["children"][0]["children"][0], "target"));
         assert!(!actor_matches(&tree, "missing"));
+        assert!(actor_matches(&tree, "label"));
+        assert!(actor_matches(&tree, "confirm"));
     }
 
     #[test]

@@ -1381,6 +1381,20 @@ mod tests {
     use glib::variant::ToVariant;
 
     #[test]
+    fn embeds_all_runtime_extension_files() {
+        let metadata: serde_json::Value =
+            serde_json::from_str(include_str!("../extension/metadata.json")).unwrap();
+
+        assert_eq!(
+            metadata["uuid"].as_str(),
+            Some("gnome-inspector@cgreg21")
+        );
+        assert!(include_str!("../extension/extension.js").contains("GnomeInspectorExtension"));
+        assert!(include_str!("../extension/actor-tree.js").contains("buildActorTree"));
+        assert!(include_str!("../extension/style-tree.js").contains("buildStyleTree"));
+    }
+
+    #[test]
     fn reads_string_from_dbus_reply() {
         let reply = ("51.1",).to_variant();
 

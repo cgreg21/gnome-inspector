@@ -78,7 +78,7 @@ fi
 ping=""
 for _ in $(seq 1 30); do
     ping="$(timeout 3s gdbus call --session \
-        --dest io.github.cgreg21.GnomeInspector \
+        --dest io.github.cgreg21.GnomeInspector.Shell \
         --object-path /io/github/cgreg21/GnomeInspector \
         --method io.github.cgreg21.GnomeInspector.Ping 2>/dev/null || true)"
     if [[ -n "$ping" ]]; then
@@ -100,7 +100,7 @@ if [[ "$ping" != *"51."* ]]; then
 fi
 
 tree="$(timeout 10s gdbus call --session \
-    --dest io.github.cgreg21.GnomeInspector \
+    --dest io.github.cgreg21.GnomeInspector.Shell \
     --object-path /io/github/cgreg21/GnomeInspector \
     --method io.github.cgreg21.GnomeInspector.GetActorTree)"
 
@@ -110,7 +110,7 @@ grep -q 'root' <<<"$tree"
 echo "Actor tree D-Bus snapshot: OK"
 
 styles="$(timeout 10s gdbus call --session \
-    --dest io.github.cgreg21.GnomeInspector \
+    --dest io.github.cgreg21.GnomeInspector.Shell \
     --object-path /io/github/cgreg21/GnomeInspector \
     --method io.github.cgreg21.GnomeInspector.GetStyleTree)"
 
@@ -120,7 +120,7 @@ grep -q 'root' <<<"$styles"
 echo "Actor CSS style D-Bus snapshot: OK"
 
 computed_style="$(timeout 10s gdbus call --session \
-    --dest io.github.cgreg21.GnomeInspector \
+    --dest io.github.cgreg21.GnomeInspector.Shell \
     --object-path /io/github/cgreg21/GnomeInspector \
     --method io.github.cgreg21.GnomeInspector.GetActorComputedStyle '')"
 
@@ -128,7 +128,7 @@ grep -q 'available' <<<"$computed_style"
 echo "Computed actor CSS style D-Bus response: OK"
 
 theme_info="$(timeout 10s gdbus call --session \
-    --dest io.github.cgreg21.GnomeInspector \
+    --dest io.github.cgreg21.GnomeInspector.Shell \
     --object-path /io/github/cgreg21/GnomeInspector \
     --method io.github.cgreg21.GnomeInspector.GetThemeInfo)"
 
@@ -138,7 +138,7 @@ grep -q 'customStylesheets' <<<"$theme_info"
 echo "Active GNOME theme stylesheet discovery: OK"
 
 class_update="$(timeout 10s gdbus call --session \
-    --dest io.github.cgreg21.GnomeInspector \
+    --dest io.github.cgreg21.GnomeInspector.Shell \
     --object-path /io/github/cgreg21/GnomeInspector \
     --method io.github.cgreg21.GnomeInspector.SetActorStyleClass 'invalid/path' 'inspector-test')"
 
@@ -146,7 +146,7 @@ grep -q 'false' <<<"$class_update"
 echo "Invalid CSS class actor path rejected: OK"
 
 diagnostics="$(timeout 10s gdbus call --session \
-    --dest io.github.cgreg21.GnomeInspector \
+    --dest io.github.cgreg21.GnomeInspector.Shell \
     --object-path /io/github/cgreg21/GnomeInspector \
     --method io.github.cgreg21.GnomeInspector.GetDiagnostics)"
 
@@ -156,7 +156,7 @@ grep -q 'stage' <<<"$diagnostics"
 echo "GNOME Shell diagnostics D-Bus response: OK"
 
 evaluation="$(timeout 10s gdbus call --session \
-    --dest io.github.cgreg21.GnomeInspector \
+    --dest io.github.cgreg21.GnomeInspector.Shell \
     --object-path /io/github/cgreg21/GnomeInspector \
     --method io.github.cgreg21.GnomeInspector.EvaluateGjs '1 + 1')"
 
@@ -165,7 +165,7 @@ echo "GJS console evaluation: OK"
 
 sleep 2
 performance="$(timeout 10s gdbus call --session \
-    --dest io.github.cgreg21.GnomeInspector \
+    --dest io.github.cgreg21.GnomeInspector.Shell \
     --object-path /io/github/cgreg21/GnomeInspector \
     --method io.github.cgreg21.GnomeInspector.GetPerformance)"
 
@@ -178,7 +178,7 @@ grep -q 'performanceHistory' <<<"$performance"
 echo "GNOME Shell rolling rendered-frame-rate history: OK"
 
 style_update="$(timeout 10s gdbus call --session \
-    --dest io.github.cgreg21.GnomeInspector \
+    --dest io.github.cgreg21.GnomeInspector.Shell \
     --object-path /io/github/cgreg21/GnomeInspector \
     --method io.github.cgreg21.GnomeInspector.SetActorInlineStyle 'invalid/path' 'color: red;')"
 

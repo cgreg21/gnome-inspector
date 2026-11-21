@@ -988,7 +988,8 @@ fn styles_page() -> gtk::Box {
     let view_for_search = computed_details.clone();
     computed_search.connect_search_changed(move |entry| {
         let report = report_for_search.borrow();
-        view_for_search.buffer().set_text(&filter_computed_style(&report, entry.text().as_str()));
+        let filtered = filter_computed_style(&report, entry.text().as_str());
+        view_for_search.buffer().set_text(&filtered);
     });
     let computed_actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     computed_actions.set_margin_start(24);

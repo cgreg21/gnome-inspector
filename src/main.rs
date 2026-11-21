@@ -215,27 +215,25 @@ fn refresh_connection(status: &gtk::Label, setup: &gtk::Box) {
                     let status_retry = status.clone();
                     let setup_retry = setup.clone();
                     let mut attempts = 5;
-                    glib::timeout_add_seconds_local(2, move || {
-                        match shell_version() {
-                            Ok(version) => {
-                                status_retry.set_text(&format!("Connecté à GNOME Shell {version}"));
-                                status_retry.remove_css_class("error");
-                                status_retry.add_css_class("success");
-                                setup_retry.set_visible(false);
+                    glib::timeout_add_seconds_local(2, move || match shell_version() {
+                        Ok(version) => {
+                            status_retry.set_text(&format!("Connecté à GNOME Shell {version}"));
+                            status_retry.remove_css_class("error");
+                            status_retry.add_css_class("success");
+                            setup_retry.set_visible(false);
+                            glib::ControlFlow::Break
+                        }
+                        Err(error) => {
+                            attempts -= 1;
+                            if attempts == 0 {
+                                status_retry.set_text(&format!(
+                                    "Extension installée, mais connexion impossible — {error}"
+                                ));
+                                status_retry.add_css_class("error");
+                                setup_retry.set_visible(true);
                                 glib::ControlFlow::Break
-                            }
-                            Err(error) => {
-                                attempts -= 1;
-                                if attempts == 0 {
-                                    status_retry.set_text(&format!(
-                                        "Extension installée, mais connexion impossible — {error}"
-                                    ));
-                                    status_retry.add_css_class("error");
-                                    setup_retry.set_visible(true);
-                                    glib::ControlFlow::Break
-                                } else {
-                                    glib::ControlFlow::Continue
-                                }
+                            } else {
+                                glib::ControlFlow::Continue
                             }
                         }
                     });
@@ -1385,10 +1383,7 @@ mod tests {
         let metadata: serde_json::Value =
             serde_json::from_str(include_str!("../extension/metadata.json")).unwrap();
 
-        assert_eq!(
-            metadata["uuid"].as_str(),
-            Some("gnome-inspector@cgreg21")
-        );
+        assert_eq!(metadata["uuid"].as_str(), Some("gnome-inspector@cgreg21"));
         assert!(include_str!("../extension/extension.js").contains("GnomeInspectorExtension"));
         assert!(include_str!("../extension/actor-tree.js").contains("buildActorTree"));
         assert!(include_str!("../extension/style-tree.js").contains("buildStyleTree"));

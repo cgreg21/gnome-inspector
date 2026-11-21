@@ -70,17 +70,18 @@ bash scripts/install-extension.sh
 ```
 
 The script checks that `gnome-extensions` is available, copies the extension to
-`~/.local/share/gnome-shell/extensions/gnome-inspector@cgreg21`, and requests
-activation. You can also enable it manually with:
+`~/.local/share/gnome-shell/extensions/gnome-inspector@cgreg21`, and checks whether
+GNOME Shell has discovered it before requesting activation. If the extension is not
+listed yet, log out and back in, then enable it manually with:
 
 ```sh
 gnome-extensions enable gnome-inspector@cgreg21
 ```
 
 Open GNOME Inspector and use **Tester la connexion** on the Overview page. If
-GNOME Shell refuses activation, verify that GNOME Shell 51 is running; on Wayland,
-log out and back in if the extension does not load immediately. The app now shows
-these installation steps whenever its D-Bus agent is unavailable.
+the extension is not discovered after installation, log out and back in so GNOME
+Shell rescans the extensions directory. The app reports this situation separately
+from an activation error.
 
 ## Install and enable the GNOME Shell extension
 

@@ -51,9 +51,10 @@ inspection data; the mock service is only used for these documentation captures.
 | Performance dashboard and history | ![Performance](screenshots/performance.png) |
 
 The PNG files are versioned in `screenshots/`, so they are displayed directly on
-GitHub and remain available independently of CI artifact retention. GitHub Actions
-regenerates them with `scripts/capture-readme-screenshots.sh`, commits updated captures,
-and also uploads the `gnome-inspector-readme-screenshots` artifact for review.
+GitHub and remain available independently of CI artifact retention. GitHub Actions regenerates them with `scripts/capture-readme-screenshots.sh` on each CI run
+and uploads the `gnome-inspector-readme-screenshots` artifact for review. To publish
+refreshed PNGs into the repository, run the workflow manually with
+`workflow_dispatch`; that run commits the updated captures.
 
 ## Requirements
 

@@ -26,7 +26,9 @@ for _ in $(seq 1 20); do
     sleep 0.5
 done
 
+echo "Building GNOME Inspector for screenshots"
 cargo build --release
+echo "Starting the GTK application"
 ./target/release/gnome-inspector &
 app_pid=$!
 
@@ -45,9 +47,12 @@ if [[ -z "$window_id" ]]; then
 fi
 
 sleep 2
+echo "Capturing application window $window_id"
 capture() {
     local name="$1"
-    import -window "$window_id" "screenshots/$name.png"
+    echo "Capturing $name"
+    xwd -silent -id "$window_id" -out "/tmp/$name.xwd"
+    convert "/tmp/$name.xwd" "screenshots/$name.png"
     test -s "screenshots/$name.png"
 }
 

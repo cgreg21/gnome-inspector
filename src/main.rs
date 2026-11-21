@@ -1356,9 +1356,69 @@ fn build_ui(app: &adw::Application) {
     let header = adw::HeaderBar::new();
     header.set_title_widget(Some(&switcher));
 
+    let console_output = gtk::TextView::new();
+    console_output.set_editable(false);
+    console_output.set_cursor_visible(false);
+    console_output.set_monospace(true);
+    console_output.set_wrap_mode(gtk::WrapMode::WordChar);
+    console_output.set_left_margin(8);
+    console_output.set_top_margin(8);
+    let console_scroll = gtk::ScrolledWindow::builder()
+        .min_content_height(90)
+        .max_content_height(180)
+        .child(&console_output)
+        .build();
+    let console_command = gtk::Entry::new();
+    console_command.set_placeholder_text(Some("Évaluer une expression GJS dans GNOME Shell…"));
+    console_command.set_hexpand(true);
+    let console_run = gtk::Button::with_label("Exécuter");
+    console_run.add_css_class("suggested-action");
+    let command_for_run = console_command.clone();
+    let output_for_run = console_output.clone();
+    let execute_console = move || {
+        let source = command_for_run.text();
+        if source.trim().is_empty() {
+            return;
+        }
+        let result = evaluate_gjs(source.as_str()).unwrap_or_else(|error| error);
+        output_for_run.buffer().set_text(&format!("> {source}\n{result}"));
+        command_for_run.grab_focus();
+    };
+    let execute_from_button = execute_console.clone();
+    console_run.connect_clicked(move |_| execute_from_button());
+    let execute_from_entry = execute_console.clone();
+    console_command.connect_activate(move |_| execute_from_entry());
+
+    let console_actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    console_actions.set_margin_start(12);
+    console_actions.set_margin_end(12);
+    console_actions.set_margin_top(8);
+    console_actions.set_margin_bottom(8);
+    console_actions.append(&console_command);
+    console_actions.append(&console_run);
+    let console_panel = gtk::Box::new(gtk::Orientation::Vertical, 6);
+    console_panel.append(&console_scroll);
+    console_panel.append(&console_actions);
+    let console_revealer = gtk::Revealer::builder()
+        .transition_type(gtk::RevealerTransitionType::SlideUp)
+        .reveal_child(false)
+        .child(&console_panel)
+        .build();
+
+    let console_toggle = gtk::ToggleButton::with_label("Console");
+    console_toggle.set_tooltip_text(Some(
+        "Afficher la console GJS persistante (exécute du code dans GNOME Shell)",
+    ));
+    let console_for_toggle = console_revealer.clone();
+    console_toggle.connect_toggled(move |button| {
+        console_for_toggle.set_reveal_child(button.is_active());
+    });
+    header.pack_end(&console_toggle);
+
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
     content.append(&header);
     content.append(&stack);
+    content.append(&console_revealer);
 
     window.set_content(Some(&content));
     window.present();

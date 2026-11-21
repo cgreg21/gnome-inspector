@@ -35,8 +35,7 @@ fn string_reply(reply: &glib::Variant, error: &str) -> Result<String, String> {
 }
 
 fn format_computed_style(json: &str) -> Result<String, String> {
-    let value: serde_json::Value =
-        serde_json::from_str(json).map_err(|error| error.to_string())?;
+    let value: serde_json::Value = serde_json::from_str(json).map_err(|error| error.to_string())?;
     let object = value
         .as_object()
         .ok_or_else(|| "Computed style is not an object.".to_string())?;
@@ -1012,7 +1011,8 @@ fn styles_page() -> gtk::Box {
                     &report_for_refresh.borrow(),
                     search_for_refresh.text().as_str(),
                 ));
-                computed_status.set_text("Style calculé actualisé ; filtrez par nom ou valeur de propriété.");
+                computed_status
+                    .set_text("Style calculé actualisé ; filtrez par nom ou valeur de propriété.");
                 computed_status.remove_css_class("error");
             }
             Err(error) => {
@@ -1735,7 +1735,10 @@ mod tests {
         assert!(report.contains("font: \"Sans 12px\""));
         assert!(report.contains("width: 640"));
         assert_eq!(filter_computed_style(&report, "WIDTH"), "width: 640");
-        assert_eq!(filter_computed_style(&report, "sans"), "font: \"Sans 12px\"");
+        assert_eq!(
+            filter_computed_style(&report, "sans"),
+            "font: \"Sans 12px\""
+        );
         assert_eq!(filter_computed_style(&report, ""), report);
         assert_eq!(filter_computed_style(&report, "missing"), "");
     }

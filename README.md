@@ -41,11 +41,59 @@ GJS Console, Diagnostics, and Performance. The actor module displays the hierarc
 - libadwaita development files
 - GNOME Shell 51
 
-On Debian/Ubuntu:
+Install the native build dependencies with your distribution's package manager:
 
+**Debian / Ubuntu / Linux Mint**
 ```sh
+sudo apt update
 sudo apt install build-essential pkg-config libgtk-4-dev libadwaita-1-dev
 ```
+
+**Fedora**
+```sh
+sudo dnf install gcc gcc-c++ make pkgconf-pkg-config gtk4-devel libadwaita-devel
+```
+
+**RHEL / Rocky Linux / AlmaLinux**
+
+Enable the repositories that provide GNOME development packages (typically AppStream and CRB/CodeReady Builder), then install:
+```sh
+sudo dnf install gcc gcc-c++ make pkgconf-pkg-config gtk4-devel libadwaita-devel
+```
+
+Package availability and versions depend on the enabled RHEL-compatible repositories.
+
+**Arch Linux / Manjaro**
+```sh
+sudo pacman -S --needed base-devel pkgconf gtk4 libadwaita
+```
+
+**openSUSE Tumbleweed / Leap**
+```sh
+sudo zypper install gcc gcc-c++ make pkg-config gtk4-devel libadwaita-devel
+```
+
+**Alpine Linux**
+```sh
+sudo apk add build-base pkgconf gtk4.0-dev libadwaita-dev
+```
+
+**Gentoo**
+```sh
+sudo emerge --ask dev-util/pkgconf dev-lang/rust x11-libs/gtk+:4 gui-libs/libadwaita
+```
+
+Install Rust stable and Cargo if they are not already available, preferably through
+[rustup](https://rustup.rs/) when the distribution's packaged compiler is too old:
+```sh
+rustup toolchain install stable
+rustup default stable
+```
+
+The package names above provide the GTK 4 and libadwaita development libraries plus
+the C toolchain and pkg-config metadata needed by Cargo's native bindings. GNOME Shell
+51 is required to run and test the extension, but is not needed just to compile the
+GTK desktop application.
 
 ## Build and run
 

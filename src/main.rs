@@ -404,10 +404,42 @@ fn actor_detail_summary(node: &serde_json::Value) -> serde_json::Value {
     serde_json::Value::Object(details)
 }
 
-fn show_actor_details(view: &gtk::TextView, node: &serde_json::Value) {
+fn format_actor_details(node: &serde_json::Value) -> String {
     let summary = actor_detail_summary(node);
-    let details = serde_json::to_string_pretty(&summary).unwrap_or_else(|_| summary.to_string());
-    view.buffer().set_text(&details);
+    let mut lines = Vec::new();
+
+    for key in [
+        "name", "type", "path", "visible", "reactive", "x", "y", "width", "height",
+    ] {
+        if let Some(value) = summary.get(key) {
+            lines.push(format!("{key}: {value}"));
+        }
+    }
+
+    if let Some(properties) = summary.get("properties").and_then(serde_json::Value::as_array) {
+        lines.push(String::new());
+        lines.push(format!("Propriétés ({})", properties.len()));
+        for property in properties {
+            let name = property.get("name").and_then(serde_json::Value::as_str).unwrap_or("?");
+            let kind = property.get("type").and_then(serde_json::Value::as_str).unwrap_or("?");
+            let value = property.get("value").unwrap_or(&serde_json::Value::Null);
+            let readable = value.as_str().map(str::to_string).unwrap_or_else(|| value.to_string());
+            let readable = readable.replace('\n', "\\n");
+            lines.push(format!("{name} ({kind}) = {readable}"));
+        }
+    }
+
+    for key in ["propertyCount", "propertiesTruncated", "propertyErrors", "propertiesError", "childrenError", "actorError"] {
+        if let Some(value) = summary.get(key) {
+            lines.push(format!("{key}: {value}"));
+        }
+    }
+
+    lines.join("\n")
+}
+
+fn show_actor_details(view: &gtk::TextView, node: &serde_json::Value) {
+    view.buffer().set_text(&format_actor_details(node));
 }
 
 fn refresh_actor_tree(
@@ -1847,6 +1879,11 @@ mod tests {
         assert_eq!(details["path"], "2/1");
         assert_eq!(details["properties"][0]["value"], "OK");
         assert!(details.get("children").is_none());
+
+        let formatted = format_actor_details(&node);
+        assert!(formatted.contains("Propriétés (1)"));
+        assert!(formatted.contains("label (gchararray) = OK"));
+        assert!(!formatted.contains("nested"));
     }
 
     #[test]

@@ -45,6 +45,30 @@ fn style_tree() -> Result<String, String> {
     string_reply(&shell_call("GetStyleTree")?, "Invalid style tree reply.")
 }
 
+fn set_actor_style_class(path: &str, style_class: &str) -> Result<String, String> {
+    let connection = gio::bus_get_sync(gio::BusType::Session, None::<&gio::Cancellable>)
+        .map_err(|error| error.to_string())?;
+    let parameters = (path.to_string(), style_class.to_string()).to_variant();
+    let reply = connection
+        .call_sync(
+            Some(BUS_NAME),
+            OBJECT_PATH,
+            INTERFACE,
+            "SetActorStyleClass",
+            Some(&parameters),
+            None,
+            gio::DBusCallFlags::NONE,
+            1_500,
+            None::<&gio::Cancellable>,
+        )
+        .map_err(|error| error.to_string())?;
+    string_reply(&reply, "Invalid CSS class update reply.")
+}
+
+fn theme_info() -> Result<String, String> {
+    string_reply(&shell_call("GetThemeInfo")?, "Invalid theme information reply.")
+}
+
 fn set_actor_inline_style(path: &str, css: &str) -> Result<String, String> {
     let connection = gio::bus_get_sync(gio::BusType::Session, None::<&gio::Cancellable>)
         .map_err(|error| error.to_string())?;
@@ -387,7 +411,7 @@ fn styles_page() -> gtk::Box {
     let page = gtk::Box::new(gtk::Orientation::Vertical, 12);
     page.append(&page_heading(
         "CSS et thèmes",
-        "Parcourez les classes CSS, pseudo-classes et styles inline des acteurs GNOME Shell.",
+        "Inspectez les acteurs, les classes CSS et les feuilles de style actives.",
     ));
 
     let status = gtk::Label::new(Some("Aucune capture CSS effectuée."));
@@ -420,13 +444,17 @@ fn styles_page() -> gtk::Box {
 
     let selected_nodes = Rc::new(RefCell::new(Vec::<serde_json::Value>::new()));
     let selected_path = Rc::new(RefCell::new(None::<String>));
+    let class_input = gtk::Entry::new();
+    class_input.set_placeholder_text(Some("Classes CSS : button primary"));
+    class_input.set_hexpand(true);
     let style_input = gtk::Entry::new();
-    style_input.set_placeholder_text(Some("color: white; background-color: #333;"));
+    style_input.set_placeholder_text(Some("Style inline : color: white;"));
     style_input.set_hexpand(true);
 
     let nodes_for_selection = selected_nodes.clone();
     let path_for_selection = selected_path.clone();
     let details_for_selection = details.clone();
+    let class_for_selection = class_input.clone();
     let style_for_selection = style_input.clone();
     list.connect_row_selected(move |_, row| {
         if let Some(row) = row {
@@ -436,6 +464,11 @@ fn styles_page() -> gtk::Box {
                     .get("path")
                     .and_then(serde_json::Value::as_str)
                     .map(str::to_string);
+                class_for_selection.set_text(
+                    node.get("styleClass")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or(""),
+                );
                 style_for_selection.set_text(
                     node.get("inlineStyle")
                         .and_then(serde_json::Value::as_str)
@@ -504,11 +537,7 @@ fn styles_page() -> gtk::Box {
                     .unwrap_or(false);
                 status_for_refresh.set_text(&format!(
                     "{count} acteurs inspectés{}",
-                    if truncated {
-                        " · capture tronquée"
-                    } else {
-                        ""
-                    }
+                    if truncated { " · capture tronquée" } else { "" }
                 ));
                 if let Some(root) = nodes_for_refresh.borrow().first() {
                     show_actor_details(&details_for_refresh, root);
@@ -529,6 +558,118 @@ fn styles_page() -> gtk::Box {
     actions.set_margin_end(24);
     actions.append(&refresh);
 
+    let class_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    class_row.set_margin_start(24);
+    class_row.set_margin_end(24);
+    let apply_class = gtk::Button::with_label("Appliquer les classes");
+    let class_for_apply = class_input.clone();
+    let path_for_class = selected_path.clone();
+    let status_for_class = status.clone();
+    apply_class.connect_clicked(move |_| {
+        let Some(path) = path_for_class.borrow().clone() else {
+            status_for_class.set_text("Sélectionnez d’abord un acteur.");
+            status_for_class.add_css_class("error");
+            return;
+        };
+        match set_actor_style_class(&path, class_for_apply.text().as_str()) {
+            Ok(reply) => match serde_json::from_str::<serde_json::Value>(&reply) {
+                Ok(result) if result.get("ok").and_then(serde_json::Value::as_bool) == Some(true) => {
+                    status_for_class.set_text("Classes CSS appliquées.");
+                    status_for_class.remove_css_class("error");
+                }
+                Ok(result) => {
+                    let error = result.get("error").and_then(serde_json::Value::as_str).unwrap_or("Erreur inconnue");
+                    status_for_class.set_text(&format!("Modification refusée : {error}"));
+                    status_for_class.add_css_class("error");
+                }
+                Err(error) => {
+                    status_for_class.set_text(&format!("Réponse invalide : {error}"));
+                    status_for_class.add_css_class("error");
+                }
+            },
+            Err(error) => {
+                status_for_class.set_text(&format!("Échec de la modification CSS : {error}"));
+                status_for_class.add_css_class("error");
+            }
+        }
+    });
+    class_row.append(&class_input);
+    class_row.append(&apply_class);
+
+    let style_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    style_row.set_margin_start(24);
+    style_row.set_margin_end(24);
+    let apply_style = gtk::Button::with_label("Appliquer le style inline");
+    let style_for_apply = style_input.clone();
+    let path_for_style = selected_path.clone();
+    let status_for_style = status.clone();
+    apply_style.connect_clicked(move |_| {
+        let Some(path) = path_for_style.borrow().clone() else {
+            status_for_style.set_text("Sélectionnez d’abord un acteur.");
+            status_for_style.add_css_class("error");
+            return;
+        };
+        match set_actor_inline_style(&path, style_for_apply.text().as_str()) {
+            Ok(reply) => match serde_json::from_str::<serde_json::Value>(&reply) {
+                Ok(result) if result.get("ok").and_then(serde_json::Value::as_bool) == Some(true) => {
+                    status_for_style.set_text("Style inline appliqué.");
+                    status_for_style.remove_css_class("error");
+                }
+                Ok(result) => {
+                    let error = result.get("error").and_then(serde_json::Value::as_str).unwrap_or("Erreur inconnue");
+                    status_for_style.set_text(&format!("Modification refusée : {error}"));
+                    status_for_style.add_css_class("error");
+                }
+                Err(error) => {
+                    status_for_style.set_text(&format!("Réponse invalide : {error}"));
+                    status_for_style.add_css_class("error");
+                }
+            },
+            Err(error) => {
+                status_for_style.set_text(&format!("Échec de la modification CSS : {error}"));
+                status_for_style.add_css_class("error");
+            }
+        }
+    });
+    style_row.append(&style_input);
+    style_row.append(&apply_style);
+
+    let theme_details = gtk::TextView::new();
+    theme_details.set_editable(false);
+    theme_details.set_cursor_visible(false);
+    theme_details.set_monospace(true);
+    theme_details.set_wrap_mode(gtk::WrapMode::WordChar);
+    theme_details.set_left_margin(12);
+    theme_details.set_top_margin(12);
+    let theme_scroll = gtk::ScrolledWindow::builder()
+        .min_content_height(110)
+        .max_content_height(180)
+        .child(&theme_details)
+        .build();
+    let theme_actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    theme_actions.set_margin_start(24);
+    let theme_refresh = gtk::Button::with_label("Découvrir les feuilles de style");
+    let theme_view = theme_details.clone();
+    let theme_status = status.clone();
+    theme_refresh.connect_clicked(move |_| {
+        match theme_info().and_then(|json| {
+            serde_json::from_str::<serde_json::Value>(&json)
+                .and_then(|value| serde_json::to_string_pretty(&value))
+                .map_err(|error| error.to_string())
+        }) {
+            Ok(info) => {
+                theme_view.buffer().set_text(&info);
+                theme_status.set_text("Informations du thème actualisées.");
+                theme_status.remove_css_class("error");
+            }
+            Err(error) => {
+                theme_status.set_text(&format!("Échec de découverte du thème : {error}"));
+                theme_status.add_css_class("error");
+            }
+        }
+    });
+    theme_actions.append(&theme_refresh);
+
     let split = gtk::Paned::new(gtk::Orientation::Horizontal);
     split.set_start_child(Some(&list_scroll));
     split.set_end_child(Some(&details_scroll));
@@ -539,7 +680,10 @@ fn styles_page() -> gtk::Box {
     page.append(&actions);
     page.append(&status);
     page.append(&split);
-    page.append(&editor_row);
+    page.append(&class_row);
+    page.append(&style_row);
+    page.append(&theme_actions);
+    page.append(&theme_scroll);
     page
 }
 

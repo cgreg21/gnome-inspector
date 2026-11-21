@@ -129,6 +129,14 @@ grep -q 'monitorCount' <<<"$diagnostics"
 grep -q 'stage' <<<"$diagnostics"
 echo "GNOME Shell diagnostics D-Bus response: OK"
 
+evaluation="$(timeout 10s gdbus call --session \
+    --dest io.github.cgreg21.GnomeInspector \
+    --object-path /io/github/cgreg21/GnomeInspector \
+    --method io.github.cgreg21.GnomeInspector.EvaluateGjs '1 + 1')"
+
+grep -q '2' <<<"$evaluation"
+echo "GJS console evaluation: OK"
+
 if grep -E 'JS ERROR|Gjs-CRITICAL|Error while loading.*extension|Failed to load extension' "$LOG_FILE"; then
     echo "GNOME Shell reported an extension/runtime error" >&2
     exit 1

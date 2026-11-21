@@ -9,7 +9,7 @@ import * as Config from 'resource:///org/gnome/shell/misc/config.js';
 import { buildActorTree } from './actor-tree.js';
 import { buildComputedStyle, buildStyleTree, resolveActorPath } from './style-tree.js';
 
-const BUS_NAME = 'io.github.cgreg21.GnomeInspector';
+const BUS_NAME = 'io.github.cgreg21.GnomeInspector.Shell';
 const OBJECT_PATH = '/io/github/cgreg21/GnomeInspector';
 const INTERFACE_XML = `
 <node>

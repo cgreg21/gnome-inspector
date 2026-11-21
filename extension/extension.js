@@ -159,7 +159,7 @@ export default class GnomeInspectorExtension extends Extension {
     }
 
     _highlightActor(actor) {
-        this._actorHighlight?.destroy();
+        this._clearActorHighlight();
         const [x, y] = actor.get_transformed_position();
         const [width, height] = actor.get_transformed_size();
         this._actorHighlight = new St.Widget({
@@ -170,6 +170,25 @@ export default class GnomeInspectorExtension extends Extension {
         this._actorHighlight.set_position(x, y);
         this._actorHighlight.set_size(width, height);
         Main.uiGroup.add_child(this._actorHighlight);
+        this._actorHighlightTimeout = GLib.timeout_add_seconds(
+            GLib.PRIORITY_DEFAULT,
+            2,
+            () => {
+                this._actorHighlightTimeout = null;
+                this._actorHighlight?.destroy();
+                this._actorHighlight = null;
+                return GLib.SOURCE_REMOVE;
+            }
+        );
+    }
+
+    _clearActorHighlight() {
+        if (this._actorHighlightTimeout) {
+            GLib.Source.remove(this._actorHighlightTimeout);
+            this._actorHighlightTimeout = null;
+        }
+        this._actorHighlight?.destroy();
+        this._actorHighlight = null;
     }
 
     GetStyleTree() {
@@ -341,8 +360,7 @@ export default class GnomeInspectorExtension extends Extension {
 
     disable() {
         this._finishActorPicker({ status: 'cancelled' });
-        this._actorHighlight?.destroy();
-        this._actorHighlight = null;
+        this._clearActorHighlight();
         this._stopPerformanceMonitoring();
         if (this._nameOwnerId) {
             Gio.bus_unown_name(this._nameOwnerId);

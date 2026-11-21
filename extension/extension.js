@@ -191,13 +191,13 @@ export default class GnomeInspectorExtension extends Extension {
 
     _startPerformanceMonitoring() {
         this._performance = {
-            presentedFrames: 0,
-            lastPresentedFrames: 0,
+            renderedFrames: 0,
+            lastRenderedFrames: 0,
             lastSampleAt: GLib.get_monotonic_time(),
             history: [],
         };
-        this._performanceSignalId = global.stage.connect('presented', () => {
-            this._performance.presentedFrames++;
+        this._performanceSignalId = global.stage.connect('after-paint', () => {
+            this._performance.renderedFrames++;
         });
         this._performanceTimer = GLib.timeout_add_seconds(
             GLib.PRIORITY_DEFAULT,
@@ -205,20 +205,20 @@ export default class GnomeInspectorExtension extends Extension {
             () => {
                 const now = GLib.get_monotonic_time();
                 const elapsedUs = now - this._performance.lastSampleAt;
-                const frames = this._performance.presentedFrames
-                    - this._performance.lastPresentedFrames;
+                const frames = this._performance.renderedFrames
+                    - this._performance.lastRenderedFrames;
                 if (elapsedUs > 0) {
                     this._performance.history.push({
                         sampledAt: GLib.get_real_time(),
                         intervalUs: elapsedUs,
-                        presentedFrames: frames,
+                        renderedFrames: frames,
                         framesPerSecond: Math.round(frames * 100000000 / elapsedUs) / 100,
                     });
                     if (this._performance.history.length > 60)
                         this._performance.history.shift();
                 }
                 this._performance.lastSampleAt = now;
-                this._performance.lastPresentedFrames = this._performance.presentedFrames;
+                this._performance.lastRenderedFrames = this._performance.renderedFrames;
                 return GLib.SOURCE_CONTINUE;
             }
         );
@@ -252,7 +252,7 @@ export default class GnomeInspectorExtension extends Extension {
                 height: global.stage.height,
             },
             monitorCount: Main.layoutManager.monitors.length,
-            presentedFrames: this._performance?.presentedFrames || 0,
+            renderedFrames: this._performance?.renderedFrames || 0,
             framesPerSecond: history.at(-1)?.framesPerSecond ?? null,
             performanceHistory: history,
         });

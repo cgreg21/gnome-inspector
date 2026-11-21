@@ -66,7 +66,10 @@ fn set_actor_style_class(path: &str, style_class: &str) -> Result<String, String
 }
 
 fn theme_info() -> Result<String, String> {
-    string_reply(&shell_call("GetThemeInfo")?, "Invalid theme information reply.")
+    string_reply(
+        &shell_call("GetThemeInfo")?,
+        "Invalid theme information reply.",
+    )
 }
 
 fn set_actor_inline_style(path: &str, css: &str) -> Result<String, String> {
@@ -537,7 +540,11 @@ fn styles_page() -> gtk::Box {
                     .unwrap_or(false);
                 status_for_refresh.set_text(&format!(
                     "{count} acteurs inspectés{}",
-                    if truncated { " · capture tronquée" } else { "" }
+                    if truncated {
+                        " · capture tronquée"
+                    } else {
+                        ""
+                    }
                 ));
                 if let Some(root) = nodes_for_refresh.borrow().first() {
                     show_actor_details(&details_for_refresh, root);
@@ -573,12 +580,17 @@ fn styles_page() -> gtk::Box {
         };
         match set_actor_style_class(&path, class_for_apply.text().as_str()) {
             Ok(reply) => match serde_json::from_str::<serde_json::Value>(&reply) {
-                Ok(result) if result.get("ok").and_then(serde_json::Value::as_bool) == Some(true) => {
+                Ok(result)
+                    if result.get("ok").and_then(serde_json::Value::as_bool) == Some(true) =>
+                {
                     status_for_class.set_text("Classes CSS appliquées.");
                     status_for_class.remove_css_class("error");
                 }
                 Ok(result) => {
-                    let error = result.get("error").and_then(serde_json::Value::as_str).unwrap_or("Erreur inconnue");
+                    let error = result
+                        .get("error")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or("Erreur inconnue");
                     status_for_class.set_text(&format!("Modification refusée : {error}"));
                     status_for_class.add_css_class("error");
                 }

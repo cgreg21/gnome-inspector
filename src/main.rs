@@ -220,39 +220,58 @@ fn page_heading(title: &str, description: &str) -> gtk::Box {
     heading
 }
 
+fn extension_is_discovered(output: &str, uuid: &str) -> bool {
+    output.lines().any(|line| line.trim() == uuid)
+}
+
 fn install_extension() -> Result<(), String> {
+    let uuid = "gnome-inspector@cgreg21";
     let data_dir = std::env::var_os("XDG_DATA_HOME")
         .map(std::path::PathBuf::from)
         .or_else(|| {
             std::env::var_os("HOME").map(|home| std::path::PathBuf::from(home).join(".local/share"))
         })
         .ok_or_else(|| "Impossible de déterminer le dossier de données utilisateur.".to_string())?;
-    let extension_dir = data_dir
-        .join("gnome-shell/extensions")
-        .join("gnome-inspector@cgreg21");
+    let extension_dir = data_dir.join("gnome-shell/extensions").join(uuid);
 
     std::fs::create_dir_all(&extension_dir).map_err(|error| error.to_string())?;
     for (name, contents) in [
         ("metadata.json", include_str!("../extension/metadata.json")),
         ("extension.js", include_str!("../extension/extension.js")),
         ("actor-tree.js", include_str!("../extension/actor-tree.js")),
-        (
-            "actor-picker.js",
-            include_str!("../extension/actor-picker.js"),
-        ),
+        ("actor-picker.js", include_str!("../extension/actor-picker.js")),
         ("style-tree.js", include_str!("../extension/style-tree.js")),
     ] {
         std::fs::write(extension_dir.join(name), contents).map_err(|error| error.to_string())?;
     }
 
+    let listed = Command::new("gnome-extensions")
+        .arg("list")
+        .output()
+        .map_err(|error| format!("Impossible de vérifier les extensions GNOME : {error}"))?;
+    if !listed.status.success() {
+        return Err(format!(
+            "Impossible de vérifier les extensions GNOME : {}",
+            String::from_utf8_lossy(&listed.stderr).trim()
+        ));
+    }
+    if !extension_is_discovered(&String::from_utf8_lossy(&listed.stdout), uuid) {
+        return Err(format!(
+            "Extension copiée dans {} mais GNOME Shell ne l'a pas encore découverte. Déconnectez-vous puis reconnectez-vous, puis relancez GNOME Inspector.",
+            extension_dir.display()
+        ));
+    }
+
     let output = Command::new("gnome-extensions")
         .arg("enable")
-        .arg("gnome-inspector@cgreg21")
+        .arg(uuid)
         .output()
         .map_err(|error| format!("Impossible de lancer gnome-extensions : {error}"))?;
     if !output.status.success() {
-        let error = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Activation refusée : {}", error.trim()));
+        return Err(format!(
+            "Activation refusée : {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
     }
     Ok(())
 }
@@ -1742,6 +1761,15 @@ mod tests {
         format_computed_style, format_console_entry, remember_console_command, string_reply,
     };
     use glib::variant::ToVariant;
+
+    #[test]
+    fn detects_only_an_exact_discovered_extension_uuid() {
+        let listed = "other@example.com\\ngnome-inspector@cgreg21\\n";
+
+        assert!(extension_is_discovered(listed, "gnome-inspector@cgreg21"));
+        assert!(!extension_is_discovered(listed, "gnome-inspector"));
+        assert!(!extension_is_discovered("other@example.com\\n", "gnome-inspector@cgreg21"));
+    }
 
     #[test]
     fn embeds_all_runtime_extension_files() {

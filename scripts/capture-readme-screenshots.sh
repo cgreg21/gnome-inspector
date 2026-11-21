@@ -18,7 +18,7 @@ cleanup() {
 trap cleanup EXIT
 
 for _ in $(seq 1 20); do
-    if gdbus call --session --dest io.github.cgreg21.GnomeInspector \
+    if gdbus call --session --dest io.github.cgreg21.GnomeInspector.Shell \
         --object-path /io/github/cgreg21/GnomeInspector \
         --method io.github.cgreg21.GnomeInspector.Ping >/dev/null 2>&1; then
         break
@@ -65,7 +65,7 @@ click_page() {
 capture overview
 
 click_page 108
-xdotool mousemove --window "$window_id" 1035 170 click 1
+xdotool mousemove --window "$window_id" 1200 170 click 1
 sleep 1
 capture actors
 
@@ -77,6 +77,7 @@ sleep 0.5
 capture css-themes
 
 click_page 180
+xdotool mousemove --window "$window_id" 320 430 click 1
 sleep 1
 capture gjs-console
 
@@ -86,6 +87,6 @@ sleep 1
 capture diagnostics
 
 click_page 252
-xdotool mousemove --window "$window_id" 350 170 click 1
+xdotool mousemove --window "$window_id" 350 390 click 1
 sleep 1
 capture performance

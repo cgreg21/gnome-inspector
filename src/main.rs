@@ -965,7 +965,7 @@ fn performance_page() -> gtk::Box {
         &stage_card,
         &monitors_card,
     ]
-    .iter()
+    .into_iter()
     .enumerate()
     {
         grid.attach(card, (index % 2) as i32, (index / 2) as i32, 1, 1);

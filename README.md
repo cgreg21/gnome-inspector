@@ -17,7 +17,8 @@ that accesses Shell-specific APIs.
 - [ ] Dedicated property editor and live actor selection
 - [x] Actor CSS classes, pseudo-classes and inline-style snapshots
 - [ ] Theme stylesheet discovery and live CSS editing
-- [ ] GJS console and diagnostics
+- [ ] GJS console
+- [x] GNOME Shell session diagnostics
 - [ ] Network and performance inspection
 
 The actor snapshot is read-only and deliberately bounded to 1,000 actors and 12 levels.
@@ -25,7 +26,7 @@ Its response includes an actor count, a truncation flag, and an `incomplete` fla
 an actor property or child list cannot be read. Per-actor `propertyErrors`, `childrenError`,
 and `actorError` fields explain failures. Invalid geometry uses safe fallback values, and
 repeated actor references are reported instead of being traversed again. The desktop app currently provides a navigable workspace for Overview, Actors, CSS and themes,
-GJS Console, Diagnostics, and Performance. The actor module displays the hierarchy as a selectable list and shows the selected actor's properties as formatted JSON. The CSS module now retrieves style classes, pseudo-classes and inline styles over D-Bus and presents a selectable actor list with details. Theme stylesheet discovery and live editing, console, diagnostics, and performance engines remain under development.
+GJS Console, Diagnostics, and Performance. The actor module displays the hierarchy as a selectable list and shows the selected actor's properties as formatted JSON. The CSS module now retrieves style classes, pseudo-classes and inline styles over D-Bus and presents a selectable actor list with details. Theme stylesheet discovery and live editing, console and performance engines remain under development. The Diagnostics module retrieves the Shell version, session/display environment, stage dimensions, monitor count, and extension metadata from the live Shell agent.
 
 ## Requirements
 

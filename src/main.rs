@@ -755,7 +755,13 @@ fn actors_page() -> gtk::Box {
         let path = list_for_copy
             .selected_row()
             .and_then(|row| row.widget_name().parse::<usize>().ok())
-            .and_then(|index| nodes_for_copy.borrow().get(index).and_then(actor_path));
+            .and_then(|index| {
+                nodes_for_copy
+                    .borrow()
+                    .get(index)
+                    .and_then(actor_path)
+                    .map(str::to_owned)
+            });
 
         if let Some(path) = path {
             if let Some(display) = gtk::gdk::Display::default() {

@@ -70,14 +70,14 @@ sleep 1
 capture actors
 
 click_page 144
-xdotool mousemove --window "$window_id" 1035 170 click 1
+xdotool mousemove --window "$window_id" 1200 170 click 1
 sleep 1
 xdotool mousemove --window "$window_id" 350 250 click 1
 sleep 0.5
 capture css-themes
 
 click_page 180
-xdotool mousemove --window "$window_id" 320 430 click 1
+xdotool mousemove --window "$window_id" 320 170 click 1
 sleep 1
 capture gjs-console
 

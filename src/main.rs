@@ -1,7 +1,7 @@
 use adw::prelude::*;
+use glib::variant::ToVariant;
 use std::cell::RefCell;
 use std::rc::Rc;
-use glib::variant::ToVariant;
 
 const BUS_NAME: &str = "io.github.cgreg21.GnomeInspector";
 const OBJECT_PATH: &str = "/io/github/cgreg21/GnomeInspector";
@@ -143,7 +143,11 @@ fn refresh_connection(status: &gtk::Label) {
     }
 }
 
-fn flatten_actors(node: &serde_json::Value, depth: usize, rows: &mut Vec<(serde_json::Value, usize)>) {
+fn flatten_actors(
+    node: &serde_json::Value,
+    depth: usize,
+    rows: &mut Vec<(serde_json::Value, usize)>,
+) {
     rows.push((node.clone(), depth));
     if let Some(children) = node.get("children").and_then(serde_json::Value::as_array) {
         for child in children {
@@ -175,13 +179,27 @@ fn refresh_actor_tree(
                     list.remove(&child);
                 }
 
-                let nodes = rows.iter().map(|(node, _)| node.clone()).collect::<Vec<_>>();
+                let nodes = rows
+                    .iter()
+                    .map(|(node, _)| node.clone())
+                    .collect::<Vec<_>>();
                 *selected_nodes.borrow_mut() = nodes;
 
                 for (node, depth) in rows {
-                    let name = node.get("name").and_then(serde_json::Value::as_str).unwrap_or("Acteur");
-                    let kind = node.get("type").and_then(serde_json::Value::as_str).unwrap_or("Unknown");
-                    let label = gtk::Label::new(Some(&format!("{}{}  ·  {}", "  ".repeat(depth), name, kind)));
+                    let name = node
+                        .get("name")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or("Acteur");
+                    let kind = node
+                        .get("type")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or("Unknown");
+                    let label = gtk::Label::new(Some(&format!(
+                        "{}{}  ·  {}",
+                        "  ".repeat(depth),
+                        name,
+                        kind
+                    )));
                     label.set_halign(gtk::Align::Start);
                     label.set_ellipsize(gtk::pango::EllipsizeMode::End);
                     label.set_margin_top(5);
@@ -191,13 +209,30 @@ fn refresh_actor_tree(
                     list.append(&label);
                 }
 
-                let actor_count = snapshot.get("actorCount").and_then(serde_json::Value::as_u64).unwrap_or(rows_len(&selected_nodes));
-                let incomplete = snapshot.get("incomplete").and_then(serde_json::Value::as_bool).unwrap_or(false);
-                let truncated = snapshot.get("truncated").and_then(serde_json::Value::as_bool).unwrap_or(false);
+                let actor_count = snapshot
+                    .get("actorCount")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(rows_len(&selected_nodes));
+                let incomplete = snapshot
+                    .get("incomplete")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(false);
+                let truncated = snapshot
+                    .get("truncated")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(false);
                 status.set_text(&format!(
                     "{actor_count} acteurs · {}{}",
-                    if incomplete { "capture incomplète" } else { "capture complète" },
-                    if truncated { " · limite de parcours atteinte" } else { "" }
+                    if incomplete {
+                        "capture incomplète"
+                    } else {
+                        "capture complète"
+                    },
+                    if truncated {
+                        " · limite de parcours atteinte"
+                    } else {
+                        ""
+                    }
                 ));
 
                 if let Some(root) = selected_nodes.borrow().first() {
@@ -307,12 +342,17 @@ fn actors_page() -> gtk::Box {
         };
         match set_actor_inline_style(&path, input_for_apply.text().as_str()) {
             Ok(reply) => match serde_json::from_str::<serde_json::Value>(&reply) {
-                Ok(result) if result.get("ok").and_then(serde_json::Value::as_bool) == Some(true) => {
+                Ok(result)
+                    if result.get("ok").and_then(serde_json::Value::as_bool) == Some(true) =>
+                {
                     status_for_apply.set_text("Style inline appliqué dans GNOME Shell.");
                     status_for_apply.remove_css_class("error");
                 }
                 Ok(result) => {
-                    let error = result.get("error").and_then(serde_json::Value::as_str).unwrap_or("Erreur inconnue");
+                    let error = result
+                        .get("error")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or("Erreur inconnue");
                     status_for_apply.set_text(&format!("Modification refusée : {error}"));
                     status_for_apply.add_css_class("error");
                 }
@@ -428,9 +468,20 @@ fn styles_page() -> gtk::Box {
                 let nodes = rows.iter().map(|(node, _)| node.clone()).collect::<Vec<_>>();
                 *nodes_for_refresh.borrow_mut() = nodes;
                 for (node, depth) in rows {
-                    let name = node.get("name").and_then(serde_json::Value::as_str).unwrap_or("Acteur");
-                    let classes = node.get("styleClass").and_then(serde_json::Value::as_str).unwrap_or("");
-                    let label = gtk::Label::new(Some(&format!("{}{}  ·  {}", "  ".repeat(depth), name, classes)));
+                    let name = node
+                        .get("name")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or("Acteur");
+                    let classes = node
+                        .get("styleClass")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or("");
+                    let label = gtk::Label::new(Some(&format!(
+                        "{}{}  ·  {}",
+                        "  ".repeat(depth),
+                        name,
+                        classes
+                    )));
                     label.set_halign(gtk::Align::Start);
                     label.set_ellipsize(gtk::pango::EllipsizeMode::End);
                     label.set_margin_top(5);
@@ -440,11 +491,21 @@ fn styles_page() -> gtk::Box {
                     list_for_refresh.append(&label);
                 }
 
-                let count = snapshot.get("actorCount").and_then(serde_json::Value::as_u64).unwrap_or(0);
-                let truncated = snapshot.get("truncated").and_then(serde_json::Value::as_bool).unwrap_or(false);
+                let count = snapshot
+                    .get("actorCount")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(0);
+                let truncated = snapshot
+                    .get("truncated")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(false);
                 status_for_refresh.set_text(&format!(
                     "{count} acteurs inspectés{}",
-                    if truncated { " · capture tronquée" } else { "" }
+                    if truncated {
+                        " · capture tronquée"
+                    } else {
+                        ""
+                    }
                 ));
                 if let Some(root) = nodes_for_refresh.borrow().first() {
                     show_actor_details(&details_for_refresh, root);
@@ -501,7 +562,9 @@ fn console_page() -> gtk::Box {
     editor.set_wrap_mode(gtk::WrapMode::WordChar);
     editor.set_left_margin(12);
     editor.set_top_margin(12);
-    editor.buffer().set_text("// Exemple : Main.panel.statusArea.dateMenu\nObject.keys(global).slice(0, 10)");
+    editor
+        .buffer()
+        .set_text("// Exemple : Main.panel.statusArea.dateMenu\nObject.keys(global).slice(0, 10)");
     let editor_scroll = gtk::ScrolledWindow::builder()
         .min_content_height(150)
         .vexpand(true)
@@ -690,7 +753,11 @@ fn build_ui(app: &adw::Application) {
     stack.set_vexpand(true);
     stack.set_transition_type(gtk::StackTransitionType::Crossfade);
 
-    stack.add_titled(&overview_page(&connection), Some("overview"), "Vue d’ensemble");
+    stack.add_titled(
+        &overview_page(&connection),
+        Some("overview"),
+        "Vue d’ensemble",
+    );
     stack.add_titled(&actors_page(), Some("actors"), "Acteurs");
     stack.add_titled(&styles_page(), Some("styles"), "CSS et thèmes");
     stack.add_titled(&console_page(), Some("console"), "Console GJS");

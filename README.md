@@ -88,7 +88,9 @@ The test installs and enables the extension in a temporary home directory, then 
 2. The extension loads and owns its D-Bus service.
 3. `Ping` returns the Shell version.
 4. `GetActorTree` returns the expected bounded JSON snapshot.
-5. `GetStyleTree`, `GetDiagnostics`, `EvaluateGjs`, and `GetPerformance` respond.\n6. Invalid CSS actor paths are rejected.\n7. The Shell log contains no GJS extension errors or criticals.
+5. `GetStyleTree`, `GetDiagnostics`, `EvaluateGjs`, and `GetPerformance` respond.
+6. Invalid CSS actor and class paths are rejected.
+7. The Shell log contains no GJS extension errors or criticals.
 
 The mocked logind service log is uploaded alongside the Shell log for diagnostics.
 

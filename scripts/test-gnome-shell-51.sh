@@ -119,6 +119,14 @@ grep -q 'styleClass' <<<"$styles"
 grep -q 'root' <<<"$styles"
 echo "Actor CSS style D-Bus snapshot: OK"
 
+computed_style="$(timeout 10s gdbus call --session \
+    --dest io.github.cgreg21.GnomeInspector \
+    --object-path /io/github/cgreg21/GnomeInspector \
+    --method io.github.cgreg21.GnomeInspector.GetActorComputedStyle '')"
+
+grep -q 'available' <<<"$computed_style"
+echo "Computed actor CSS style D-Bus response: OK"
+
 theme_info="$(timeout 10s gdbus call --session \
     --dest io.github.cgreg21.GnomeInspector \
     --object-path /io/github/cgreg21/GnomeInspector \

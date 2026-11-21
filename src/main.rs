@@ -166,8 +166,7 @@ fn install_extension() -> Result<(), String> {
     let data_dir = std::env::var_os("XDG_DATA_HOME")
         .map(std::path::PathBuf::from)
         .or_else(|| {
-            std::env::var_os("HOME")
-                .map(|home| std::path::PathBuf::from(home).join(".local/share"))
+            std::env::var_os("HOME").map(|home| std::path::PathBuf::from(home).join(".local/share"))
         })
         .ok_or_else(|| "Impossible de déterminer le dossier de données utilisateur.".to_string())?;
     let extension_dir = data_dir
@@ -1381,7 +1380,9 @@ fn build_ui(app: &adw::Application) {
             return;
         }
         let result = evaluate_gjs(source.as_str()).unwrap_or_else(|error| error);
-        output_for_run.buffer().set_text(&format!("> {source}\n{result}"));
+        output_for_run
+            .buffer()
+            .set_text(&format!("> {source}\n{result}"));
         command_for_run.grab_focus();
     });
     let execute_from_button = execute_console.clone();

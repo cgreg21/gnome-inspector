@@ -34,6 +34,23 @@ fn string_reply(reply: &glib::Variant, error: &str) -> Result<String, String> {
         .ok_or_else(|| error.to_string())
 }
 
+fn format_computed_style(json: &str) -> Result<String, String> {
+    let value: serde_json::Value =
+        serde_json::from_str(json).map_err(|error| error.to_string())?;
+    let object = value
+        .as_object()
+        .ok_or_else(|| "Computed style is not an object.".to_string())?;
+    Ok(object.iter().map(|(key, value)| format!("{key}: {value}")).collect::<Vec<_>>().join("\n"))
+}
+
+fn filter_computed_style(report: &str, query: &str) -> String {
+    if query.trim().is_empty() {
+        return report.to_string();
+    }
+    let query = query.to_lowercase();
+    report.lines().filter(|line| line.to_lowercase().contains(&query)).collect::<Vec<_>>().join("\n")
+}
+
 fn shell_version() -> Result<String, String> {
     string_reply(&shell_call("Ping")?, "Invalid Shell version reply.")
 }
@@ -956,27 +973,37 @@ fn styles_page() -> gtk::Box {
         .max_content_height(160)
         .child(&computed_details)
         .build();
+    let computed_report = Rc::new(RefCell::new(String::new()));
+    let computed_search = gtk::SearchEntry::new();
+    computed_search.set_placeholder_text(Some("Filtrer les propriétés calculées…"));
+    let report_for_search = computed_report.clone();
+    let view_for_search = computed_details.clone();
+    computed_search.connect_search_changed(move |entry| {
+        let report = report_for_search.borrow();
+        view_for_search.buffer().set_text(&filter_computed_style(&report, entry.text().as_str()));
+    });
     let computed_actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     computed_actions.set_margin_start(24);
     let computed_refresh = gtk::Button::with_label("Lire le style calculé de l’acteur");
     let computed_view = computed_details.clone();
     let computed_path = selected_path.clone();
     let computed_status = status.clone();
+    let report_for_refresh = computed_report.clone();
+    let search_for_refresh = computed_search.clone();
     computed_refresh.connect_clicked(move |_| {
         let Some(path) = computed_path.borrow().clone() else {
             computed_status.set_text("Sélectionnez d’abord un acteur.");
             computed_status.add_css_class("error");
             return;
         };
-        match actor_computed_style(&path).and_then(|json| {
-            serde_json::from_str::<serde_json::Value>(&json)
-                .and_then(|value| serde_json::to_string_pretty(&value))
-                .map_err(|error| error.to_string())
-        }) {
+        match actor_computed_style(&path).and_then(|json| format_computed_style(&json)) {
             Ok(report) => {
-                computed_view.buffer().set_text(&report);
-                computed_status
-                    .set_text("Style calculé actualisé (dimensions en pixels physiques).");
+                *report_for_refresh.borrow_mut() = report;
+                computed_view.buffer().set_text(&filter_computed_style(
+                    &report_for_refresh.borrow(),
+                    search_for_refresh.text().as_str(),
+                ));
+                computed_status.set_text("Style calculé actualisé ; filtrez par nom ou valeur de propriété.");
                 computed_status.remove_css_class("error");
             }
             Err(error) => {
@@ -1052,6 +1079,7 @@ fn styles_page() -> gtk::Box {
     computed_title.set_halign(gtk::Align::Start);
     inspector.append(&computed_title);
     inspector.append(&computed_actions);
+    inspector.append(&computed_search);
     inspector.append(&computed_scroll);
 
     let theme_title = gtk::Label::new(Some("Thème"));
@@ -1641,7 +1669,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{actor_detail_summary, actor_matches, flatten_actors, string_reply};
+    use super::{actor_detail_summary, actor_matches, filter_computed_style, flatten_actors, format_computed_style, string_reply};
     use glib::variant::ToVariant;
 
     #[test]
@@ -1690,6 +1718,22 @@ mod tests {
     }
 
     #[test]
+    #[test]
+    fn formats_and_filters_computed_style_properties() {
+        let report = format_computed_style(r#"{"font":"Sans 12px","width":640}"#).unwrap();
+        assert!(report.contains("font: \"Sans 12px\""));
+        assert!(report.contains("width: 640"));
+        assert_eq!(filter_computed_style(&report, "WIDTH"), "width: 640");
+        assert_eq!(filter_computed_style(&report, "sans"), "font: \"Sans 12px\"");
+        assert_eq!(filter_computed_style(&report, ""), report);
+        assert_eq!(filter_computed_style(&report, "missing"), "");
+    }
+
+    #[test]
+    fn rejects_non_object_computed_style() {
+        assert!(format_computed_style("[]").is_err());
+    }
+
     fn reads_string_from_dbus_reply() {
         let reply = ("51.1",).to_variant();
 

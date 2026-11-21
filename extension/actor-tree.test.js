@@ -14,7 +14,11 @@ class FakeActor {
         this.height = 40;
     }
 
-    static list_properties() {\n        return [];\n    }\n\n    get_name() {
+    static list_properties() {
+        return [];
+    }
+
+    get_name() {
         return this._name;
     }
 

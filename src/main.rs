@@ -1,8 +1,8 @@
 use adw::prelude::*;
 use glib::variant::ToVariant;
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::process::Command;
+use std::rc::Rc;
 
 const BUS_NAME: &str = "io.github.cgreg21.GnomeInspector.Shell";
 const OBJECT_PATH: &str = "/io/github/cgreg21/GnomeInspector";

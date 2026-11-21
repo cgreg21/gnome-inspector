@@ -291,6 +291,24 @@ fn refresh_actor_tree(
                     .collect::<Vec<_>>();
                 *selected_nodes.borrow_mut() = nodes;
 
+                let depths = rows.iter().map(|(_, depth)| *depth).collect::<Vec<_>>();
+                let mut parents = vec![None; rows.len()];
+                let mut ancestors = Vec::<usize>::new();
+                for (index, depth) in depths.iter().enumerate() {
+                    while ancestors.len() > *depth {
+                        ancestors.pop();
+                    }
+                    if *depth > 0 {
+                        parents[index] = ancestors.last().copied();
+                    }
+                    ancestors.push(index);
+                }
+
+                let expanded = Rc::new(RefCell::new(
+                    depths.iter().map(|depth| *depth == 0).collect::<Vec<_>>(),
+                ));
+                let row_widgets = Rc::new(RefCell::new(Vec::<gtk::ListBoxRow>::new()));
+
                 for (index, (node, depth)) in rows.into_iter().enumerate() {
                     let name = node
                         .get("name")
@@ -300,23 +318,63 @@ fn refresh_actor_tree(
                         .get("type")
                         .and_then(serde_json::Value::as_str)
                         .unwrap_or("Unknown");
-                    let label = gtk::Label::new(Some(&format!(
-                        "{}{}  ·  {}",
-                        "  ".repeat(depth),
-                        name,
-                        kind
-                    )));
+                    let has_children = node
+                        .get("children")
+                        .and_then(serde_json::Value::as_array)
+                        .is_some_and(|children| !children.is_empty());
+
+                    let content = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+                    content.set_margin_top(3);
+                    content.set_margin_bottom(3);
+                    content.set_margin_start(6 + depth as i32 * 14);
+                    content.set_margin_end(8);
+
+                    if has_children {
+                        let expander = gtk::ToggleButton::with_label("▸");
+                        expander.set_active(depth == 0);
+                        expander.set_has_frame(false);
+                        expander.set_size_request(24, 24);
+                        expander.set_tooltip_text(Some("Déplier ou replier les enfants"));
+                        let expanded_for_toggle = expanded.clone();
+                        let parents_for_toggle = parents.clone();
+                        let rows_for_toggle = row_widgets.clone();
+                        expander.connect_toggled(move |button| {
+                            let mut state = expanded_for_toggle.borrow_mut();
+                            state[index] = button.is_active();
+                            button.set_label(if button.is_active() { "▾" } else { "▸" });
+                            let widgets = rows_for_toggle.borrow();
+                            for (row_index, row) in widgets.iter().enumerate() {
+                                let mut parent = parents_for_toggle[row_index];
+                                let mut visible = true;
+                                while let Some(parent_index) = parent {
+                                    if !state[parent_index] {
+                                        visible = false;
+                                        break;
+                                    }
+                                    parent = parents_for_toggle[parent_index];
+                                }
+                                row.set_visible(visible);
+                            }
+                        });
+                        content.append(&expander);
+                    } else {
+                        let spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+                        spacer.set_size_request(24, -1);
+                        content.append(&spacer);
+                    }
+
+                    let label = gtk::Label::new(Some(&format!("{name}  ·  {kind}")));
                     label.set_halign(gtk::Align::Start);
+                    label.set_hexpand(true);
                     label.set_ellipsize(gtk::pango::EllipsizeMode::End);
-                    label.set_margin_top(5);
-                    label.set_margin_bottom(5);
-                    label.set_margin_start(8);
-                    label.set_margin_end(8);
+                    content.append(&label);
 
                     let row = gtk::ListBoxRow::new();
                     row.set_widget_name(&index.to_string());
-                    row.set_child(Some(&label));
+                    row.set_child(Some(&content));
+                    row.set_visible(depth == 0 || parents[index].is_some_and(|parent| expanded.borrow()[parent]));
                     list.append(&row);
+                    row_widgets.borrow_mut().push(row);
                 }
 
                 let actor_count = snapshot

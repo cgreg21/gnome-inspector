@@ -20,10 +20,22 @@ rm -rf -- "$TARGET_DIR"
 cp -a -- "$SOURCE_DIR" "$TARGET_DIR"
 
 echo "Installed $UUID to $TARGET_DIR"
+
+if ! LISTED_EXTENSIONS="$(gnome-extensions list)"; then
+    echo "Files installed, but GNOME extensions could not be listed." >&2
+    exit 1
+fi
+
+if ! grep -Fxq "$UUID" <<< "$LISTED_EXTENSIONS"; then
+    echo "GNOME Shell has not discovered the new extension yet."
+    echo "Log out and back in, then run: gnome-extensions enable $UUID"
+    exit 0
+fi
+
 if gnome-extensions enable "$UUID"; then
     echo "Extension activation requested."
 else
-    echo "Installation succeeded, but activation failed."
+    echo "Installation succeeded, but activation failed." >&2
     echo "Check GNOME Shell 51 and run: gnome-extensions enable $UUID" >&2
     exit 1
 fi

@@ -1,6 +1,15 @@
 export function buildActorTree(root) {
     const budget = { count: 1, truncated: false, incomplete: false };
     const visited = new WeakSet();
+    const errorMessage = error => {
+        try {
+            return typeof error?.message === 'string'
+                ? error.message
+                : String(error);
+        } catch {
+            return 'Unknown error';
+        }
+    };
 
     function visit(actor, depth) {
         if (!actor || typeof actor !== 'object') {
@@ -42,7 +51,7 @@ export function buildActorTree(root) {
                 return getter() ?? fallback;
             } catch (error) {
                 budget.incomplete = true;
-                propertyErrors[property] = error.message || String(error);
+                propertyErrors[property] = errorMessage(error);
                 return fallback;
             }
         };
@@ -97,7 +106,7 @@ export function buildActorTree(root) {
                 throw new TypeError('get_children() did not return an array');
         } catch (error) {
             budget.incomplete = true;
-            node.childrenError = error.message || String(error);
+            node.childrenError = errorMessage(error);
             return node;
         }
 

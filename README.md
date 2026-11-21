@@ -16,6 +16,7 @@ that accesses Shell-specific APIs.
 - [x] Actor hierarchy navigation and property JSON inspection
 - [ ] Dedicated property editor and live actor selection
 - [x] Actor CSS classes, pseudo-classes and inline-style snapshots
+- [x] Computed actor theme metrics (font, dimensions, spacing and CSS node identity)
 - [x] Explicit per-actor inline CSS editing
 - [x] Active theme stylesheet discovery
 - [x] Per-actor CSS class editing
@@ -30,7 +31,7 @@ Its response includes an actor count, a truncation flag, and an `incomplete` fla
 an actor property or child list cannot be read. Per-actor `propertyErrors`, `childrenError`,
 and `actorError` fields explain failures. Invalid geometry uses safe fallback values, and
 repeated actor references are reported instead of being traversed again. The desktop app currently provides a navigable workspace for Overview, Actors, CSS and themes,
-GJS Console, Diagnostics, and Performance. The actor module displays the hierarchy as a selectable list and shows the selected actor's properties as formatted JSON. The CSS module retrieves style classes, pseudo-classes and inline styles over D-Bus, presents a selectable actor list, and supports explicit class and inline-style updates for the selected actor. Updates are limited to 512 characters for class lists and 4,096 characters for inline CSS, and resolve actors through a bounded child-index path. Active application, theme, default and custom stylesheet paths can be discovered; editing global theme stylesheets remains to be implemented. The performance module provides live scene-capture duration, actor count, stage dimensions and monitor count; frame timing and resource history remain to be implemented. The GJS console executes user-supplied code in the connected Shell process; it is intentionally powerful and must only be used with trusted code. The Diagnostics module retrieves the Shell version, session/display environment, stage dimensions, monitor count, and extension metadata from the live Shell agent.
+GJS Console, Diagnostics, and Performance. The actor module displays the hierarchy as a selectable list and shows the selected actor's properties as formatted JSON. The CSS module retrieves style classes, pseudo-classes and inline styles over D-Bus, presents a selectable actor list, exposes computed theme-node metrics (font, dimensions, spacing and CSS node identity), and supports explicit class and inline-style updates for the selected actor. Updates are limited to 512 characters for class lists and 4,096 characters for inline CSS, and resolve actors through a bounded child-index path. Active application, theme, default and custom stylesheet paths can be discovered; editing global theme stylesheets remains to be implemented. The performance module provides live scene-capture duration, actor count, stage dimensions and monitor count; frame timing and resource history remain to be implemented. The GJS console executes user-supplied code in the connected Shell process; it is intentionally powerful and must only be used with trusted code. The Diagnostics module retrieves the Shell version, session/display environment, stage dimensions, monitor count, and extension metadata from the live Shell agent.
 
 ## Requirements
 
@@ -131,6 +132,7 @@ the application started, and the refresh buttons in each module to request fresh
 - `GetActorTree() -> s`: bounded JSON snapshot of the Shell stage and its descendants,
   including truncation, incomplete-capture status, and per-property failure details
 - `GetStyleTree() -> s`: bounded actor CSS snapshot with stable child-index paths
+- `GetActorComputedStyle(s) -> s`: computed theme-node metrics for one actor (physical-pixel dimensions and spacing)
 - `GetThemeInfo() -> s`: active application, theme, default and custom stylesheet paths
 - `SetActorStyleClass(ss) -> s`: explicitly update an actor's CSS class list (512-character limit)
 - `SetActorInlineStyle(ss) -> s`: explicitly update one actor's inline CSS (4,096-character limit)

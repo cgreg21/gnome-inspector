@@ -44,6 +44,10 @@ fn style_tree() -> Result<String, String> {
     string_reply(&shell_call("GetStyleTree")?, "Invalid style tree reply.")
 }
 
+fn diagnostics() -> Result<String, String> {
+    string_reply(&shell_call("GetDiagnostics")?, "Invalid diagnostics reply.")
+}
+
 fn page_heading(title: &str, description: &str) -> gtk::Box {
     let heading = gtk::Box::new(gtk::Orientation::Vertical, 6);
     heading.set_margin_top(24);
@@ -374,6 +378,64 @@ fn styles_page() -> gtk::Box {
     page
 }
 
+fn diagnostics_page() -> gtk::Box {
+    let page = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    page.append(&page_heading(
+        "Diagnostics",
+        "Informations sur la session GNOME Shell, l’affichage et l’agent GNOME Inspector.",
+    ));
+
+    let status = gtk::Label::new(Some("Aucune collecte effectuée."));
+    status.set_halign(gtk::Align::Start);
+    status.set_margin_start(24);
+    status.add_css_class("dim-label");
+
+    let view = gtk::TextView::new();
+    view.set_editable(false);
+    view.set_cursor_visible(false);
+    view.set_monospace(true);
+    view.set_wrap_mode(gtk::WrapMode::WordChar);
+    view.set_left_margin(12);
+    view.set_top_margin(12);
+    let scroll = gtk::ScrolledWindow::builder()
+        .hexpand(true)
+        .vexpand(true)
+        .child(&view)
+        .build();
+
+    let refresh = gtk::Button::with_label("Collecter les diagnostics");
+    refresh.add_css_class("suggested-action");
+    refresh.set_halign(gtk::Align::Start);
+    let view_for_refresh = view.clone();
+    let status_for_refresh = status.clone();
+    refresh.connect_clicked(move |_| {
+        match diagnostics().and_then(|json| {
+            serde_json::from_str::<serde_json::Value>(&json)
+                .and_then(|value| serde_json::to_string_pretty(&value))
+                .map_err(|error| error.to_string())
+        }) {
+            Ok(report) => {
+                view_for_refresh.buffer().set_text(&report);
+                status_for_refresh.set_text("Diagnostics actualisés.");
+                status_for_refresh.remove_css_class("error");
+            }
+            Err(error) => {
+                status_for_refresh.set_text(&format!("Échec de la collecte : {error}"));
+                status_for_refresh.add_css_class("error");
+            }
+        }
+    });
+
+    let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    actions.set_margin_start(24);
+    actions.set_margin_end(24);
+    actions.append(&refresh);
+    page.append(&actions);
+    page.append(&status);
+    page.append(&scroll);
+    page
+}
+
 fn overview_page(connection: &gtk::Label) -> gtk::Box {
     let page = gtk::Box::new(gtk::Orientation::Vertical, 12);
     page.append(&page_heading(
@@ -439,15 +501,7 @@ fn build_ui(app: &adw::Application) {
         Some("console"),
         "Console GJS",
     );
-    stack.add_titled(
-        &info_page(
-            "Diagnostics",
-            "Consultez les erreurs, avertissements, journaux et informations de session.",
-            "La collecte des journaux et les diagnostics détaillés seront ajoutés ici.",
-        ),
-        Some("diagnostics"),
-        "Diagnostics",
-    );
+    stack.add_titled(&diagnostics_page(), Some("diagnostics"), "Diagnostics");
     stack.add_titled(
         &info_page(
             "Performances",

@@ -1,4 +1,6 @@
 use adw::prelude::*;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 const BUS_NAME: &str = "io.github.cgreg21.GnomeInspector";
 const OBJECT_PATH: &str = "/io/github/cgreg21/GnomeInspector";
@@ -88,17 +90,75 @@ fn refresh_connection(status: &gtk::Label) {
     }
 }
 
-fn refresh_actor_tree(view: &gtk::TextView, status: &gtk::Label) {
-    match actor_tree() {
-        Ok(json) => {
-            let content = serde_json::from_str::<serde_json::Value>(&json)
-                .ok()
-                .and_then(|value| serde_json::to_string_pretty(&value).ok())
-                .unwrap_or(json);
-            view.buffer().set_text(&content);
-            status.set_text("Arbre des acteurs actualisé.");
-            status.remove_css_class("error");
+fn flatten_actors(node: &serde_json::Value, depth: usize, rows: &mut Vec<(serde_json::Value, usize)>) {
+    rows.push((node.clone(), depth));
+    if let Some(children) = node.get("children").and_then(serde_json::Value::as_array) {
+        for child in children {
+            flatten_actors(child, depth + 1, rows);
         }
+    }
+}
+
+fn show_actor_details(view: &gtk::TextView, node: &serde_json::Value) {
+    let details = serde_json::to_string_pretty(node).unwrap_or_else(|_| node.to_string());
+    view.buffer().set_text(&details);
+}
+
+fn refresh_actor_tree(
+    list: &gtk::ListBox,
+    details: &gtk::TextView,
+    selected_nodes: &Rc<RefCell<Vec<serde_json::Value>>>,
+    status: &gtk::Label,
+) {
+    match actor_tree() {
+        Ok(json) => match serde_json::from_str::<serde_json::Value>(&json) {
+            Ok(snapshot) => {
+                let mut rows = Vec::new();
+                if let Some(root) = snapshot.get("root") {
+                    flatten_actors(root, 0, &mut rows);
+                }
+
+                while let Some(child) = list.first_child() {
+                    list.remove(&child);
+                }
+
+                let nodes = rows.iter().map(|(node, _)| node.clone()).collect::<Vec<_>>();
+                *selected_nodes.borrow_mut() = nodes;
+
+                for (node, depth) in rows {
+                    let name = node.get("name").and_then(serde_json::Value::as_str).unwrap_or("Acteur");
+                    let kind = node.get("type").and_then(serde_json::Value::as_str).unwrap_or("Unknown");
+                    let label = gtk::Label::new(Some(&format!("{}{}  ·  {}", "  ".repeat(depth), name, kind)));
+                    label.set_halign(gtk::Align::Start);
+                    label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+                    label.set_margin_top(5);
+                    label.set_margin_bottom(5);
+                    label.set_margin_start(8);
+                    label.set_margin_end(8);
+                    list.append(&label);
+                }
+
+                let actor_count = snapshot.get("actorCount").and_then(serde_json::Value::as_u64).unwrap_or(rows_len(&selected_nodes));
+                let incomplete = snapshot.get("incomplete").and_then(serde_json::Value::as_bool).unwrap_or(false);
+                let truncated = snapshot.get("truncated").and_then(serde_json::Value::as_bool).unwrap_or(false);
+                status.set_text(&format!(
+                    "{actor_count} acteurs · {}{}",
+                    if incomplete { "capture incomplète" } else { "capture complète" },
+                    if truncated { " · limite de parcours atteinte" } else { "" }
+                ));
+
+                if let Some(root) = selected_nodes.borrow().first() {
+                    show_actor_details(details, root);
+                } else {
+                    details.buffer().set_text("Aucun acteur dans la capture.");
+                }
+                status.remove_css_class("error");
+            }
+            Err(error) => {
+                status.set_text(&format!("Réponse JSON invalide : {error}"));
+                status.add_css_class("error");
+            }
+        },
         Err(error) => {
             status.set_text(&format!("Échec de l’inspection : {error}"));
             status.add_css_class("error");
@@ -106,11 +166,15 @@ fn refresh_actor_tree(view: &gtk::TextView, status: &gtk::Label) {
     }
 }
 
+fn rows_len(nodes: &Rc<RefCell<Vec<serde_json::Value>>>) -> u64 {
+    nodes.borrow().len() as u64
+}
+
 fn actors_page() -> gtk::Box {
     let page = gtk::Box::new(gtk::Orientation::Vertical, 12);
     page.append(&page_heading(
         "Acteurs",
-        "Explorez la hiérarchie Clutter/St de la scène GNOME Shell.",
+        "Parcourez la hiérarchie Clutter/St et sélectionnez un acteur pour examiner ses propriétés.",
     ));
 
     let status = gtk::Label::new(Some("Aucune capture effectuée."));
@@ -118,36 +182,72 @@ fn actors_page() -> gtk::Box {
     status.set_margin_start(24);
     status.add_css_class("dim-label");
 
-    let view = gtk::TextView::new();
-    view.set_editable(false);
-    view.set_cursor_visible(false);
-    view.set_monospace(true);
-    view.set_wrap_mode(gtk::WrapMode::None);
-    view.set_left_margin(12);
-    view.set_top_margin(12);
-
-    let scroll = gtk::ScrolledWindow::builder()
-        .hexpand(true)
+    let list = gtk::ListBox::new();
+    list.set_selection_mode(gtk::SelectionMode::Single);
+    list.add_css_class("navigation-sidebar");
+    let list_scroll = gtk::ScrolledWindow::builder()
+        .min_content_width(300)
+        .max_content_width(420)
         .vexpand(true)
-        .child(&view)
+        .child(&list)
         .build();
 
-    let refresh = gtk::Button::with_label("Actualiser l’arbre");
+    let details = gtk::TextView::new();
+    details.set_editable(false);
+    details.set_cursor_visible(false);
+    details.set_monospace(true);
+    details.set_wrap_mode(gtk::WrapMode::WordChar);
+    details.set_left_margin(12);
+    details.set_top_margin(12);
+    let details_scroll = gtk::ScrolledWindow::builder()
+        .hexpand(true)
+        .vexpand(true)
+        .child(&details)
+        .build();
+
+    let selected_nodes = Rc::new(RefCell::new(Vec::<serde_json::Value>::new()));
+    let nodes_for_selection = selected_nodes.clone();
+    let details_for_selection = details.clone();
+    list.connect_row_selected(move |_, row| {
+        if let Some(row) = row {
+            let index = row.index() as usize;
+            if let Some(node) = nodes_for_selection.borrow().get(index) {
+                show_actor_details(&details_for_selection, node);
+            }
+        }
+    });
+
+    let refresh = gtk::Button::with_label("Actualiser");
     refresh.add_css_class("suggested-action");
     refresh.set_halign(gtk::Align::Start);
-    let view_for_refresh = view.clone();
+    let list_for_refresh = list.clone();
+    let details_for_refresh = details.clone();
+    let nodes_for_refresh = selected_nodes.clone();
     let status_for_refresh = status.clone();
     refresh.connect_clicked(move |_| {
-        refresh_actor_tree(&view_for_refresh, &status_for_refresh);
+        refresh_actor_tree(
+            &list_for_refresh,
+            &details_for_refresh,
+            &nodes_for_refresh,
+            &status_for_refresh,
+        );
     });
 
     let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     actions.set_margin_start(24);
     actions.set_margin_end(24);
     actions.append(&refresh);
+
+    let split = gtk::Paned::new(gtk::Orientation::Horizontal);
+    split.set_start_child(Some(&list_scroll));
+    split.set_end_child(Some(&details_scroll));
+    split.set_resize_start_child(false);
+    split.set_shrink_start_child(false);
+    split.set_position(340);
+
     page.append(&actions);
     page.append(&status);
-    page.append(&scroll);
+    page.append(&split);
     page
 }
 
@@ -205,16 +305,12 @@ fn build_ui(app: &adw::Application) {
     stack.set_transition_type(gtk::StackTransitionType::Crossfade);
 
     stack.add_titled(&overview_page(&connection), Some("overview"), "Vue d’ensemble");
-    stack.add_titled(
-        &actors_page(),
-        Some("actors"),
-        "Acteurs",
-    );
+    stack.add_titled(&actors_page(), Some("actors"), "Acteurs");
     stack.add_titled(
         &info_page(
             "CSS et thèmes",
             "Inspectez les styles GNOME Shell, les classes CSS et les thèmes actifs.",
-            "Le module CSS sera connecté à l’agent Shell dans la prochaine étape de développement.",
+            "Le moteur d’inspection CSS sera connecté à l’agent Shell.",
         ),
         Some("styles"),
         "CSS et thèmes",
@@ -223,7 +319,7 @@ fn build_ui(app: &adw::Application) {
         &info_page(
             "Console GJS",
             "Exécutez et suivez du code JavaScript dans le contexte GNOME Shell.",
-            "La console interactive et son canal d’exécution sécurisé restent à implémenter.",
+            "La console interactive et son canal d’exécution restent à construire.",
         ),
         Some("console"),
         "Console GJS",
@@ -232,7 +328,7 @@ fn build_ui(app: &adw::Application) {
         &info_page(
             "Diagnostics",
             "Consultez les erreurs, avertissements, journaux et informations de session.",
-            "La collecte des journaux et les diagnostics détaillés seront ajoutés au module.",
+            "La collecte des journaux et les diagnostics détaillés seront ajoutés ici.",
         ),
         Some("diagnostics"),
         "Diagnostics",
@@ -241,7 +337,7 @@ fn build_ui(app: &adw::Application) {
         &info_page(
             "Performances",
             "Suivez les ressources, les délais de rendu et l’activité de GNOME Shell.",
-            "Les mesures de performances et leur historique restent à implémenter.",
+            "Les mesures de performances et leur historique seront ajoutés ici.",
         ),
         Some("performance"),
         "Performances",
@@ -252,8 +348,7 @@ fn build_ui(app: &adw::Application) {
     sidebar.set_size_request(210, -1);
 
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let header = adw::HeaderBar::new();
-    content.append(&header);
+    content.append(&adw::HeaderBar::new());
 
     let body = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     body.append(&sidebar);

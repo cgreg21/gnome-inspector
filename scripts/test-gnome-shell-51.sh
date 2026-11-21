@@ -119,6 +119,16 @@ grep -q 'styleClass' <<<"$styles"
 grep -q 'root' <<<"$styles"
 echo "Actor CSS style D-Bus snapshot: OK"
 
+diagnostics="$(timeout 10s gdbus call --session \
+    --dest io.github.cgreg21.GnomeInspector \
+    --object-path /io/github/cgreg21/GnomeInspector \
+    --method io.github.cgreg21.GnomeInspector.GetDiagnostics)"
+
+grep -q 'shellVersion' <<<"$diagnostics"
+grep -q 'monitorCount' <<<"$diagnostics"
+grep -q 'stage' <<<"$diagnostics"
+echo "GNOME Shell diagnostics D-Bus response: OK"
+
 if grep -E 'JS ERROR|Gjs-CRITICAL|Error while loading.*extension|Failed to load extension' "$LOG_FILE"; then
     echo "GNOME Shell reported an extension/runtime error" >&2
     exit 1

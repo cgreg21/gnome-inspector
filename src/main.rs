@@ -377,6 +377,10 @@ fn actor_matches(node: &serde_json::Value, query: &str) -> bool {
             .is_some_and(|children| children.iter().any(|child| actor_matches(child, query)))
 }
 
+fn actor_path(node: &serde_json::Value) -> Option<&str> {
+    node.get("path").and_then(serde_json::Value::as_str)
+}
+
 fn actor_detail_summary(node: &serde_json::Value) -> serde_json::Value {
     let mut details = serde_json::Map::new();
     for key in [
@@ -743,6 +747,30 @@ fn actors_page() -> gtk::Box {
         list_for_search.invalidate_filter();
     });
 
+    let copy_path = gtk::Button::with_label("Copier le chemin");
+    let list_for_copy = list.clone();
+    let nodes_for_copy = selected_nodes.clone();
+    let status_for_copy = status.clone();
+    copy_path.connect_clicked(move |_| {
+        let path = list_for_copy
+            .selected_row()
+            .and_then(|row| row.widget_name().parse::<usize>().ok())
+            .and_then(|index| nodes_for_copy.borrow().get(index).and_then(actor_path));
+
+        if let Some(path) = path {
+            if let Some(display) = gtk::gdk::Display::default() {
+                display.clipboard().set_text(path);
+                status_for_copy.set_text(&format!("Chemin copié · {path}"));
+                status_for_copy.remove_css_class("error");
+            } else {
+                status_for_copy.set_text("Presse-papiers indisponible.");
+                status_for_copy.add_css_class("error");
+            }
+        } else {
+            status_for_copy.set_text("Sélectionnez d’abord un acteur.");
+        }
+    });
+
     let pick_actor = gtk::Button::with_label("Sélectionner dans Shell");
     let list_for_picker = list.clone();
     let nodes_for_picker = selected_nodes.clone();
@@ -823,6 +851,7 @@ fn actors_page() -> gtk::Box {
     actions.set_margin_start(24);
     actions.set_margin_end(24);
     actions.append(&search);
+    actions.append(&copy_path);
     actions.append(&pick_actor);
     actions.append(&refresh);
 
@@ -1863,7 +1892,7 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        actor_detail_summary, actor_matches, extension_is_discovered, filter_computed_style,
+        actor_detail_summary, actor_matches, actor_path, extension_is_discovered, filter_computed_style,
         flatten_actors, format_actor_details, format_computed_style, format_console_entry,
         remember_console_command, string_reply,
     };
@@ -1913,6 +1942,15 @@ mod tests {
         assert!(!actor_matches(&tree, "missing"));
         assert!(actor_matches(&tree, "label"));
         assert!(actor_matches(&tree, "confirm"));
+    }
+
+    #[test]
+    fn reads_actor_path_for_clipboard_actions() {
+        let node = serde_json::json!({ "path": "2/1" });
+        let missing = serde_json::json!({ "name": "actor" });
+
+        assert_eq!(actor_path(&node), Some("2/1"));
+        assert_eq!(actor_path(&missing), None);
     }
 
     #[test]

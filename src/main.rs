@@ -958,8 +958,16 @@ fn performance_page() -> gtk::Box {
     let (monitors_card, monitors) = performance_metric("Moniteurs");
 
     for (index, card) in [
-        &fps_card, &frames_card, &duration_card, &actors_card, &stage_card, &monitors_card,
-    ].iter().enumerate() {
+        &fps_card,
+        &frames_card,
+        &duration_card,
+        &actors_card,
+        &stage_card,
+        &monitors_card,
+    ]
+    .iter()
+    .enumerate()
+    {
         grid.attach(card, (index % 2) as i32, (index / 2) as i32, 1, 1);
     }
 
@@ -996,52 +1004,83 @@ fn performance_page() -> gtk::Box {
 
     refresh.connect_clicked(move |_| {
         let result = performance().and_then(|json| {
-            serde_json::from_str::<serde_json::Value>(&json)
-                .map_err(|error| error.to_string())
+            serde_json::from_str::<serde_json::Value>(&json).map_err(|error| error.to_string())
         });
         match result {
             Ok(report) => {
                 let number = |key: &str| report.get(key).and_then(serde_json::Value::as_u64);
-                let fps = report.get("framesPerSecond")
+                let fps = report
+                    .get("framesPerSecond")
                     .and_then(serde_json::Value::as_f64)
                     .map(|value| format!("{value:.1} FPS"))
                     .unwrap_or_else(|| "En attente d’échantillon".to_string());
                 fps_value.set_text(&fps);
-                frames_value.set_text(&number("renderedFrames")
-                    .map(|value| value.to_string()).unwrap_or_else(|| "—".to_string()));
-                duration_value.set_text(&number("captureDurationUs")
-                    .map(|value| format!("{:.2} ms", value as f64 / 1000.0))
-                    .unwrap_or_else(|| "—".to_string()));
-                actors_value.set_text(&number("actorCount")
-                    .map(|value| value.to_string()).unwrap_or_else(|| "—".to_string()));
-                let dimensions = report.get("stage").map(|stage| format!(
-                    "{} × {} px",
-                    stage.get("width").and_then(serde_json::Value::as_u64).unwrap_or(0),
-                    stage.get("height").and_then(serde_json::Value::as_u64).unwrap_or(0),
-                )).unwrap_or_else(|| "—".to_string());
+                frames_value.set_text(
+                    &number("renderedFrames")
+                        .map(|value| value.to_string())
+                        .unwrap_or_else(|| "—".to_string()),
+                );
+                duration_value.set_text(
+                    &number("captureDurationUs")
+                        .map(|value| format!("{:.2} ms", value as f64 / 1000.0))
+                        .unwrap_or_else(|| "—".to_string()),
+                );
+                actors_value.set_text(
+                    &number("actorCount")
+                        .map(|value| value.to_string())
+                        .unwrap_or_else(|| "—".to_string()),
+                );
+                let dimensions = report
+                    .get("stage")
+                    .map(|stage| {
+                        format!(
+                            "{} × {} px",
+                            stage
+                                .get("width")
+                                .and_then(serde_json::Value::as_u64)
+                                .unwrap_or(0),
+                            stage
+                                .get("height")
+                                .and_then(serde_json::Value::as_u64)
+                                .unwrap_or(0),
+                        )
+                    })
+                    .unwrap_or_else(|| "—".to_string());
                 stage_value.set_text(&dimensions);
-                monitors_value.set_text(&number("monitorCount")
-                    .map(|value| value.to_string()).unwrap_or_else(|| "—".to_string()));
+                monitors_value.set_text(
+                    &number("monitorCount")
+                        .map(|value| value.to_string())
+                        .unwrap_or_else(|| "—".to_string()),
+                );
 
-                let rows = report.get("performanceHistory")
+                let rows = report
+                    .get("performanceHistory")
                     .and_then(serde_json::Value::as_array)
                     .map(|samples| {
                         let mut output = String::from("Images rendues     FPS\n");
                         for sample in samples {
-                            let count = sample.get("renderedFrames")
-                                .and_then(serde_json::Value::as_u64).unwrap_or(0);
-                            let rate = sample.get("framesPerSecond")
-                                .and_then(serde_json::Value::as_f64).unwrap_or(0.0);
+                            let count = sample
+                                .get("renderedFrames")
+                                .and_then(serde_json::Value::as_u64)
+                                .unwrap_or(0);
+                            let rate = sample
+                                .get("framesPerSecond")
+                                .and_then(serde_json::Value::as_f64)
+                                .unwrap_or(0.0);
                             output.push_str(&format!("{count:>14}  {rate:>6.1}\n"));
                         }
                         output
                     })
                     .unwrap_or_else(|| "Aucun échantillon disponible.".to_string());
                 history_value.buffer().set_text(&rows);
-                let incomplete = report.get("incomplete")
-                    .and_then(serde_json::Value::as_bool).unwrap_or(false);
-                let truncated = report.get("truncated")
-                    .and_then(serde_json::Value::as_bool).unwrap_or(false);
+                let incomplete = report
+                    .get("incomplete")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(false);
+                let truncated = report
+                    .get("truncated")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(false);
                 status_value.set_text(if incomplete || truncated {
                     "Mesure actualisée — capture de scène partielle ou limitée."
                 } else {

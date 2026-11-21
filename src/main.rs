@@ -372,7 +372,16 @@ fn refresh_actor_tree(
                     let row = gtk::ListBoxRow::new();
                     row.set_widget_name(&index.to_string());
                     row.set_child(Some(&content));
-                    row.set_visible(depth == 0 || parents[index].is_some_and(|parent| expanded.borrow()[parent]));
+                    let mut parent = parents[index];
+                    let mut visible = true;
+                    while let Some(parent_index) = parent {
+                        if !expanded.borrow()[parent_index] {
+                            visible = false;
+                            break;
+                        }
+                        parent = parents[parent_index];
+                    }
+                    row.set_visible(visible);
                     list.append(&row);
                     row_widgets.borrow_mut().push(row);
                 }

@@ -1375,7 +1375,7 @@ fn build_ui(app: &adw::Application) {
     console_run.add_css_class("suggested-action");
     let command_for_run = console_command.clone();
     let output_for_run = console_output.clone();
-    let execute_console = move || {
+    let execute_console: Rc<dyn Fn()> = Rc::new(move || {
         let source = command_for_run.text();
         if source.trim().is_empty() {
             return;
@@ -1383,7 +1383,7 @@ fn build_ui(app: &adw::Application) {
         let result = evaluate_gjs(source.as_str()).unwrap_or_else(|error| error);
         output_for_run.buffer().set_text(&format!("> {source}\n{result}"));
         command_for_run.grab_focus();
-    };
+    });
     let execute_from_button = execute_console.clone();
     console_run.connect_clicked(move |_| execute_from_button());
     let execute_from_entry = execute_console.clone();

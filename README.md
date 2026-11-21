@@ -37,9 +37,9 @@ GJS Console, Diagnostics, and Performance. The actor module displays the hierarc
 ## Screenshots
 
 These images are captured from the running GTK application in CI using a virtual X11
-display and a deterministic mock GNOME Shell D-Bus service. They show the real application
-interface with representative inspection data; the mock service is only used for these
-documentation captures.
+display and a deterministic mock GNOME Shell D-Bus service. Each image shows its module
+selected in the HeaderBar. They show the real application interface with representative
+inspection data; the mock service is only used for these documentation captures.
 
 | Module | Screenshot |
 | --- | --- |

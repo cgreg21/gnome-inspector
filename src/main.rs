@@ -272,6 +272,7 @@ fn refresh_actor_tree(
     details: &gtk::TextView,
     selected_nodes: &Rc<RefCell<Vec<serde_json::Value>>>,
     status: &gtk::Label,
+    expander_widgets: &Rc<RefCell<Vec<gtk::ToggleButton>>>,
 ) {
     match actor_tree() {
         Ok(json) => match serde_json::from_str::<serde_json::Value>(&json) {
@@ -307,6 +308,7 @@ fn refresh_actor_tree(
                 let expanded = Rc::new(RefCell::new(
                     depths.iter().map(|depth| *depth == 0).collect::<Vec<_>>(),
                 ));
+                expander_widgets.borrow_mut().clear();
                 let row_widgets = Rc::new(RefCell::new(Vec::<gtk::ListBoxRow>::new()));
 
                 for (index, (node, depth)) in rows.into_iter().enumerate() {
@@ -332,6 +334,7 @@ fn refresh_actor_tree(
                     if has_children {
                         let expander = gtk::ToggleButton::with_label("▸");
                         expander.set_active(depth == 0);
+                        expander_widgets.borrow_mut().push(expander.clone());
                         expander.set_has_frame(false);
                         expander.set_size_request(24, 24);
                         expander.set_tooltip_text(Some("Déplier ou replier les enfants"));
@@ -472,6 +475,7 @@ fn actors_page() -> gtk::Box {
 
     let selected_nodes = Rc::new(RefCell::new(Vec::<serde_json::Value>::new()));
     let query = Rc::new(RefCell::new(String::new()));
+    let expander_widgets = Rc::new(RefCell::new(Vec::<gtk::ToggleButton>::new()));
     let query_for_filter = query.clone();
     list.set_filter_func(move |row| {
         let query = query_for_filter.borrow();
@@ -501,8 +505,13 @@ fn actors_page() -> gtk::Box {
     search.set_hexpand(true);
     let query_for_search = query.clone();
     let list_for_search = list.clone();
+    let expanders_for_search = expander_widgets.clone();
     search.connect_search_changed(move |entry| {
-        *query_for_search.borrow_mut() = entry.text().to_lowercase();
+        let query = entry.text().to_lowercase();
+        *query_for_search.borrow_mut() = query.clone();
+        for (index, expander) in expanders_for_search.borrow().iter().enumerate() {
+            expander.set_active(!query.is_empty() || index == 0);
+        }
         list_for_search.invalidate_filter();
     });
 
@@ -513,12 +522,14 @@ fn actors_page() -> gtk::Box {
     let details_for_refresh = details.clone();
     let nodes_for_refresh = selected_nodes.clone();
     let status_for_refresh = status.clone();
+    let expanders_for_refresh = expander_widgets.clone();
     refresh.connect_clicked(move |_| {
         refresh_actor_tree(
             &list_for_refresh,
             &details_for_refresh,
             &nodes_for_refresh,
             &status_for_refresh,
+            &expanders_for_refresh,
         );
     });
 

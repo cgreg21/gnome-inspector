@@ -46,6 +46,24 @@ export function buildActorTree(root) {
                 return fallback;
             }
         };
+        const readString = (property, getter, fallback) => {
+            const value = read(property, getter, fallback);
+            if (typeof value !== 'string') {
+                budget.incomplete = true;
+                propertyErrors[property] ||= 'Property is not a string';
+                return fallback;
+            }
+            return value || fallback;
+        };
+        const readBoolean = (property, getter) => {
+            const value = read(property, getter, false);
+            if (typeof value !== 'boolean') {
+                budget.incomplete = true;
+                propertyErrors[property] ||= 'Property is not a boolean';
+                return false;
+            }
+            return value;
+        };
         const readNumber = (property, getter) => {
             const value = read(property, getter, 0);
             if (typeof value !== 'number' || !Number.isFinite(value)) {
@@ -56,12 +74,12 @@ export function buildActorTree(root) {
             return Math.round(value);
         };
 
-        const type = read('type', () => actor.constructor.name, 'Actor');
+        const type = readString('type', () => actor.constructor.name, 'Actor');
         const node = {
-            name: read('name', () => actor.get_name(), null) || type,
+            name: readString('name', () => actor.get_name(), type),
             type,
-            visible: read('visible', () => actor.visible, false),
-            reactive: read('reactive', () => actor.reactive, false),
+            visible: readBoolean('visible', () => actor.visible),
+            reactive: readBoolean('reactive', () => actor.reactive),
             x: readNumber('x', () => actor.x),
             y: readNumber('y', () => actor.y),
             width: readNumber('width', () => actor.width),

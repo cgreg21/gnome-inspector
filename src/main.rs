@@ -765,7 +765,7 @@ fn actors_page() -> gtk::Box {
 
         if let Some(path) = path {
             if let Some(display) = gtk::gdk::Display::default() {
-                display.clipboard().set_text(path);
+                display.clipboard().set_text(&path);
                 status_for_copy.set_text(&format!("Chemin copié · {path}"));
                 status_for_copy.remove_css_class("error");
             } else {

@@ -434,11 +434,15 @@ fn format_actor_details(node: &serde_json::Value) -> String {
             let access = [
                 (
                     "R",
-                    property.get("readable").and_then(serde_json::Value::as_bool),
+                    property
+                        .get("readable")
+                        .and_then(serde_json::Value::as_bool),
                 ),
                 (
                     "W",
-                    property.get("writable").and_then(serde_json::Value::as_bool),
+                    property
+                        .get("writable")
+                        .and_then(serde_json::Value::as_bool),
                 ),
             ]
             .iter()

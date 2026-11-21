@@ -163,6 +163,7 @@ evaluation="$(timeout 10s gdbus call --session \
 grep -q '2' <<<"$evaluation"
 echo "GJS console evaluation: OK"
 
+sleep 2
 performance="$(timeout 10s gdbus call --session \
     --dest io.github.cgreg21.GnomeInspector \
     --object-path /io/github/cgreg21/GnomeInspector \
@@ -171,7 +172,10 @@ performance="$(timeout 10s gdbus call --session \
 grep -q 'captureDurationUs' <<<"$performance"
 grep -q 'actorCount' <<<"$performance"
 grep -q 'monitorCount' <<<"$performance"
-echo "GNOME Shell performance metrics: OK"
+grep -q 'presentedFrames' <<<"$performance"
+grep -q 'framesPerSecond' <<<"$performance"
+grep -q 'performanceHistory' <<<"$performance"
+echo "GNOME Shell rolling frame-rate history: OK"
 
 style_update="$(timeout 10s gdbus call --session \
     --dest io.github.cgreg21.GnomeInspector \

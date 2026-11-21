@@ -1,6 +1,7 @@
 use adw::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
+use glib::variant::ToVariant;
 
 const BUS_NAME: &str = "io.github.cgreg21.GnomeInspector";
 const OBJECT_PATH: &str = "/io/github/cgreg21/GnomeInspector";
@@ -46,6 +47,26 @@ fn style_tree() -> Result<String, String> {
 
 fn diagnostics() -> Result<String, String> {
     string_reply(&shell_call("GetDiagnostics")?, "Invalid diagnostics reply.")
+}
+
+fn evaluate_gjs(source: &str) -> Result<String, String> {
+    let connection = gio::bus_get_sync(gio::BusType::Session, None::<&gio::Cancellable>)
+        .map_err(|error| error.to_string())?;
+    let parameters = (source.to_string(),).to_variant();
+    let reply = connection
+        .call_sync(
+            Some(BUS_NAME),
+            OBJECT_PATH,
+            INTERFACE,
+            "EvaluateGjs",
+            Some(&parameters),
+            None,
+            gio::DBusCallFlags::NONE,
+            10_000,
+            None::<&gio::Cancellable>,
+        )
+        .map_err(|error| error.to_string())?;
+    string_reply(&reply, "Invalid GJS console reply.")
 }
 
 fn page_heading(title: &str, description: &str) -> gtk::Box {
@@ -378,6 +399,86 @@ fn styles_page() -> gtk::Box {
     page
 }
 
+fn console_page() -> gtk::Box {
+    let page = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    page.append(&page_heading(
+        "Console GJS",
+        "Exécutez du JavaScript dans le processus GNOME Shell connecté.",
+    ));
+
+    let warning = gtk::Label::new(Some(
+        "Attention : le code s’exécute avec les privilèges de votre session GNOME Shell. N’exécutez que du code de confiance.",
+    ));
+    warning.set_wrap(true);
+    warning.set_xalign(0.0);
+    warning.set_margin_start(24);
+    warning.set_margin_end(24);
+    warning.add_css_class("warning");
+    page.append(&warning);
+
+    let editor = gtk::TextView::new();
+    editor.set_monospace(true);
+    editor.set_wrap_mode(gtk::WrapMode::WordChar);
+    editor.set_left_margin(12);
+    editor.set_top_margin(12);
+    editor.buffer().set_text("// Exemple : Main.panel.statusArea.dateMenu\nObject.keys(global).slice(0, 10)");
+    let editor_scroll = gtk::ScrolledWindow::builder()
+        .min_content_height(150)
+        .vexpand(true)
+        .child(&editor)
+        .build();
+
+    let output = gtk::TextView::new();
+    output.set_editable(false);
+    output.set_cursor_visible(false);
+    output.set_monospace(true);
+    output.set_wrap_mode(gtk::WrapMode::WordChar);
+    output.set_left_margin(12);
+    output.set_top_margin(12);
+    let output_scroll = gtk::ScrolledWindow::builder()
+        .min_content_height(160)
+        .vexpand(true)
+        .child(&output)
+        .build();
+
+    let status = gtk::Label::new(Some("Prêt."));
+    status.set_halign(gtk::Align::Start);
+    status.set_margin_start(24);
+
+    let run = gtk::Button::with_label("Exécuter dans GNOME Shell");
+    run.add_css_class("suggested-action");
+    run.set_halign(gtk::Align::Start);
+    let editor_for_run = editor.clone();
+    let output_for_run = output.clone();
+    let status_for_run = status.clone();
+    run.connect_clicked(move |_| {
+        let buffer = editor_for_run.buffer();
+        let source = buffer.text(&buffer.start_iter(), &buffer.end_iter(), true);
+        match evaluate_gjs(source.as_str()) {
+            Ok(result) => {
+                output_for_run.buffer().set_text(&result);
+                status_for_run.set_text("Exécution terminée.");
+                status_for_run.remove_css_class("error");
+            }
+            Err(error) => {
+                output_for_run.buffer().set_text(&error);
+                status_for_run.set_text("Échec de l’exécution.");
+                status_for_run.add_css_class("error");
+            }
+        }
+    });
+
+    let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    actions.set_margin_start(24);
+    actions.set_margin_end(24);
+    actions.append(&run);
+    page.append(&actions);
+    page.append(&editor_scroll);
+    page.append(&status);
+    page.append(&output_scroll);
+    page
+}
+
 fn diagnostics_page() -> gtk::Box {
     let page = gtk::Box::new(gtk::Orientation::Vertical, 12);
     page.append(&page_heading(
@@ -492,15 +593,7 @@ fn build_ui(app: &adw::Application) {
     stack.add_titled(&overview_page(&connection), Some("overview"), "Vue d’ensemble");
     stack.add_titled(&actors_page(), Some("actors"), "Acteurs");
     stack.add_titled(&styles_page(), Some("styles"), "CSS et thèmes");
-    stack.add_titled(
-        &info_page(
-            "Console GJS",
-            "Exécutez et suivez du code JavaScript dans le contexte GNOME Shell.",
-            "La console interactive et son canal d’exécution restent à construire.",
-        ),
-        Some("console"),
-        "Console GJS",
-    );
+    stack.add_titled(&console_page(), Some("console"), "Console GJS");
     stack.add_titled(&diagnostics_page(), Some("diagnostics"), "Diagnostics");
     stack.add_titled(
         &info_page(

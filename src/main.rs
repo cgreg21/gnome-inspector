@@ -416,20 +416,39 @@ fn format_actor_details(node: &serde_json::Value) -> String {
         }
     }
 
-    if let Some(properties) = summary.get("properties").and_then(serde_json::Value::as_array) {
+    if let Some(properties) = summary
+        .get("properties")
+        .and_then(serde_json::Value::as_array)
+    {
         lines.push(String::new());
         lines.push(format!("Propriétés ({})", properties.len()));
         for property in properties {
-            let name = property.get("name").and_then(serde_json::Value::as_str).unwrap_or("?");
-            let kind = property.get("type").and_then(serde_json::Value::as_str).unwrap_or("?");
+            let name = property
+                .get("name")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("?");
+            let kind = property
+                .get("type")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("?");
             let value = property.get("value").unwrap_or(&serde_json::Value::Null);
-            let readable = value.as_str().map(str::to_string).unwrap_or_else(|| value.to_string());
+            let readable = value
+                .as_str()
+                .map(str::to_string)
+                .unwrap_or_else(|| value.to_string());
             let readable = readable.replace('\n', "\\n");
             lines.push(format!("{name} ({kind}) = {readable}"));
         }
     }
 
-    for key in ["propertyCount", "propertiesTruncated", "propertyErrors", "propertiesError", "childrenError", "actorError"] {
+    for key in [
+        "propertyCount",
+        "propertiesTruncated",
+        "propertyErrors",
+        "propertiesError",
+        "childrenError",
+        "actorError",
+    ] {
         if let Some(value) = summary.get(key) {
             lines.push(format!("{key}: {value}"));
         }

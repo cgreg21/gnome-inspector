@@ -121,6 +121,26 @@ fn performance() -> Result<String, String> {
     string_reply(&shell_call("GetPerformance")?, "Invalid performance reply.")
 }
 
+fn actor_picker_call(method: &str) -> Result<String, String> {
+    string_reply(&shell_call(method)?, "Invalid actor picker reply.")
+}
+
+fn start_actor_picker() -> Result<(), String> {
+    let reply = actor_picker_call("StartActorPicker")?;
+    let result: serde_json::Value =
+        serde_json::from_str(&reply).map_err(|error| error.to_string())?;
+    if result.get("ok").and_then(serde_json::Value::as_bool) == Some(true) {
+        Ok(())
+    } else {
+        Err("Impossible de démarrer la sélection visuelle.".to_string())
+    }
+}
+
+fn actor_picker_result() -> Result<serde_json::Value, String> {
+    let reply = actor_picker_call("GetActorPickerResult")?;
+    serde_json::from_str(&reply).map_err(|error| error.to_string())
+}
+
 fn evaluate_gjs(source: &str) -> Result<String, String> {
     let connection = gio::bus_get_sync(gio::BusType::Session, None::<&gio::Cancellable>)
         .map_err(|error| error.to_string())?;
@@ -529,6 +549,64 @@ fn actors_page() -> gtk::Box {
         list_for_search.invalidate_filter();
     });
 
+    let pick_actor = gtk::Button::with_label("Sélectionner dans Shell");
+    let list_for_picker = list.clone();
+    let nodes_for_picker = selected_nodes.clone();
+    let status_for_picker = status.clone();
+    pick_actor.connect_clicked(move |_| {
+        match start_actor_picker() {
+            Ok(()) => {
+                status_for_picker.set_text("Cliquez sur un acteur dans GNOME Shell · Échap pour annuler.");
+                let list = list_for_picker.clone();
+                let nodes = nodes_for_picker.clone();
+                let status = status_for_picker.clone();
+                glib::timeout_add_local(std::time::Duration::from_millis(250), move || {
+                    match actor_picker_result() {
+                        Ok(result) => match result.get("status").and_then(serde_json::Value::as_str) {
+                            Some("pending") => glib::ControlFlow::Continue,
+                            Some("selected") => {
+                                let path = result.get("path").and_then(serde_json::Value::as_str).unwrap_or("");
+                                let index = nodes.borrow().iter().position(|node| {
+                                    node.get("path").and_then(serde_json::Value::as_str) == Some(path)
+                                });
+                                if let Some(index) = index
+                                    && let Some(row) = list.row_at_index(index as i32)
+                                {
+                                    list.select_row(Some(&row));
+                                    status.set_text(&format!("Acteur sélectionné · chemin {path}"));
+                                } else {
+                                    status.set_text("Acteur sélectionné dans Shell ; actualisez l’arbre pour synchroniser la ligne.");
+                                }
+                                glib::ControlFlow::Break
+                            }
+                            Some("cancelled") => {
+                                status.set_text("Sélection visuelle annulée.");
+                                glib::ControlFlow::Break
+                            }
+                            Some("timeout") => {
+                                status.set_text("Délai de sélection visuelle dépassé.");
+                                glib::ControlFlow::Break
+                            }
+                            _ => {
+                                status.set_text("Sélection visuelle inactive.");
+                                glib::ControlFlow::Break
+                            }
+                        },
+                        Err(error) => {
+                            status.set_text(&format!("Erreur de sélection visuelle : {error}"));
+                            status.add_css_class("error");
+                            glib::ControlFlow::Break
+                        }
+                    }
+                });
+            }
+            Err(error) => {
+                status_for_picker.set_text(&format!("Impossible de démarrer la sélection : {error}"));
+                status_for_picker.add_css_class("error");
+            }
+        }
+    });
+
     let refresh = gtk::Button::with_label("Actualiser");
     refresh.add_css_class("suggested-action");
     refresh.set_halign(gtk::Align::Start);
@@ -551,6 +629,7 @@ fn actors_page() -> gtk::Box {
     actions.set_margin_start(24);
     actions.set_margin_end(24);
     actions.append(&search);
+    actions.append(&pick_actor);
     actions.append(&refresh);
 
     let split = gtk::Paned::new(gtk::Orientation::Horizontal);

@@ -7,7 +7,7 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as Config from 'resource:///org/gnome/shell/misc/config.js';
 import { buildActorTree } from './actor-tree.js';
-import { buildStyleTree, resolveActorPath } from './style-tree.js';
+import { buildComputedStyle, buildStyleTree, resolveActorPath } from './style-tree.js';
 
 const BUS_NAME = 'io.github.cgreg21.GnomeInspector';
 const OBJECT_PATH = '/io/github/cgreg21/GnomeInspector';
@@ -21,6 +21,10 @@ const INTERFACE_XML = `
       <arg type="s" direction="out"/>
     </method>
     <method name="GetStyleTree">
+      <arg type="s" direction="out"/>
+    </method>
+    <method name="GetActorComputedStyle">
+      <arg type="s" direction="in"/>
       <arg type="s" direction="out"/>
     </method>
     <method name="GetThemeInfo">
@@ -87,6 +91,14 @@ export default class GnomeInspectorExtension extends Extension {
 
     GetStyleTree() {
         return JSON.stringify(buildStyleTree(global.stage));
+    }
+
+    GetActorComputedStyle(path) {
+        const actor = resolveActorPath(global.stage, path);
+        if (!actor || typeof actor.get_theme_node !== 'function')
+            return JSON.stringify({ available: false, error: 'Actor path is invalid or the actor has no computed theme style.' });
+
+        return JSON.stringify(buildComputedStyle(actor));
     }
 
     GetThemeInfo() {

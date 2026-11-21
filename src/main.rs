@@ -371,7 +371,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::string_reply;
+    use super::{flatten_actors, string_reply};
     use glib::variant::ToVariant;
 
     #[test]
@@ -389,5 +389,32 @@ mod tests {
             string_reply(&reply, "invalid reply"),
             Err("invalid reply".to_string())
         );
+    }
+
+    #[test]
+    fn flattens_actor_hierarchy_in_parent_first_order() {
+        let tree = serde_json::json!({
+            "name": "root",
+            "children": [
+                {
+                    "name": "panel",
+                    "children": [
+                        { "name": "button", "children": [] }
+                    ]
+                }
+            ]
+        });
+        let mut rows = Vec::new();
+
+        flatten_actors(&tree, 0, &mut rows);
+
+        let names = rows
+            .iter()
+            .map(|(node, _)| node["name"].as_str().unwrap())
+            .collect::<Vec<_>>();
+        let depths = rows.iter().map(|(_, depth)| *depth).collect::<Vec<_>>();
+
+        assert_eq!(names, vec!["root", "panel", "button"]);
+        assert_eq!(depths, vec![0, 1, 2]);
     }
 }

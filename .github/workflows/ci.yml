@@ -103,7 +103,7 @@ jobs:
         run: python3 -m json.tool extension/metadata.json > /dev/null
 
       - name: ShellCheck integration scripts
-        run: shellcheck scripts/test-gnome-shell-51.sh
+        run: shellcheck scripts/test-gnome-shell-51.sh scripts/capture-readme-screenshots.sh
 
       - name: Validate workflow syntax
         uses: docker://rhysd/actionlint:1.7.11
@@ -171,6 +171,7 @@ jobs:
   screenshots:
     name: Capture README screenshots
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -178,7 +179,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes build-essential pkg-config libgtk-4-dev libadwaita-1-dev \
-            gjs dbus-x11 xvfb xdotool imagemagick
+            gjs dbus-x11 xvfb xdotool x11-apps imagemagick
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable

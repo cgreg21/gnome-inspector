@@ -1449,9 +1449,10 @@ fn build_ui(app: &adw::Application) {
             return;
         }
         let result = evaluate_gjs(source.as_str()).unwrap_or_else(|error| error);
-        output_for_run
-            .buffer()
-            .set_text(&format!("> {source}\n{result}"));
+        let buffer = output_for_run.buffer();
+        let mut end = buffer.end_iter();
+        buffer.insert(&mut end, &format!("> {source}\\n{result}\\n\\n"));
+        command_for_run.set_text("");
         command_for_run.grab_focus();
     });
     let execute_from_button = execute_console.clone();

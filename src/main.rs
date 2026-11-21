@@ -198,7 +198,10 @@ fn install_extension() -> Result<(), String> {
         ("metadata.json", include_str!("../extension/metadata.json")),
         ("extension.js", include_str!("../extension/extension.js")),
         ("actor-tree.js", include_str!("../extension/actor-tree.js")),
-        ("actor-picker.js", include_str!("../extension/actor-picker.js")),
+        (
+            "actor-picker.js",
+            include_str!("../extension/actor-picker.js"),
+        ),
         ("style-tree.js", include_str!("../extension/style-tree.js")),
     ] {
         std::fs::write(extension_dir.join(name), contents).map_err(|error| error.to_string())?;

@@ -387,7 +387,13 @@ fn actor_style_label(node: &serde_json::Value, depth: usize) -> String {
         .and_then(serde_json::Value::as_str)
         .unwrap_or("");
     let path = actor_path(node).unwrap_or("");
-    format!("{}{}  ·  {}  ·  {}", "  ".repeat(depth), name, classes, path)
+    format!(
+        "{}{}  ·  {}  ·  {}",
+        "  ".repeat(depth),
+        name,
+        classes,
+        path
+    )
 }
 
 fn actor_path(node: &serde_json::Value) -> Option<&str> {

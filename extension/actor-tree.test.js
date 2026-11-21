@@ -178,3 +178,27 @@ test('uses safe values for invalid names, types, and boolean properties', () => 
         reactive: 'Property is not a boolean',
     });
 });
+
+test('formats unusual thrown values without aborting the snapshot', () => {
+    const broken = new FakeActor('broken');
+    Object.defineProperty(broken, 'width', {
+        get() {
+            throw null;
+        },
+    });
+    broken.get_children = () => {
+        throw {
+            get message() {
+                throw new Error('message unavailable');
+            },
+        };
+    };
+
+    const result = buildActorTree(new FakeActor('root', [broken]));
+    const node = result.root.children[0];
+
+    assert.equal(result.incomplete, true);
+    assert.equal(node.width, 0);
+    assert.equal(node.propertyErrors.width, 'null');
+    assert.equal(node.childrenError, 'Unknown error');
+});

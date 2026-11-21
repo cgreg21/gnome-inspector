@@ -92,3 +92,67 @@ export function resolveActorPath(root, path) {
 
     return actor ?? null;
 }
+
+export function buildComputedStyle(actor) {
+    let node;
+    try {
+        node = actor?.get_theme_node?.();
+    } catch {
+        return { available: false, error: 'Unable to read computed theme node' };
+    }
+
+    if (!node)
+        return { available: false };
+
+    function read(method) {
+        try {
+            const value = node[method]?.();
+            return typeof value === 'number' && Number.isFinite(value) ? value : null;
+        } catch {
+            return null;
+        }
+    }
+
+    function readText(method) {
+        try {
+            const value = node[method]?.();
+            return typeof value === 'string' ? value : null;
+        } catch {
+            return null;
+        }
+    }
+
+    function readList(method) {
+        try {
+            const value = node[method]?.();
+            return Array.isArray(value) ? value.filter(item => typeof item === 'string') : [];
+        } catch {
+            return [];
+        }
+    }
+
+    let font = null;
+    try {
+        font = node.get_font?.()?.to_string?.() ?? null;
+    } catch {
+        // Some actors may not expose a readable font description.
+    }
+
+    return {
+        available: true,
+        node: readText('to_string'),
+        elementId: readText('get_element_id'),
+        elementClasses: readList('get_element_classes'),
+        pseudoClasses: readList('get_pseudo_classes'),
+        font,
+        width: read('get_width'),
+        height: read('get_height'),
+        minWidth: read('get_min_width'),
+        maxWidth: read('get_max_width'),
+        minHeight: read('get_min_height'),
+        maxHeight: read('get_max_height'),
+        horizontalPadding: read('get_horizontal_padding'),
+        verticalPadding: read('get_vertical_padding'),
+        letterSpacing: read('get_letter_spacing'),
+    };
+}

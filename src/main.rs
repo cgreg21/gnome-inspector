@@ -343,6 +343,7 @@ fn install_extension() -> Result<(), String> {
             include_str!("../extension/actor-picker.js"),
         ),
         ("style-tree.js", include_str!("../extension/style-tree.js")),
+        ("theme-stylesheets.js", include_str!("../extension/theme-stylesheets.js")),
     ] {
         std::fs::write(extension_dir.join(name), contents).map_err(|error| error.to_string())?;
     }

@@ -42,7 +42,13 @@ const INTERFACE_XML = `
     <method name="GetThemeInfo">
       <arg type="s" direction="out"/>
     </method>
-    <method name="SetActorProperty">\n      <arg type="s" direction="in"/>\n      <arg type="s" direction="in"/>\n      <arg type="s" direction="in"/>\n      <arg type="s" direction="out"/>\n    </method>\n    <method name="SetActorStyleClass">
+    <method name="SetActorProperty">
+      <arg type="s" direction="in"/>
+      <arg type="s" direction="in"/>
+      <arg type="s" direction="in"/>
+      <arg type="s" direction="out"/>
+    </method>
+    <method name="SetActorStyleClass">
       <arg type="s" direction="in"/>
       <arg type="s" direction="in"/>
       <arg type="s" direction="out"/>
@@ -226,7 +232,14 @@ export default class GnomeInspectorExtension extends Extension {
         });
     }
 
-    SetActorProperty(path, name, value) {\n        const actor = resolveActorPath(global.stage, path);\n        if (!actor)\n            return JSON.stringify({ ok: false, error: 'Actor path is invalid.' });\n        return JSON.stringify(setActorProperty(actor, name, value));\n    }\n\n    SetActorStyleClass(path, styleClass) {
+    SetActorProperty(path, name, value) {
+        const actor = resolveActorPath(global.stage, path);
+        if (!actor)
+            return JSON.stringify({ ok: false, error: 'Actor path is invalid.' });
+        return JSON.stringify(setActorProperty(actor, name, value));
+    }
+
+    SetActorStyleClass(path, styleClass) {
         if (typeof styleClass !== 'string' || styleClass.length > 512)
             return JSON.stringify({ ok: false, error: 'CSS class list must be at most 512 characters.' });
 

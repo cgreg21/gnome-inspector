@@ -20,6 +20,14 @@ mkdir -p "$CARGO_TARGET_DIR/release"
 printf '#!/usr/bin/env sh\necho packaged-gnome-inspector\n' > "$CARGO_TARGET_DIR/release/gnome-inspector"
 chmod +x "$CARGO_TARGET_DIR/release/gnome-inspector"
 MOCK
+cat > "$TEST_DIR/bin/gnome-shell" <<'MOCK'
+#!/usr/bin/env bash
+echo "GNOME Shell 51.0"
+MOCK
+cat > "$TEST_DIR/bin/ldd" <<'MOCK'
+#!/usr/bin/env bash
+echo "libgtk-4.so.1 => /usr/lib/libgtk-4.so.1"
+MOCK
 cat > "$TEST_DIR/bin/gnome-extensions" <<'MOCK'
 #!/usr/bin/env bash
 set -Eeuo pipefail
@@ -29,7 +37,7 @@ case "${1:-}" in
     *) exit 2 ;;
 esac
 MOCK
-chmod +x "$TEST_DIR/bin/cargo" "$TEST_DIR/bin/gnome-extensions"
+chmod +x "$TEST_DIR/bin/cargo" "$TEST_DIR/bin/gnome-shell" "$TEST_DIR/bin/ldd" "$TEST_DIR/bin/gnome-extensions"
 export PATH="$TEST_DIR/bin:$PATH"
 
 echo "keep user CSS" > "$XDG_CONFIG_HOME/gnome-inspector/custom.css"
@@ -41,6 +49,7 @@ tar -xzf "$ARCHIVE" -C "$TEST_DIR/extracted"
 BUNDLE="$(find "$TEST_DIR/extracted" -mindepth 1 -maxdepth 1 -type d -print -quit)"
 [[ -x "$BUNDLE/bin/gnome-inspector" ]]
 [[ -f "$BUNDLE/extension/metadata.json" ]]
+[[ -x "$BUNDLE/check-runtime.sh" ]]
 "$BUNDLE/bin/gnome-inspector" | grep -Fxq "packaged-gnome-inspector"
 
 bash "$BUNDLE/install.sh"

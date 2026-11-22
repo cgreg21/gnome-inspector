@@ -35,6 +35,7 @@ install -m 755 "$BINARY" "$PACKAGE_DIR/bin/gnome-inspector"
 cp -a "$ROOT_DIR/extension/." "$PACKAGE_DIR/extension/"
 install -m 755 "$ROOT_DIR/scripts/install-bundle.sh" "$PACKAGE_DIR/install.sh"
 install -m 755 "$ROOT_DIR/scripts/uninstall-bundle.sh" "$PACKAGE_DIR/uninstall.sh"
+install -m 755 "$ROOT_DIR/scripts/check-runtime.sh" "$PACKAGE_DIR/check-runtime.sh"
 install -m 644 "$ROOT_DIR/README.md" "$PACKAGE_DIR/README.md"
 install -m 644 "$ROOT_DIR/LICENSE" "$PACKAGE_DIR/LICENSE"
 

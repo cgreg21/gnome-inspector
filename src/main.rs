@@ -1647,7 +1647,6 @@ fn styles_page() -> gtk::Box {
     inspector.append(&theme_title);
     inspector.append(&theme_actions);
     inspector.append(&custom_css_scroll);
-    inspector.append(&custom_css_scroll);
     inspector.append(&theme_scroll);
 
     let inspector_scroll = gtk::ScrolledWindow::builder()

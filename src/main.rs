@@ -239,7 +239,10 @@ fn install_extension() -> Result<(), String> {
         ("metadata.json", include_str!("../extension/metadata.json")),
         ("extension.js", include_str!("../extension/extension.js")),
         ("actor-tree.js", include_str!("../extension/actor-tree.js")),
-        ("property-editor.js", include_str!("../extension/property-editor.js")),
+        (
+            "property-editor.js",
+            include_str!("../extension/property-editor.js"),
+        ),
         (
             "actor-picker.js",
             include_str!("../extension/actor-picker.js"),

@@ -2166,8 +2166,8 @@ mod tests {
     use super::{
         actor_detail_summary, actor_index_by_path, actor_matches, actor_path, actor_style_label,
         editable_actor_properties, extension_is_discovered, filter_computed_style, flatten_actors,
-        format_actor_details, format_actor_details_filtered, format_computed_style, format_console_entry,
-        remember_console_command, string_reply,
+        format_actor_details, format_actor_details_filtered, format_computed_style,
+        format_console_entry, remember_console_command, string_reply,
     };
     use glib::variant::ToVariant;
 

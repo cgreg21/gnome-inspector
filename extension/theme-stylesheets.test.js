@@ -74,9 +74,13 @@ test('rejects oversized CSS before writing', () => {
 test('reads an existing stylesheet', () => {
     const Gio = { File: { new_for_path: () => ({
         query_exists: () => true,
-        load_contents: () => [new TextEncoder().encode('/* user css */'), null],
+        load_contents: () => { throw new Error('Use GLib.file_get_contents'); },
     }) } };
-    const GLib = { get_user_config_dir: () => '/config', build_filenamev: parts => parts.join('/') };
+    const GLib = {
+        get_user_config_dir: () => '/config',
+        build_filenamev: parts => parts.join('/'),
+        file_get_contents: () => [true, new TextEncoder().encode('/* user css */')],
+    };
     assert.equal(readCustomStylesheet(Gio, GLib), '/* user css */');
 });
 

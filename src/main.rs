@@ -1607,7 +1607,6 @@ fn styles_page() -> gtk::Box {
         }
     });
     theme_actions.append(&custom_css_save);
-    theme_actions.append(&custom_css_scroll);
 
     let properties_panel = gtk::Box::new(gtk::Orientation::Vertical, 8);
     properties_panel.set_margin_top(8);
@@ -1646,6 +1645,7 @@ fn styles_page() -> gtk::Box {
     theme_title.set_halign(gtk::Align::Start);
     inspector.append(&theme_title);
     inspector.append(&theme_actions);
+    inspector.append(&custom_css_scroll);
     inspector.append(&custom_css_scroll);
     inspector.append(&theme_scroll);
 

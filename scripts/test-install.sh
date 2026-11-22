@@ -20,6 +20,14 @@ printf '#!/usr/bin/env sh\necho mock-gnome-inspector\n' > "$CARGO_TARGET_DIR/rel
 chmod +x "$CARGO_TARGET_DIR/release/gnome-inspector"
 MOCK
 
+cat > "$TEST_DIR/bin/gnome-shell" <<'MOCK'
+#!/usr/bin/env bash
+echo "GNOME Shell 51.0"
+MOCK
+cat > "$TEST_DIR/bin/ldd" <<'MOCK'
+#!/usr/bin/env bash
+echo "libgtk-4.so.1 => /usr/lib/libgtk-4.so.1"
+MOCK
 cat > "$TEST_DIR/bin/gnome-extensions" <<'MOCK'
 #!/usr/bin/env bash
 set -Eeuo pipefail
@@ -30,7 +38,7 @@ case "${1:-}" in
 esac
 MOCK
 
-chmod +x "$TEST_DIR/bin/cargo" "$TEST_DIR/bin/gnome-extensions"
+chmod +x "$TEST_DIR/bin/cargo" "$TEST_DIR/bin/gnome-shell" "$TEST_DIR/bin/ldd" "$TEST_DIR/bin/gnome-extensions"
 export PATH="$TEST_DIR/bin:$PATH"
 
 echo "preserve this file" > "$XDG_CONFIG_HOME/gnome-inspector/custom.css"

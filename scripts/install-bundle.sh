@@ -20,6 +20,8 @@ if ! command -v gnome-extensions >/dev/null 2>&1; then
     exit 1
 fi
 
+bash "$ROOT_DIR/check-runtime.sh" "$BIN_SOURCE"
+
 install -d "$BIN_DIR" "$DESKTOP_DIR" "$(dirname -- "$EXTENSION_TARGET")"
 install -m 755 "$BIN_SOURCE" "$BIN_DIR/gnome-inspector"
 desktop_exec="${BIN_DIR//\\/\\\\}"

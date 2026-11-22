@@ -11,6 +11,7 @@ import { buildActorTree } from './actor-tree.js';
 import { findActorPath } from './actor-picker.js';
 import { buildComputedStyle, buildStyleTree, resolveActorPath } from './style-tree.js';
 import { setActorProperty } from './property-editor.js';
+import { reloadCustomStylesheets } from './theme-stylesheets.js';
 
 const BUS_NAME = 'io.github.cgreg21.GnomeInspector.Shell';
 const OBJECT_PATH = '/io/github/cgreg21/GnomeInspector';
@@ -40,6 +41,9 @@ const INTERFACE_XML = `
       <arg type="s" direction="out"/>
     </method>
     <method name="GetThemeInfo">
+      <arg type="s" direction="out"/>
+    </method>
+    <method name="ReloadCustomStylesheets">
       <arg type="s" direction="out"/>
     </method>
     <method name="SetActorProperty">
@@ -230,6 +234,14 @@ export default class GnomeInspectorExtension extends Extension {
             defaultStylesheet: pathOf(theme.get_default_stylesheet()),
             customStylesheets: theme.get_custom_stylesheets(),
         });
+    }
+
+    ReloadCustomStylesheets() {
+        const theme = St.ThemeContext.get_for_stage(global.stage)?.get_theme();
+        if (!theme)
+            return JSON.stringify({ ok: false, reloaded: 0, errors: ['Theme unavailable.'] });
+
+        return JSON.stringify(reloadCustomStylesheets(theme));
     }
 
     SetActorProperty(path, name, value) {

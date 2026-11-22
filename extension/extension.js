@@ -11,7 +11,11 @@ import { buildActorTree } from './actor-tree.js';
 import { findActorPath } from './actor-picker.js';
 import { buildComputedStyle, buildStyleTree, resolveActorPath } from './style-tree.js';
 import { setActorProperty } from './property-editor.js';
-import { reloadCustomStylesheets } from './theme-stylesheets.js';
+import {
+    readCustomStylesheet,
+    reloadCustomStylesheets,
+    saveCustomStylesheet,
+} from './theme-stylesheets.js';
 
 const BUS_NAME = 'io.github.cgreg21.GnomeInspector.Shell';
 const OBJECT_PATH = '/io/github/cgreg21/GnomeInspector';
@@ -44,6 +48,13 @@ const INTERFACE_XML = `
       <arg type="s" direction="out"/>
     </method>
     <method name="ReloadCustomStylesheets">
+      <arg type="s" direction="out"/>
+    </method>
+    <method name="GetCustomStylesheet">
+      <arg type="s" direction="out"/>
+    </method>
+    <method name="SaveCustomStylesheet">
+      <arg type="s" direction="in"/>
       <arg type="s" direction="out"/>
     </method>
     <method name="SetActorProperty">
@@ -242,6 +253,26 @@ export default class GnomeInspectorExtension extends Extension {
             return JSON.stringify({ ok: false, reloaded: 0, errors: ['Theme unavailable.'] });
 
         return JSON.stringify(reloadCustomStylesheets(theme));
+    }
+
+    GetCustomStylesheet() {
+        try {
+            return readCustomStylesheet(Gio, GLib);
+        } catch (error) {
+            return '';
+        }
+    }
+
+    SaveCustomStylesheet(css) {
+        const theme = St.ThemeContext.get_for_stage(global.stage)?.get_theme();
+        if (!theme)
+            return JSON.stringify({ ok: false, error: 'Theme unavailable.' });
+
+        try {
+            return JSON.stringify(saveCustomStylesheet(theme, Gio, GLib, css));
+        } catch (error) {
+            return JSON.stringify({ ok: false, error: error?.message || String(error) });
+        }
     }
 
     SetActorProperty(path, name, value) {

@@ -33,6 +33,8 @@ if [[ ! -x "$BUILD_DIR/release/gnome-inspector" ]]; then
     exit 1
 fi
 
+bash "$ROOT_DIR/scripts/check-runtime.sh" "$BUILD_DIR/release/gnome-inspector"
+
 install -d "$BIN_DIR" "$DESKTOP_DIR"
 install -m 755 "$BUILD_DIR/release/gnome-inspector" "$BIN_PATH"
 

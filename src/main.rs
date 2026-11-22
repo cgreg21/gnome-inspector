@@ -181,6 +181,12 @@ fn theme_info() -> Result<String, String> {
     )
 }
 
+fn reload_custom_stylesheets() -> Result<serde_json::Value, String> {
+    let reply = shell_call("ReloadCustomStylesheets")?;
+    let json = string_reply(&reply, "Invalid stylesheet reload reply.")?;
+    serde_json::from_str(&json).map_err(|error| error.to_string())
+}
+
 fn set_actor_inline_style(path: &str, css: &str) -> Result<String, String> {
     let connection = gio::bus_get_sync(gio::BusType::Session, None::<&gio::Cancellable>)
         .map_err(|error| error.to_string())?;
@@ -1496,6 +1502,38 @@ fn styles_page() -> gtk::Box {
         }
     });
     theme_actions.append(&theme_refresh);
+    let theme_reload = gtk::Button::with_label("Recharger les feuilles personnalisées");
+    let theme_status_for_reload = status.clone();
+    theme_reload.connect_clicked(move |_| {
+        match reload_custom_stylesheets() {
+            Ok(result) if result.get("ok").and_then(serde_json::Value::as_bool) == Some(true) => {
+                let count = result
+                    .get("reloaded")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(0);
+                theme_status_for_reload.set_text(&format!("{count} feuille(s) personnalisée(s) rechargée(s)."));
+                theme_status_for_reload.remove_css_class("error");
+            }
+            Ok(result) => {
+                let errors = result
+                    .get("errors")
+                    .and_then(serde_json::Value::as_array)
+                    .map(|items| items.iter().filter_map(|item| {
+                        let file = item.get("file")?.as_str()?;
+                        let message = item.get("message")?.as_str()?;
+                        Some(format!("{file}: {message}"))
+                    }).collect::<Vec<_>>().join("; "))
+                    .unwrap_or_else(|| "Erreur inconnue.".to_string());
+                theme_status_for_reload.set_text(&format!("Rechargement partiel : {errors}"));
+                theme_status_for_reload.add_css_class("error");
+            }
+            Err(error) => {
+                theme_status_for_reload.set_text(&format!("Échec du rechargement des feuilles : {error}"));
+                theme_status_for_reload.add_css_class("error");
+            }
+        }
+    });
+    theme_actions.append(&theme_reload);
 
     let properties_panel = gtk::Box::new(gtk::Orientation::Vertical, 8);
     properties_panel.set_margin_top(8);

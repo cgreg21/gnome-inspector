@@ -168,6 +168,19 @@ grep -q '"ok":true' <<<"$stylesheet_reload"
 grep -q '"reloaded":' <<<"$stylesheet_reload"
 echo "Custom GNOME theme stylesheet reload: OK"
 
+custom_css_save="$(timeout 10s gdbus call --session \
+    --dest io.github.cgreg21.GnomeInspector.Shell \
+    --object-path /io/github/cgreg21/GnomeInspector \
+    --method io.github.cgreg21.GnomeInspector.SaveCustomStylesheet '.gnome-inspector-test { color: #ffffff; }')"
+grep -q '"ok":true' <<<"$custom_css_save"
+grep -q 'custom.css' <<<"$custom_css_save"
+custom_css_read="$(timeout 10s gdbus call --session \
+    --dest io.github.cgreg21.GnomeInspector.Shell \
+    --object-path /io/github/cgreg21/GnomeInspector \
+    --method io.github.cgreg21.GnomeInspector.GetCustomStylesheet)"
+grep -q 'gnome-inspector-test' <<<"$custom_css_read"
+echo "User custom stylesheet save, apply and read: OK"
+
 property_update="$(timeout 10s gdbus call --session \
     --dest io.github.cgreg21.GnomeInspector.Shell \
     --object-path /io/github/cgreg21/GnomeInspector \

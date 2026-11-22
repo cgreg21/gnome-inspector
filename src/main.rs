@@ -432,6 +432,11 @@ fn actor_detail_summary(node: &serde_json::Value) -> serde_json::Value {
 }
 
 fn format_actor_details(node: &serde_json::Value) -> String {
+    format_actor_details_filtered(node, "")
+}
+
+fn format_actor_details_filtered(node: &serde_json::Value, query: &str) -> String {
+    let query = query.trim().to_lowercase();
     let summary = actor_detail_summary(node);
     let mut lines = Vec::new();
 
@@ -448,8 +453,28 @@ fn format_actor_details(node: &serde_json::Value) -> String {
         .and_then(serde_json::Value::as_array)
     {
         lines.push(String::new());
-        lines.push(format!("Propriétés ({})", properties.len()));
-        for property in properties {
+        let matching = properties
+            .iter()
+            .filter(|property| {
+                if query.is_empty() {
+                    return true;
+                }
+                let searchable = [
+                    property.get("name").and_then(serde_json::Value::as_str).unwrap_or(""),
+                    property.get("type").and_then(serde_json::Value::as_str).unwrap_or(""),
+                    property.get("value").map(serde_json::Value::to_string).as_deref().unwrap_or(""),
+                ]
+                .join(" ")
+                .to_lowercase();
+                searchable.contains(&query)
+            })
+            .collect::<Vec<_>>();
+        lines.push(if query.is_empty() {
+            format!("Propriétés ({})", properties.len())
+        } else {
+            format!("Propriétés ({}/{})", matching.len(), properties.len())
+        });
+        for property in matching {
             let name = property
                 .get("name")
                 .and_then(serde_json::Value::as_str)
@@ -518,7 +543,12 @@ fn format_actor_details(node: &serde_json::Value) -> String {
 }
 
 fn show_actor_details(view: &gtk::TextView, node: &serde_json::Value) {
-    view.buffer().set_text(&format_actor_details(node));
+    show_actor_details_filtered(view, node, "");
+}
+
+fn show_actor_details_filtered(view: &gtk::TextView, node: &serde_json::Value, query: &str) {
+    view.buffer()
+        .set_text(&format_actor_details_filtered(node, query));
 }
 
 fn refresh_actor_tree(
@@ -726,7 +756,15 @@ fn actors_page() -> gtk::Box {
         .vexpand(true)
         .child(&details)
         .build();
+    let property_search = gtk::SearchEntry::new();
+    property_search.set_placeholder_text(Some("Filtrer les propriétés par nom, type ou valeur…"));
+    property_search.set_margin_start(12);
+    property_search.set_margin_end(12);
+    let details_panel = gtk::Box::new(gtk::Orientation::Vertical, 8);
+    details_panel.append(&property_search);
+    details_panel.append(&details_scroll);
 
+    let selected_actor = Rc::new(RefCell::new(None::<serde_json::Value>));
     let selected_nodes = Rc::new(RefCell::new(Vec::<serde_json::Value>::new()));
     let query = Rc::new(RefCell::new(String::new()));
     let expander_widgets = Rc::new(RefCell::new(Vec::<gtk::ToggleButton>::new()));
@@ -745,13 +783,32 @@ fn actors_page() -> gtk::Box {
     });
 
     let nodes_for_selection = selected_nodes.clone();
+    let actor_for_selection = selected_actor.clone();
     let details_for_selection = details.clone();
+    let search_for_selection = property_search.clone();
     list.connect_row_selected(move |_, row| {
         if let Some(row) = row
             && let Ok(index) = row.widget_name().parse::<usize>()
             && let Some(node) = nodes_for_selection.borrow().get(index)
         {
-            show_actor_details(&details_for_selection, node);
+            *actor_for_selection.borrow_mut() = Some(node.clone());
+            show_actor_details_filtered(
+                &details_for_selection,
+                node,
+                search_for_selection.text().as_str(),
+            );
+        }
+    });
+
+    let actor_for_property_search = selected_actor.clone();
+    let details_for_property_search = details.clone();
+    property_search.connect_search_changed(move |entry| {
+        if let Some(node) = actor_for_property_search.borrow().as_ref() {
+            show_actor_details_filtered(
+                &details_for_property_search,
+                node,
+                entry.text().as_str(),
+            );
         }
     });
 
@@ -886,7 +943,7 @@ fn actors_page() -> gtk::Box {
 
     let split = gtk::Paned::new(gtk::Orientation::Horizontal);
     split.set_start_child(Some(&list_scroll));
-    split.set_end_child(Some(&details_scroll));
+    split.set_end_child(Some(&details_panel));
     split.set_resize_start_child(false);
     split.set_shrink_start_child(false);
     split.set_position(340);
@@ -1921,7 +1978,7 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        actor_detail_summary, actor_index_by_path, actor_matches, actor_path, actor_style_label,
+        actor_detail_summary, actor_index_by_path, actor_matches, actor_path, actor_style_label, format_actor_details_filtered,
         extension_is_discovered, filter_computed_style, flatten_actors, format_actor_details,
         format_computed_style, format_console_entry, remember_console_command, string_reply,
     };
@@ -1983,6 +2040,29 @@ mod tests {
 
         assert_eq!(actor_index_by_path(&nodes, "0/1"), Some(1));
         assert_eq!(actor_index_by_path(&nodes, "0/9"), None);
+    }
+
+    #[test]
+    fn actor_property_filter_matches_name_type_and_value() {
+        let node = serde_json::json!({
+            "name": "button",
+            "properties": [
+                {"name": "label", "type": "gchararray", "readable": true, "value": "Confirm"},
+                {"name": "reactive", "type": "gboolean", "readable": true, "value": true}
+            ]
+        });
+
+        let by_name = format_actor_details_filtered(&node, "label");
+        assert!(by_name.contains("label (gchararray"));
+        assert!(!by_name.contains("reactive (gboolean"));
+
+        let by_type = format_actor_details_filtered(&node, "gboolean");
+        assert!(by_type.contains("reactive (gboolean"));
+
+        let by_value = format_actor_details_filtered(&node, "confirm");
+        assert!(by_value.contains("label (gchararray"));
+        assert!(!by_value.contains("reactive (gboolean"));
+        assert!(by_value.contains("Propriétés (1/2)"));
     }
 
     #[test]

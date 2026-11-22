@@ -460,9 +460,19 @@ fn format_actor_details_filtered(node: &serde_json::Value, query: &str) -> Strin
                     return true;
                 }
                 let searchable = [
-                    property.get("name").and_then(serde_json::Value::as_str).unwrap_or(""),
-                    property.get("type").and_then(serde_json::Value::as_str).unwrap_or(""),
-                    property.get("value").map(serde_json::Value::to_string).as_deref().unwrap_or(""),
+                    property
+                        .get("name")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or(""),
+                    property
+                        .get("type")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or(""),
+                    property
+                        .get("value")
+                        .map(serde_json::Value::to_string)
+                        .as_deref()
+                        .unwrap_or(""),
                 ]
                 .join(" ")
                 .to_lowercase();
@@ -804,11 +814,7 @@ fn actors_page() -> gtk::Box {
     let details_for_property_search = details.clone();
     property_search.connect_search_changed(move |entry| {
         if let Some(node) = actor_for_property_search.borrow().as_ref() {
-            show_actor_details_filtered(
-                &details_for_property_search,
-                node,
-                entry.text().as_str(),
-            );
+            show_actor_details_filtered(&details_for_property_search, node, entry.text().as_str());
         }
     });
 
@@ -1978,9 +1984,10 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        actor_detail_summary, actor_index_by_path, actor_matches, actor_path, actor_style_label, format_actor_details_filtered,
+        actor_detail_summary, actor_index_by_path, actor_matches, actor_path, actor_style_label,
         extension_is_discovered, filter_computed_style, flatten_actors, format_actor_details,
-        format_computed_style, format_console_entry, remember_console_command, string_reply,
+        format_actor_details_filtered, format_computed_style, format_console_entry,
+        remember_console_command, string_reply,
     };
     use glib::variant::ToVariant;
 

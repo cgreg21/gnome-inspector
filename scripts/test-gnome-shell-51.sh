@@ -172,6 +172,7 @@ custom_css_save="$(timeout 10s gdbus call --session \
     --dest io.github.cgreg21.GnomeInspector.Shell \
     --object-path /io/github/cgreg21/GnomeInspector \
     --method io.github.cgreg21.GnomeInspector.SaveCustomStylesheet '.gnome-inspector-test { color: #ffffff; }')"
+echo "Custom stylesheet save response: $custom_css_save"
 grep -q '"ok":true' <<<"$custom_css_save"
 grep -q 'custom.css' <<<"$custom_css_save"
 custom_css_read="$(timeout 10s gdbus call --session \

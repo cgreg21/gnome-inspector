@@ -1904,9 +1904,9 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        actor_detail_summary, actor_matches, actor_path, extension_is_discovered,
-        filter_computed_style, flatten_actors, format_actor_details, format_computed_style,
-        format_console_entry, remember_console_command, string_reply,
+        actor_detail_summary, actor_matches, actor_path, actor_style_label,
+        extension_is_discovered, filter_computed_style, flatten_actors, format_actor_details,
+        format_computed_style, format_console_entry, remember_console_command, string_reply,
     };
     use glib::variant::ToVariant;
 

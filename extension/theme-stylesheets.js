@@ -32,7 +32,9 @@ export function readCustomStylesheet(Gio, GLib) {
     const file = Gio.File.new_for_path(customStylesheetPath(GLib));
     if (!file.query_exists(null))
         return '';
-    const [contents] = file.load_contents(null);
+    const [ok, contents] = GLib.file_get_contents(customStylesheetPath(GLib));
+    if (!ok)
+        throw new Error('Could not read the custom stylesheet.');
     return new TextDecoder().decode(contents);
 }
 

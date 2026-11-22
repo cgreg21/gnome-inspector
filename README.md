@@ -218,6 +218,9 @@ Wayland session with real input and display hardware.
 - `GetStyleTree() -> s`: bounded actor CSS snapshot with stable child-index paths
 - `GetActorComputedStyle(s) -> s`: computed theme-node metrics for one actor (physical-pixel dimensions and spacing)
 - `GetThemeInfo() -> s`: active application, theme, default and custom stylesheet paths
+- `GetCustomStylesheet() -> s`: read the user-owned custom stylesheet
+- `SaveCustomStylesheet(s) -> s`: validate and save/apply user CSS (64 KiB maximum)
+- `ReloadCustomStylesheets() -> s`: reload active custom stylesheets
 - `SetActorProperty(sss) -> s`: update a validated writable string, boolean or numeric GObject property for an actor path
 - `SetActorStyleClass(ss) -> s`: explicitly update an actor's CSS class list (512-character limit)
 - `SetActorInlineStyle(ss) -> s`: explicitly update one actor's inline CSS (4,096-character limit)

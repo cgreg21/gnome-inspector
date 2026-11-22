@@ -181,6 +181,31 @@ fn theme_info() -> Result<String, String> {
     )
 }
 
+fn custom_stylesheet() -> Result<String, String> {
+    string_reply(&shell_call("GetCustomStylesheet")?, "Invalid custom stylesheet reply.")
+}
+
+fn save_custom_stylesheet(css: &str) -> Result<serde_json::Value, String> {
+    let connection = gio::bus_get_sync(gio::BusType::Session, None::<&gio::Cancellable>)
+        .map_err(|error| error.to_string())?;
+    let parameters = (css.to_string(),).to_variant();
+    let reply = connection
+        .call_sync(
+            Some(BUS_NAME),
+            OBJECT_PATH,
+            INTERFACE,
+            "SaveCustomStylesheet",
+            Some(&parameters),
+            None,
+            gio::DBusCallFlags::NONE,
+            5_000,
+            None::<&gio::Cancellable>,
+        )
+        .map_err(|error| error.to_string())?;
+    let json = string_reply(&reply, "Invalid custom stylesheet save reply.")?;
+    serde_json::from_str(&json).map_err(|error| error.to_string())
+}
+
 fn reload_custom_stylesheets() -> Result<serde_json::Value, String> {
     let reply = shell_call("ReloadCustomStylesheets")?;
     let json = string_reply(&reply, "Invalid stylesheet reload reply.")?;
@@ -1542,6 +1567,48 @@ fn styles_page() -> gtk::Box {
     });
     theme_actions.append(&theme_reload);
 
+    let custom_css = gtk::TextView::new();
+    custom_css.set_monospace(true);
+    custom_css.set_wrap_mode(gtk::WrapMode::None);
+    custom_css.set_vexpand(true);
+    custom_css.set_left_margin(8);
+    custom_css.set_top_margin(8);
+    custom_css.buffer().set_text(
+        &custom_stylesheet().unwrap_or_else(|_| "/* CSS personnalisé GNOME Shell */\\n".to_string()),
+    );
+    let custom_css_scroll = gtk::ScrolledWindow::builder()
+        .min_content_height(180)
+        .max_content_height(260)
+        .hexpand(true)
+        .child(&custom_css)
+        .build();
+    let custom_css_save = gtk::Button::with_label("Enregistrer et appliquer custom.css");
+    let custom_css_buffer = custom_css.buffer();
+    let custom_css_status = status.clone();
+    custom_css_save.connect_clicked(move |_| {
+        let start = custom_css_buffer.start_iter();
+        let end = custom_css_buffer.end_iter();
+        let css = custom_css_buffer.text(&start, &end, false).to_string();
+        match save_custom_stylesheet(&css) {
+            Ok(result) if result.get("ok").and_then(serde_json::Value::as_bool) == Some(true) => {
+                let path = result.get("path").and_then(serde_json::Value::as_str).unwrap_or("");
+                custom_css_status.set_text(&format!("Feuille CSS enregistrée et appliquée : {path}"));
+                custom_css_status.remove_css_class("error");
+            }
+            Ok(result) => {
+                let error = result.get("error").and_then(serde_json::Value::as_str).unwrap_or("Erreur inconnue.");
+                custom_css_status.set_text(&format!("Échec de l’application CSS : {error}"));
+                custom_css_status.add_css_class("error");
+            }
+            Err(error) => {
+                custom_css_status.set_text(&format!("Échec de l’enregistrement CSS : {error}"));
+                custom_css_status.add_css_class("error");
+            }
+        }
+    });
+    theme_actions.append(&custom_css_save);
+    theme_actions.append(&custom_css_scroll);
+
     let properties_panel = gtk::Box::new(gtk::Orientation::Vertical, 8);
     properties_panel.set_margin_top(8);
     properties_panel.set_margin_bottom(8);
@@ -1579,6 +1646,7 @@ fn styles_page() -> gtk::Box {
     theme_title.set_halign(gtk::Align::Start);
     inspector.append(&theme_title);
     inspector.append(&theme_actions);
+    inspector.append(&custom_css_scroll);
     inspector.append(&theme_scroll);
 
     let inspector_scroll = gtk::ScrolledWindow::builder()

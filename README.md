@@ -2,6 +2,9 @@
 
 A native developer tool for inspecting and debugging GNOME Shell.
 
+**Release target: Alpha 0.1.0.** The project is under active development; no public alpha
+binary release has been published yet.
+
 The first development target is GNOME Shell 51 on Linux. The project uses a GTK4/libadwaita
 desktop application and a GNOME Shell extension. The extension is the only component
 that accesses Shell-specific APIs.
@@ -21,6 +24,8 @@ that accesses Shell-specific APIs.
 - [x] Explicit per-actor inline CSS editing
 - [x] Active theme stylesheet discovery and custom stylesheet reload
 - [x] Per-actor CSS class editing
+- [x] User-owned custom CSS editor with GNOME Shell apply/rollback
+- [x] Per-user build, install, desktop launcher and uninstall scripts
 - [ ] Global theme stylesheet editing
 - [x] Interactive GJS console (explicit code execution, 50-command history with Up/Down navigation)
 - [x] GNOME Shell session diagnostics
@@ -60,16 +65,30 @@ and uploads the `gnome-inspector-readme-screenshots` artifact for review. To pub
 refreshed PNGs into the repository, run the workflow manually with
 `workflow_dispatch`; that run commits the updated captures.
 
-## Install and enable the GNOME Shell extension
+## Install GNOME Inspector
 
-The desktop application communicates with a small GNOME Shell agent. From the
-repository root, install it for the current user and enable it with:
+From the repository root, install the application and its GNOME Shell agent for the
+current user:
 
 ```sh
-bash scripts/install-extension.sh
+bash scripts/install.sh
 ```
 
-The script checks that `gnome-extensions` is available, copies the extension to
+The installer builds the optimized Rust application, installs it to `~/.local/bin`,
+creates a desktop-menu entry in `$XDG_DATA_HOME/applications`, and installs/enables
+the Shell extension. It does not require root privileges. The script checks that
+Cargo and `gnome-extensions` are available before starting. Launch GNOME Inspector
+from the application menu or run `gnome-inspector`.
+
+To remove the application and extension:
+
+```sh
+bash scripts/uninstall.sh
+```
+
+The uninstaller preserves `$XDG_CONFIG_HOME/gnome-inspector`, including the custom
+stylesheet. To install or update only the Shell agent from a development checkout,
+use `bash scripts/install-extension.sh`. That script copies the extension to
 `~/.local/share/gnome-shell/extensions/gnome-inspector@cgreg21`, and checks whether
 GNOME Shell has discovered it before requesting activation. If the extension is not
 listed yet, log out and back in, then enable it manually with:
@@ -160,7 +179,7 @@ RUST_BACKTRACE=full cargo test --all-targets --all-features -- --nocapture
 cargo test --doc --all-features
 cargo clippy --all-targets --all-features -- -D warnings
 node --test --test-reporter=spec extension/*.test.js
-shellcheck scripts/test-gnome-shell-51.sh
+shellcheck scripts/test-gnome-shell-51.sh scripts/capture-readme-screenshots.sh scripts/install-extension.sh scripts/install.sh scripts/uninstall.sh
 ```
 
 CI additionally runs:
@@ -171,7 +190,7 @@ CI additionally runs:
 - **cargo-machete** to detect unused direct dependencies.
 - **cargo tree --duplicates** to expose duplicate dependency versions.
 - JavaScript syntax and extension metadata validation.
-- ShellCheck and actionlint for the CI/integration scripts.
+- ShellCheck and actionlint for the CI, installation, and integration scripts.
 - A real GNOME Shell 51 extension integration test (see below).
 
 ## GNOME Shell 51 virtual test session

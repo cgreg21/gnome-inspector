@@ -117,8 +117,14 @@ fn set_actor_property(path: &str, name: &str, value: &str) -> Result<serde_json:
     let parameters = (path.to_string(), name.to_string(), value.to_string()).to_variant();
     let reply = connection
         .call_sync(
-            Some(BUS_NAME), OBJECT_PATH, INTERFACE, "SetActorProperty",
-            Some(&parameters), None, gio::DBusCallFlags::NONE, 1_500,
+            Some(BUS_NAME),
+            OBJECT_PATH,
+            INTERFACE,
+            "SetActorProperty",
+            Some(&parameters),
+            None,
+            gio::DBusCallFlags::NONE,
+            1_500,
             None::<&gio::Cancellable>,
         )
         .map_err(|error| error.to_string())?;
@@ -132,16 +138,38 @@ fn editable_actor_properties(node: &serde_json::Value) -> Vec<(String, String)> 
         .into_iter()
         .flatten()
         .filter(|property| {
-            property.get("writable").and_then(serde_json::Value::as_bool) == Some(true)
-                && property.get("type").and_then(serde_json::Value::as_str).is_some_and(|kind| {
-                    matches!(kind, "gchararray" | "gboolean" | "gint" | "guint" | "gint64" | "guint64" | "gfloat" | "gdouble")
-                })
+            property
+                .get("writable")
+                .and_then(serde_json::Value::as_bool)
+                == Some(true)
+                && property
+                    .get("type")
+                    .and_then(serde_json::Value::as_str)
+                    .is_some_and(|kind| {
+                        matches!(
+                            kind,
+                            "gchararray"
+                                | "gboolean"
+                                | "gint"
+                                | "guint"
+                                | "gint64"
+                                | "guint64"
+                                | "gfloat"
+                                | "gdouble"
+                        )
+                    })
         })
         .filter_map(|property| {
             let name = property.get("name")?.as_str()?.to_string();
-            let value = property.get("value").map(|value| {
-                value.as_str().map(str::to_string).unwrap_or_else(|| value.to_string())
-            }).unwrap_or_default();
+            let value = property
+                .get("value")
+                .map(|value| {
+                    value
+                        .as_str()
+                        .map(str::to_string)
+                        .unwrap_or_else(|| value.to_string())
+                })
+                .unwrap_or_default();
             Some((name, value))
         })
         .collect()
@@ -904,7 +932,10 @@ fn actors_page() -> gtk::Box {
         let Some(name) = name_for_property_choice.active_id() else {
             return;
         };
-        if let Some((_, value)) = editable_actor_properties(&node).into_iter().find(|(candidate, _)| candidate == name.as_str()) {
+        if let Some((_, value)) = editable_actor_properties(&node)
+            .into_iter()
+            .find(|(candidate, _)| candidate == name.as_str())
+        {
             value_for_property_choice.set_text(&value);
         }
     });
@@ -933,18 +964,31 @@ fn actors_page() -> gtk::Box {
                 status_for_apply.set_text(&format!("Propriété « {name} » mise à jour."));
                 status_for_apply.remove_css_class("error");
                 let mut updated = actor;
-                if let Some(properties) = updated.get_mut("properties").and_then(serde_json::Value::as_array_mut) {
-                    if let Some(property) = properties.iter_mut().find(|property| property.get("name").and_then(serde_json::Value::as_str) == Some(name.as_str())) {
+                if let Some(properties) = updated
+                    .get_mut("properties")
+                    .and_then(serde_json::Value::as_array_mut)
+                {
+                    if let Some(property) = properties.iter_mut().find(|property| {
+                        property.get("name").and_then(serde_json::Value::as_str)
+                            == Some(name.as_str())
+                    }) {
                         if let Some(value) = result.get("value") {
                             property["value"] = value.clone();
                         }
                     }
                 }
                 *actor_for_apply.borrow_mut() = Some(updated.clone());
-                show_actor_details_filtered(&details_for_apply, &updated, search_for_apply.text().as_str());
+                show_actor_details_filtered(
+                    &details_for_apply,
+                    &updated,
+                    search_for_apply.text().as_str(),
+                );
             }
             Ok(result) => {
-                let error = result.get("error").and_then(serde_json::Value::as_str).unwrap_or("Modification refusée.");
+                let error = result
+                    .get("error")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("Modification refusée.");
                 status_for_apply.set_text(error);
                 status_for_apply.add_css_class("error");
             }

@@ -79,3 +79,59 @@ test('reads an existing stylesheet', () => {
     const GLib = { get_user_config_dir: () => '/config', build_filenamev: parts => parts.join('/') };
     assert.equal(readCustomStylesheet(Gio, GLib), '/* user css */');
 });
+
+test('saves and applies a user stylesheet', () => {
+    const writes = [];
+    const path = '/config/gnome-inspector/custom.css';
+    const Gio = {
+        FileCreateFlags: {},
+        File: { new_for_path: value => ({
+            query_exists: () => value === path,
+            make_directory_with_parents() {},
+            get_path: () => value,
+        }) },
+    };
+    const GLib = {
+        get_user_config_dir: () => '/config',
+        build_filenamev: parts => parts.join('/'),
+        path_get_dirname: () => '/config/gnome-inspector',
+        file_get_contents: () => [true, new TextEncoder().encode('old css')],
+        file_set_contents: (file, css) => writes.push([file, css]),
+    };
+    const theme = {
+        get_custom_stylesheets: () => [],
+        unload_stylesheet() {},
+        load_stylesheet: () => true,
+    };
+    assert.deepEqual(saveCustomStylesheet(theme, Gio, GLib, 'new css'), { ok: true, path });
+    assert.deepEqual(writes, [[path, 'new css']]);
+});
+
+test('restores the previous stylesheet when GNOME rejects new CSS', () => {
+    const writes = [];
+    const path = '/config/gnome-inspector/custom.css';
+    const Gio = {
+        File: { new_for_path: value => ({
+            query_exists: () => value === path,
+            make_directory_with_parents() {},
+            get_path: () => value,
+        }) },
+    };
+    const GLib = {
+        get_user_config_dir: () => '/config',
+        build_filenamev: parts => parts.join('/'),
+        path_get_dirname: () => '/config/gnome-inspector',
+        file_get_contents: () => [true, new TextEncoder().encode('old css')],
+        file_set_contents: (file, css) => writes.push([file, css]),
+    };
+    let attempts = 0;
+    const theme = {
+        get_custom_stylesheets: () => [],
+        unload_stylesheet() {},
+        load_stylesheet: () => ++attempts > 1,
+    };
+    const result = saveCustomStylesheet(theme, Gio, GLib, 'broken css');
+    assert.equal(result.ok, false);
+    assert.deepEqual(writes, [[path, 'broken css'], [path, 'old css']]);
+    assert.equal(attempts, 2);
+});

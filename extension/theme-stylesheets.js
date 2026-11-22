@@ -45,33 +45,26 @@ export function saveCustomStylesheet(theme, Gio, GLib, css) {
     if (!directory.query_exists(null))
         directory.make_directory_with_parents(null);
 
-    const contents = new TextEncoder().encode(css);
-    const temporary = Gio.File.new_for_path(`${path}.validate`);
-    temporary.replace_contents(
-        contents,
-        null,
-        false,
-        Gio.FileCreateFlags.REPLACE_DESTINATION,
-        null
-    );
-    if (theme.load_stylesheet(temporary) === false)
-        return { ok: false, error: 'GNOME Shell rejected the custom stylesheet.', path };
-    theme.unload_stylesheet(temporary);
-
     const file = Gio.File.new_for_path(path);
-    file.replace_contents(
-        contents,
-        null,
-        false,
-        Gio.FileCreateFlags.REPLACE_DESTINATION,
-        null
-    );
+    const previous = file.query_exists(null)
+        ? GLib.file_get_contents(path)[1]
+        : null;
+    GLib.file_set_contents(path, css);
+
     const existing = theme.get_custom_stylesheets()
         .find(item => item.get_path?.() === path);
     if (existing)
         theme.unload_stylesheet(existing);
-    if (theme.load_stylesheet(file) === false)
-        return { ok: false, error: 'GNOME Shell could not apply the saved stylesheet.', path };
+
+    if (theme.load_stylesheet(file) === false) {
+        if (previous === null)
+            GLib.unlink(path);
+        else {
+            GLib.file_set_contents(path, new TextDecoder().decode(previous));
+            theme.load_stylesheet(file);
+        }
+        return { ok: false, error: 'GNOME Shell rejected the custom stylesheet.', path };
+    }
 
     return { ok: true, path };
 }

@@ -1970,6 +1970,7 @@ mod tests {
         );
     }
 
+    #[test]
     fn reads_actor_path_for_clipboard_actions() {
         let node = serde_json::json!({ "path": "2/1" });
         let missing = serde_json::json!({ "name": "actor" });

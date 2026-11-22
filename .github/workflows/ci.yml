@@ -96,6 +96,7 @@ jobs:
         run: |
           node --input-type=module --check < extension/extension.js
           node --input-type=module --check < extension/actor-tree.js
+          node --input-type=module --check < extension/property-editor.js
           node --input-type=module --check < extension/style-tree.js
           node --check extension/actor-tree.test.js
 

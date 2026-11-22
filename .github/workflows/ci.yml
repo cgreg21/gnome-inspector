@@ -98,6 +98,7 @@ jobs:
           node --input-type=module --check < extension/actor-tree.js
           node --input-type=module --check < extension/property-editor.js
           node --input-type=module --check < extension/style-tree.js
+          node --input-type=module --check < extension/theme-stylesheets.js
           node --check extension/actor-tree.test.js
 
       - name: Validate extension metadata

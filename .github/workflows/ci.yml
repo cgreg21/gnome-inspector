@@ -104,8 +104,11 @@ jobs:
       - name: Validate extension metadata
         run: python3 -m json.tool extension/metadata.json > /dev/null
 
+      - name: Test per-user installation and removal
+        run: bash scripts/test-install.sh
+
       - name: ShellCheck integration scripts
-        run: shellcheck scripts/test-gnome-shell-51.sh scripts/capture-readme-screenshots.sh scripts/install-extension.sh scripts/install.sh scripts/uninstall.sh
+        run: shellcheck scripts/test-gnome-shell-51.sh scripts/test-install.sh scripts/capture-readme-screenshots.sh scripts/install-extension.sh scripts/install.sh scripts/uninstall.sh
 
       - name: Validate workflow syntax
         uses: docker://rhysd/actionlint:1.7.11

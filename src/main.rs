@@ -2187,6 +2187,26 @@ mod tests {
     }
 
     #[test]
+    fn property_editor_lists_only_writable_supported_properties() {
+        let node = serde_json::json!({
+            "properties": [
+                {"name": "label", "type": "gchararray", "writable": true, "value": "OK"},
+                {"name": "visible", "type": "gboolean", "writable": true, "value": true},
+                {"name": "width", "type": "gint", "writable": false, "value": 100},
+                {"name": "child", "type": "GObject", "writable": true, "value": null}
+            ]
+        });
+
+        assert_eq!(
+            editable_actor_properties(&node),
+            vec![
+                ("label".to_string(), "OK".to_string()),
+                ("visible".to_string(), "true".to_string())
+            ]
+        );
+    }
+
+    #[test]
     fn actor_property_filter_matches_name_type_and_value() {
         let node = serde_json::json!({
             "name": "button",

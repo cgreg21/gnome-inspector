@@ -28,7 +28,7 @@ that accesses Shell-specific APIs.
 - [x] Rolling rendered-frame-rate history (last 60 samples)
 - [ ] CPU and memory history
 
-The actor snapshot is read-only and deliberately bounded to 1,000 actors and 12 levels.
+The Shell agent also exposes a validated `SetActorProperty` D-Bus method for writable GObject properties. It currently accepts strings, booleans and bounded numeric types, rejects read-only or unsupported properties, and enforces each numeric property’s declared minimum and maximum. The dedicated desktop property editor is still in progress. The actor snapshot is read-only and deliberately bounded to 1,000 actors and 12 levels.
 Its response includes an actor count, a truncation flag, and an `incomplete` flag when
 an actor property or child list cannot be read. Per-actor `propertyErrors`, `childrenError`,
 and `actorError` fields explain failures. Invalid geometry uses safe fallback values, and

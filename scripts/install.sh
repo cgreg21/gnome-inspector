@@ -5,6 +5,10 @@ ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN_DIR="${GNOME_INSPECTOR_BIN_DIR:-$HOME/.local/bin}"
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
 BIN_PATH="$BIN_DIR/gnome-inspector"
+BUILD_DIR="${CARGO_TARGET_DIR:-$ROOT_DIR/target}"
+if [[ "$BUILD_DIR" != /* ]]; then
+    BUILD_DIR="$ROOT_DIR/$BUILD_DIR"
+fi
 DESKTOP_DIR="$DATA_DIR/applications"
 DESKTOP_FILE="$DESKTOP_DIR/io.github.cgreg21.GnomeInspector.desktop"
 
@@ -24,13 +28,13 @@ echo "Building GNOME Inspector in release mode..."
     cargo build --release
 )
 
-if [[ ! -x "$ROOT_DIR/target/release/gnome-inspector" ]]; then
+if [[ ! -x "$BUILD_DIR/release/gnome-inspector" ]]; then
     echo "The release binary was not produced." >&2
     exit 1
 fi
 
 install -d "$BIN_DIR" "$DESKTOP_DIR"
-install -m 755 "$ROOT_DIR/target/release/gnome-inspector" "$BIN_PATH"
+install -m 755 "$BUILD_DIR/release/gnome-inspector" "$BIN_PATH"
 
 desktop_exec="${BIN_PATH//\\/\\\\}"
 desktop_exec="${desktop_exec//\"/\\\"}"

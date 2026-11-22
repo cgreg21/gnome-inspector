@@ -110,6 +110,43 @@ fn set_actor_style_class(path: &str, style_class: &str) -> Result<String, String
     string_reply(&reply, "Invalid CSS class update reply.")
 }
 
+
+fn set_actor_property(path: &str, name: &str, value: &str) -> Result<serde_json::Value, String> {
+    let connection = gio::bus_get_sync(gio::BusType::Session, None::<&gio::Cancellable>)
+        .map_err(|error| error.to_string())?;
+    let parameters = (path.to_string(), name.to_string(), value.to_string()).to_variant();
+    let reply = connection
+        .call_sync(
+            Some(BUS_NAME), OBJECT_PATH, INTERFACE, "SetActorProperty",
+            Some(&parameters), None, gio::DBusCallFlags::NONE, 1_500,
+            None::<&gio::Cancellable>,
+        )
+        .map_err(|error| error.to_string())?;
+    let json = string_reply(&reply, "Invalid GObject property update reply.")?;
+    serde_json::from_str(&json).map_err(|error| error.to_string())
+}
+
+fn editable_actor_properties(node: &serde_json::Value) -> Vec<(String, String)> {
+    node.get("properties")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|property| {
+            property.get("writable").and_then(serde_json::Value::as_bool) == Some(true)
+                && property.get("type").and_then(serde_json::Value::as_str).is_some_and(|kind| {
+                    matches!(kind, "gchararray" | "gboolean" | "gint" | "guint" | "gint64" | "guint64" | "gfloat" | "gdouble")
+                })
+        })
+        .filter_map(|property| {
+            let name = property.get("name")?.as_str()?.to_string();
+            let value = property.get("value").map(|value| {
+                value.as_str().map(str::to_string).unwrap_or_else(|| value.to_string())
+            }).unwrap_or_default();
+            Some((name, value))
+        })
+        .collect()
+}
+
 fn theme_info() -> Result<String, String> {
     string_reply(
         &shell_call("GetThemeInfo")?,
@@ -775,8 +812,25 @@ fn actors_page() -> gtk::Box {
     property_search.set_placeholder_text(Some("Filtrer les propriétés par nom, type ou valeur…"));
     property_search.set_margin_start(12);
     property_search.set_margin_end(12);
+    let property_editor = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+    property_editor.set_margin_start(12);
+    property_editor.set_margin_end(12);
+    let property_name = gtk::ComboBoxText::new();
+    property_name.set_hexpand(true);
+    property_name.set_sensitive(false);
+    let property_value = gtk::Entry::new();
+    property_value.set_hexpand(true);
+    property_value.set_placeholder_text(Some("Nouvelle valeur"));
+    property_value.set_sensitive(false);
+    let apply_property = gtk::Button::with_label("Appliquer");
+    apply_property.set_sensitive(false);
+    property_editor.append(&property_name);
+    property_editor.append(&property_value);
+    property_editor.append(&apply_property);
+
     let details_panel = gtk::Box::new(gtk::Orientation::Vertical, 8);
     details_panel.append(&property_search);
+    details_panel.append(&property_editor);
     details_panel.append(&details_scroll);
 
     let selected_actor = Rc::new(RefCell::new(None::<serde_json::Value>));
@@ -801,6 +855,9 @@ fn actors_page() -> gtk::Box {
     let actor_for_selection = selected_actor.clone();
     let details_for_selection = details.clone();
     let search_for_selection = property_search.clone();
+    let property_name_for_selection = property_name.clone();
+    let property_value_for_selection = property_value.clone();
+    let apply_for_selection = apply_property.clone();
     list.connect_row_selected(move |_, row| {
         if let Some(row) = row
             && let Ok(index) = row.widget_name().parse::<usize>()
@@ -812,6 +869,20 @@ fn actors_page() -> gtk::Box {
                 node,
                 search_for_selection.text().as_str(),
             );
+            property_name_for_selection.remove_all();
+            let editable = editable_actor_properties(node);
+            for (name, _) in &editable {
+                property_name_for_selection.append(Some(name), name);
+            }
+            property_name_for_selection.set_sensitive(!editable.is_empty());
+            property_value_for_selection.set_sensitive(!editable.is_empty());
+            apply_for_selection.set_sensitive(!editable.is_empty());
+            if let Some((_, value)) = editable.first() {
+                property_name_for_selection.set_active(Some(0));
+                property_value_for_selection.set_text(value);
+            } else {
+                property_value_for_selection.set_text("");
+            }
         }
     });
 
@@ -820,6 +891,67 @@ fn actors_page() -> gtk::Box {
     property_search.connect_search_changed(move |entry| {
         if let Some(node) = actor_for_property_search.borrow().as_ref() {
             show_actor_details_filtered(&details_for_property_search, node, entry.text().as_str());
+        }
+    });
+
+    let actor_for_property_choice = selected_actor.clone();
+    let value_for_property_choice = property_value.clone();
+    let name_for_property_choice = property_name.clone();
+    property_name.connect_changed(move |_| {
+        let Some(node) = actor_for_property_choice.borrow().as_ref().cloned() else {
+            return;
+        };
+        let Some(name) = name_for_property_choice.active_id() else {
+            return;
+        };
+        if let Some((_, value)) = editable_actor_properties(&node).into_iter().find(|(candidate, _)| candidate == name.as_str()) {
+            value_for_property_choice.set_text(&value);
+        }
+    });
+
+    let actor_for_apply = selected_actor.clone();
+    let name_for_apply = property_name.clone();
+    let value_for_apply = property_value.clone();
+    let status_for_apply = status.clone();
+    let details_for_apply = details.clone();
+    let search_for_apply = property_search.clone();
+    apply_property.connect_clicked(move |_| {
+        let Some(actor) = actor_for_apply.borrow().as_ref().cloned() else {
+            status_for_apply.set_text("Sélectionnez un acteur.");
+            return;
+        };
+        let Some(path) = actor_path(&actor) else {
+            status_for_apply.set_text("Chemin d’acteur indisponible.");
+            return;
+        };
+        let Some(name) = name_for_apply.active_id() else {
+            status_for_apply.set_text("Aucune propriété modifiable sélectionnée.");
+            return;
+        };
+        match set_actor_property(path, name.as_str(), value_for_apply.text().as_str()) {
+            Ok(result) if result.get("ok").and_then(serde_json::Value::as_bool) == Some(true) => {
+                status_for_apply.set_text(&format!("Propriété « {name} » mise à jour."));
+                status_for_apply.remove_css_class("error");
+                let mut updated = actor;
+                if let Some(properties) = updated.get_mut("properties").and_then(serde_json::Value::as_array_mut) {
+                    if let Some(property) = properties.iter_mut().find(|property| property.get("name").and_then(serde_json::Value::as_str) == Some(name.as_str())) {
+                        if let Some(value) = result.get("value") {
+                            property["value"] = value.clone();
+                        }
+                    }
+                }
+                *actor_for_apply.borrow_mut() = Some(updated.clone());
+                show_actor_details_filtered(&details_for_apply, &updated, search_for_apply.text().as_str());
+            }
+            Ok(result) => {
+                let error = result.get("error").and_then(serde_json::Value::as_str).unwrap_or("Modification refusée.");
+                status_for_apply.set_text(error);
+                status_for_apply.add_css_class("error");
+            }
+            Err(error) => {
+                status_for_apply.set_text(&format!("Échec de la modification : {error}"));
+                status_for_apply.add_css_class("error");
+            }
         }
     });
 

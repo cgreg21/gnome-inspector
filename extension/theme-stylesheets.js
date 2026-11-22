@@ -32,9 +32,7 @@ export function readCustomStylesheet(Gio, GLib) {
     const file = Gio.File.new_for_path(customStylesheetPath(GLib));
     if (!file.query_exists(null))
         return '';
-    const [ok, contents] = file.load_contents(null);
-    if (!ok)
-        throw new Error('Could not read the custom stylesheet.');
+    const [contents] = file.load_contents(null);
     return new TextDecoder().decode(contents);
 }
 
@@ -44,23 +42,36 @@ export function saveCustomStylesheet(theme, Gio, GLib, css) {
 
     const path = customStylesheetPath(GLib);
     const directory = Gio.File.new_for_path(GLib.path_get_dirname(path));
-    directory.make_directory_with_parents(null);
-    const file = Gio.File.new_for_path(path);
-    file.replace_contents(
-        new TextEncoder().encode(css),
+    if (!directory.query_exists(null))
+        directory.make_directory_with_parents(null);
+
+    const contents = new TextEncoder().encode(css);
+    const temporary = Gio.File.new_for_path(`${path}.validate`);
+    temporary.replace_contents(
+        contents,
         null,
         false,
         Gio.FileCreateFlags.REPLACE_DESTINATION,
         null
     );
+    if (theme.load_stylesheet(temporary) === false)
+        return { ok: false, error: 'GNOME Shell rejected the custom stylesheet.', path };
+    theme.unload_stylesheet(temporary);
 
+    const file = Gio.File.new_for_path(path);
+    file.replace_contents(
+        contents,
+        null,
+        false,
+        Gio.FileCreateFlags.REPLACE_DESTINATION,
+        null
+    );
     const existing = theme.get_custom_stylesheets()
         .find(item => item.get_path?.() === path);
     if (existing)
         theme.unload_stylesheet(existing);
-
     if (theme.load_stylesheet(file) === false)
-        return { ok: false, error: 'GNOME Shell rejected the custom stylesheet.', path };
+        return { ok: false, error: 'GNOME Shell could not apply the saved stylesheet.', path };
 
     return { ok: true, path };
 }

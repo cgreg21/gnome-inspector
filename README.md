@@ -2,8 +2,8 @@
 
 A native developer tool for inspecting and debugging GNOME Shell.
 
-**Release target: Alpha 0.1.0.** The project is under active development; no public alpha
-binary release has been published yet.
+**Current version: `0.1.0-alpha.1`.** The first distributable Linux alpha archive can be built
+with `bash scripts/package-alpha.sh`. Published binaries will be attached to a draft GitHub release.
 
 The first development target is GNOME Shell 51 on Linux. The project uses a GTK4/libadwaita
 desktop application and a GNOME Shell extension. The extension is the only component
@@ -66,6 +66,22 @@ refreshed PNGs into the repository, run the workflow manually with
 `workflow_dispatch`; that run commits the updated captures.
 
 ## Install GNOME Inspector
+
+### Install a prebuilt alpha archive
+
+Download and extract the `gnome-inspector-0.1.0-alpha.1-linux-ARCH.tar.gz` archive from the
+GitHub Releases page, then run these commands from the extracted directory:
+
+```sh
+./install.sh
+```
+
+The archive contains the prebuilt application, GNOME Shell extension, README, license,
+and matching install/uninstall scripts. It does not require Cargo or Rust. GNOME Shell
+51 and `gnome-extensions` are still required. Remove it with `./uninstall.sh`; user
+configuration is preserved.
+
+### Build and install from source
 
 From the repository root, install the application and its GNOME Shell agent for the
 current user:
@@ -180,7 +196,8 @@ cargo test --doc --all-features
 cargo clippy --all-targets --all-features -- -D warnings
 node --test --test-reporter=spec extension/*.test.js
 bash scripts/test-install.sh
-shellcheck scripts/test-gnome-shell-51.sh scripts/test-install.sh scripts/capture-readme-screenshots.sh scripts/install-extension.sh scripts/install.sh scripts/uninstall.sh
+bash scripts/test-package.sh
+shellcheck scripts/test-gnome-shell-51.sh scripts/test-install.sh scripts/test-package.sh scripts/package-alpha.sh scripts/install-bundle.sh scripts/uninstall-bundle.sh scripts/capture-readme-screenshots.sh scripts/install-extension.sh scripts/install.sh scripts/uninstall.sh
 ```
 
 CI additionally runs:

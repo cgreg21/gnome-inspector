@@ -400,6 +400,10 @@ fn actor_path(node: &serde_json::Value) -> Option<&str> {
     node.get("path").and_then(serde_json::Value::as_str)
 }
 
+fn actor_index_by_path(nodes: &[serde_json::Value], path: &str) -> Option<usize> {
+    nodes.iter().position(|node| actor_path(node) == Some(path))
+}
+
 fn actor_detail_summary(node: &serde_json::Value) -> serde_json::Value {
     let mut details = serde_json::Map::new();
     for key in [
@@ -990,11 +994,15 @@ fn styles_page() -> gtk::Box {
     let list_for_refresh = list.clone();
     let details_for_refresh = details.clone();
     let nodes_for_refresh = selected_nodes.clone();
+    let path_for_refresh = selected_path.clone();
+    let class_for_refresh = class_input.clone();
+    let style_for_refresh = style_input.clone();
     let status_for_refresh = status.clone();
     let refresh = gtk::Button::with_label("Actualiser les styles");
     refresh.add_css_class("suggested-action");
     refresh.set_halign(gtk::Align::Start);
     refresh.connect_clicked(move |_| {
+        let previous_path = path_for_refresh.borrow().clone();
         match style_tree().and_then(|json| {
             serde_json::from_str::<serde_json::Value>(&json).map_err(|error| error.to_string())
         }) {
@@ -1042,9 +1050,18 @@ fn styles_page() -> gtk::Box {
                         ""
                     }
                 ));
-                if let Some(root) = nodes_for_refresh.borrow().first() {
-                    show_actor_details(&details_for_refresh, root);
+                let selected_index = previous_path
+                    .as_deref()
+                    .and_then(|path| actor_index_by_path(&nodes_for_refresh.borrow(), path))
+                    .or_else(|| (!nodes_for_refresh.borrow().is_empty()).then_some(0));
+                if let Some(index) = selected_index {
+                    if let Some(row) = list_for_refresh.row_at_index(index as i32) {
+                        list_for_refresh.select_row(Some(&row));
+                    }
                 } else {
+                    *path_for_refresh.borrow_mut() = None;
+                    class_for_refresh.set_text("");
+                    style_for_refresh.set_text("");
                     details_for_refresh.buffer().set_text("Aucun style trouvé.");
                 }
                 status_for_refresh.remove_css_class("error");
@@ -1904,7 +1921,7 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        actor_detail_summary, actor_matches, actor_path, actor_style_label,
+        actor_detail_summary, actor_index_by_path, actor_matches, actor_path, actor_style_label,
         extension_is_discovered, filter_computed_style, flatten_actors, format_actor_details,
         format_computed_style, format_console_entry, remember_console_command, string_reply,
     };
@@ -1954,6 +1971,18 @@ mod tests {
         assert!(!actor_matches(&tree, "missing"));
         assert!(actor_matches(&tree, "label"));
         assert!(actor_matches(&tree, "confirm"));
+    }
+
+    #[test]
+    fn restores_actor_selection_by_stable_path_after_refresh() {
+        let nodes = vec![
+            serde_json::json!({"path": "0/0"}),
+            serde_json::json!({"path": "0/1"}),
+            serde_json::json!({"path": "0/2"}),
+        ];
+
+        assert_eq!(actor_index_by_path(&nodes, "0/1"), Some(1));
+        assert_eq!(actor_index_by_path(&nodes, "0/9"), None);
     }
 
     #[test]

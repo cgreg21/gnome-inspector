@@ -179,7 +179,8 @@ RUST_BACKTRACE=full cargo test --all-targets --all-features -- --nocapture
 cargo test --doc --all-features
 cargo clippy --all-targets --all-features -- -D warnings
 node --test --test-reporter=spec extension/*.test.js
-shellcheck scripts/test-gnome-shell-51.sh scripts/capture-readme-screenshots.sh scripts/install-extension.sh scripts/install.sh scripts/uninstall.sh
+bash scripts/test-install.sh
+shellcheck scripts/test-gnome-shell-51.sh scripts/test-install.sh scripts/capture-readme-screenshots.sh scripts/install-extension.sh scripts/install.sh scripts/uninstall.sh
 ```
 
 CI additionally runs:

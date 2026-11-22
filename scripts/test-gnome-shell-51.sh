@@ -160,6 +160,14 @@ grep -q 'themeStylesheet' <<<"$theme_info"
 grep -q 'customStylesheets' <<<"$theme_info"
 echo "Active GNOME theme stylesheet discovery: OK"
 
+stylesheet_reload="$(timeout 10s gdbus call --session \
+    --dest io.github.cgreg21.GnomeInspector.Shell \
+    --object-path /io/github/cgreg21/GnomeInspector \
+    --method io.github.cgreg21.GnomeInspector.ReloadCustomStylesheets)"
+grep -q '"ok":true' <<<"$stylesheet_reload"
+grep -q '"reloaded":' <<<"$stylesheet_reload"
+echo "Custom GNOME theme stylesheet reload: OK"
+
 property_update="$(timeout 10s gdbus call --session \
     --dest io.github.cgreg21.GnomeInspector.Shell \
     --object-path /io/github/cgreg21/GnomeInspector \

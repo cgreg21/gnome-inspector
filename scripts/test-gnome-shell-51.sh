@@ -160,6 +160,14 @@ grep -q 'themeStylesheet' <<<"$theme_info"
 grep -q 'customStylesheets' <<<"$theme_info"
 echo "Active GNOME theme stylesheet discovery: OK"
 
+property_update="$(timeout 10s gdbus call --session \
+    --dest io.github.cgreg21.GnomeInspector.Shell \
+    --object-path /io/github/cgreg21/GnomeInspector \
+    --method io.github.cgreg21.GnomeInspector.SetActorProperty 'invalid/path' 'name' 'test')"
+
+grep -q 'false' <<<"$property_update"
+echo "Invalid GObject property actor path rejected: OK"
+
 class_update="$(timeout 10s gdbus call --session \
     --dest io.github.cgreg21.GnomeInspector.Shell \
     --object-path /io/github/cgreg21/GnomeInspector \

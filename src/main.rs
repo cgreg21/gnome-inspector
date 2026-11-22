@@ -966,15 +966,13 @@ fn actors_page() -> gtk::Box {
                 if let Some(properties) = updated
                     .get_mut("properties")
                     .and_then(serde_json::Value::as_array_mut)
-                {
-                    if let Some(property) = properties.iter_mut().find(|property| {
+                    && let Some(property) = properties.iter_mut().find(|property| {
                         property.get("name").and_then(serde_json::Value::as_str)
                             == Some(name.as_str())
-                    }) {
-                        if let Some(value) = result.get("value") {
-                            property["value"] = value.clone();
-                        }
-                    }
+                    })
+                    && let Some(value) = result.get("value")
+                {
+                    property["value"] = value.clone();
                 }
                 *actor_for_apply.borrow_mut() = Some(updated.clone());
                 show_actor_details_filtered(

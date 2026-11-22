@@ -110,7 +110,6 @@ fn set_actor_style_class(path: &str, style_class: &str) -> Result<String, String
     string_reply(&reply, "Invalid CSS class update reply.")
 }
 
-
 fn set_actor_property(path: &str, name: &str, value: &str) -> Result<serde_json::Value, String> {
     let connection = gio::bus_get_sync(gio::BusType::Session, None::<&gio::Cancellable>)
         .map_err(|error| error.to_string())?;

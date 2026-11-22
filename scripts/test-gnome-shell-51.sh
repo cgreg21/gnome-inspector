@@ -179,6 +179,7 @@ custom_css_read="$(timeout 10s gdbus call --session \
     --dest io.github.cgreg21.GnomeInspector.Shell \
     --object-path /io/github/cgreg21/GnomeInspector \
     --method io.github.cgreg21.GnomeInspector.GetCustomStylesheet)"
+echo "Custom stylesheet read response: $custom_css_read"
 grep -q 'gnome-inspector-test' <<<"$custom_css_read"
 echo "User custom stylesheet save, apply and read: OK"
 

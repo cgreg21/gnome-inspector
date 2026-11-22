@@ -431,6 +431,7 @@ fn actor_detail_summary(node: &serde_json::Value) -> serde_json::Value {
     serde_json::Value::Object(details)
 }
 
+#[cfg(test)]
 fn format_actor_details(node: &serde_json::Value) -> String {
     format_actor_details_filtered(node, "")
 }

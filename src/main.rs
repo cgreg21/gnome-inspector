@@ -182,7 +182,10 @@ fn theme_info() -> Result<String, String> {
 }
 
 fn custom_stylesheet() -> Result<String, String> {
-    string_reply(&shell_call("GetCustomStylesheet")?, "Invalid custom stylesheet reply.")
+    string_reply(
+        &shell_call("GetCustomStylesheet")?,
+        "Invalid custom stylesheet reply.",
+    )
 }
 
 fn save_custom_stylesheet(css: &str) -> Result<serde_json::Value, String> {
@@ -343,7 +346,10 @@ fn install_extension() -> Result<(), String> {
             include_str!("../extension/actor-picker.js"),
         ),
         ("style-tree.js", include_str!("../extension/style-tree.js")),
-        ("theme-stylesheets.js", include_str!("../extension/theme-stylesheets.js")),
+        (
+            "theme-stylesheets.js",
+            include_str!("../extension/theme-stylesheets.js"),
+        ),
     ] {
         std::fs::write(extension_dir.join(name), contents).map_err(|error| error.to_string())?;
     }
@@ -1575,7 +1581,8 @@ fn styles_page() -> gtk::Box {
     custom_css.set_left_margin(8);
     custom_css.set_top_margin(8);
     custom_css.buffer().set_text(
-        &custom_stylesheet().unwrap_or_else(|_| "/* CSS personnalisé GNOME Shell */\\n".to_string()),
+        &custom_stylesheet()
+            .unwrap_or_else(|_| "/* CSS personnalisé GNOME Shell */\\n".to_string()),
     );
     let custom_css_scroll = gtk::ScrolledWindow::builder()
         .min_content_height(180)
@@ -1592,12 +1599,19 @@ fn styles_page() -> gtk::Box {
         let css = custom_css_buffer.text(&start, &end, false).to_string();
         match save_custom_stylesheet(&css) {
             Ok(result) if result.get("ok").and_then(serde_json::Value::as_bool) == Some(true) => {
-                let path = result.get("path").and_then(serde_json::Value::as_str).unwrap_or("");
-                custom_css_status.set_text(&format!("Feuille CSS enregistrée et appliquée : {path}"));
+                let path = result
+                    .get("path")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("");
+                custom_css_status
+                    .set_text(&format!("Feuille CSS enregistrée et appliquée : {path}"));
                 custom_css_status.remove_css_class("error");
             }
             Ok(result) => {
-                let error = result.get("error").and_then(serde_json::Value::as_str).unwrap_or("Erreur inconnue.");
+                let error = result
+                    .get("error")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("Erreur inconnue.");
                 custom_css_status.set_text(&format!("Échec de l’application CSS : {error}"));
                 custom_css_status.add_css_class("error");
             }

@@ -76,7 +76,9 @@ GitHub Releases page, then run these commands from the extracted directory:
 ./install.sh
 ```
 
-The archive contains the prebuilt application, GNOME Shell extension, README, license,
+Before copying files, the installer verifies GNOME Shell 51 and checks that all shared libraries required by the binary are available.
+
+The archive contains the prebuilt application, GNOME Shell extension, runtime checker, README, license,
 and matching install/uninstall scripts. It does not require Cargo or Rust. GNOME Shell
 51 and `gnome-extensions` are still required. Remove it with `./uninstall.sh`; user
 configuration is preserved.
@@ -92,8 +94,7 @@ bash scripts/install.sh
 
 The installer builds the optimized Rust application, installs it to `~/.local/bin`,
 creates a desktop-menu entry in `$XDG_DATA_HOME/applications`, and installs/enables
-the Shell extension. It does not require root privileges. The script checks that
-Cargo and `gnome-extensions` are available before starting. Launch GNOME Inspector
+the Shell extension. It does not require root privileges. The script checks that Cargo, GNOME Shell 51, `gnome-extensions`, and the binary runtime libraries are available before installation. Launch GNOME Inspector
 from the application menu or run `gnome-inspector`.
 
 To remove the application and extension:
@@ -197,7 +198,8 @@ cargo clippy --all-targets --all-features -- -D warnings
 node --test --test-reporter=spec extension/*.test.js
 bash scripts/test-install.sh
 bash scripts/test-package.sh
-shellcheck scripts/test-gnome-shell-51.sh scripts/test-install.sh scripts/test-package.sh scripts/package-alpha.sh scripts/install-bundle.sh scripts/uninstall-bundle.sh scripts/capture-readme-screenshots.sh scripts/install-extension.sh scripts/install.sh scripts/uninstall.sh
+bash scripts/test-runtime.sh
+shellcheck scripts/test-gnome-shell-51.sh scripts/test-install.sh scripts/test-package.sh scripts/test-runtime.sh scripts/check-runtime.sh scripts/package-alpha.sh scripts/install-bundle.sh scripts/uninstall-bundle.sh scripts/capture-readme-screenshots.sh scripts/install-extension.sh scripts/install.sh scripts/uninstall.sh
 ```
 
 CI additionally runs:

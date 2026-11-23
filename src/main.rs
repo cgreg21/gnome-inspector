@@ -1884,6 +1884,32 @@ fn styles_page() -> gtk::Box {
                     breadcrumb_for_selection.append(&crumb);
                 }
             }
+        } else {
+            title_for_selection.set_text("Aucun élément sélectionné");
+            style_summary_for_selection.set_text("Aucune classe ni pseudo-classe");
+            path_label_for_selection.set_text("Sélectionnez un acteur dans l’arborescence");
+            path_label_for_selection.set_tooltip_text(None);
+            *path_for_selection.borrow_mut() = None;
+            details_for_selection
+                .buffer()
+                .set_text("Sélectionnez un acteur pour inspecter ses styles.");
+            class_for_selection.set_text("");
+            style_for_selection.buffer().set_text("");
+            selected_inline_css_for_selection.borrow_mut().clear();
+            declaration_filter_for_selection.set_sensitive(false);
+            populate_inline_declarations(
+                &declarations_for_selection,
+                "",
+                "",
+                &style_for_selection,
+                &updating_for_selection,
+            );
+            while let Some(child) = breadcrumb_for_selection.first_child() {
+                breadcrumb_for_selection.remove(&child);
+            }
+            let hint = gtk::Label::new(Some("Sélectionnez un élément dans l’arborescence"));
+            hint.add_css_class("dim-label");
+            breadcrumb_for_selection.append(&hint);
         }
     });
 

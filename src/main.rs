@@ -3186,4 +3186,4 @@ mod tests {
         assert_eq!(names, vec!["root", "panel", "button"]);
         assert_eq!(depths, vec![0, 1, 2]);
     }
-}\n
+}

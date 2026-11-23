@@ -1802,16 +1802,18 @@ fn styles_page() -> gtk::Box {
     copy_actor_path.set_sensitive(false);
     let path_for_copy = selected_path.clone();
     copy_actor_path.connect_clicked(move |_| {
-        if let (Some(path), Some(display)) =
-            (path_for_copy.borrow().as_ref(), gtk::gdk::Display::default())
-        {
+        if let (Some(path), Some(display)) = (
+            path_for_copy.borrow().as_ref(),
+            gtk::gdk::Display::default(),
+        ) {
             display.clipboard().set_text(path);
         }
     });
     let copy_for_selection = copy_actor_path.clone();
     let path_for_selection_state = selected_path.clone();
     list.connect_row_selected(move |_, row| {
-        copy_for_selection.set_sensitive(row.is_some() && path_for_selection_state.borrow().is_some());
+        copy_for_selection
+            .set_sensitive(row.is_some() && path_for_selection_state.borrow().is_some());
     });
     selection_path_row.append(&copy_actor_path);
     selection_header.append(&selection_path_row);

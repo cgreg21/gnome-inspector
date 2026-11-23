@@ -510,6 +510,12 @@ fn actor_index_by_path(nodes: &[serde_json::Value], path: &str) -> Option<usize>
     nodes.iter().position(|node| actor_path(node) == Some(path))
 }
 
+fn actor_selection_index(nodes: &[serde_json::Value], previous_path: Option<&str>) -> Option<usize> {
+    previous_path
+        .and_then(|path| actor_index_by_path(nodes, path))
+        .or_else(|| (!nodes.is_empty()).then_some(0))
+}
+
 fn actor_detail_summary(node: &serde_json::Value) -> serde_json::Value {
     let mut details = serde_json::Map::new();
     for key in [
@@ -678,6 +684,11 @@ fn refresh_actor_tree(
     match actor_tree() {
         Ok(json) => match serde_json::from_str::<serde_json::Value>(&json) {
             Ok(snapshot) => {
+                let previous_path = list
+                    .selected_row()
+                    .and_then(|row| row.widget_name().parse::<usize>().ok())
+                    .and_then(|index| selected_nodes.borrow().get(index).and_then(actor_path))
+                    .map(str::to_owned);
                 let mut rows = Vec::new();
                 if let Some(root) = snapshot.get("root") {
                     flatten_actors(root, 0, &mut rows);
@@ -816,9 +827,14 @@ fn refresh_actor_tree(
                     }
                 ));
 
-                if let Some(root) = selected_nodes.borrow().first() {
-                    show_actor_details(details, root);
+                let selected_index =
+                    actor_selection_index(&selected_nodes.borrow(), previous_path.as_deref());
+                if let Some(index) = selected_index
+                    && let Some(row) = list.row_at_index(index as i32)
+                {
+                    list.select_row(Some(&row));
                 } else {
+                    list.unselect_all();
                     details.buffer().set_text("Aucun acteur dans la capture.");
                 }
                 status.remove_css_class("error");
@@ -868,7 +884,9 @@ fn actors_page() -> gtk::Box {
     details.set_wrap_mode(gtk::WrapMode::WordChar);
     details.set_left_margin(12);
     details.set_top_margin(12);
-    details.buffer().set_text("Sélectionnez un acteur pour afficher ses propriétés.");
+    details
+        .buffer()
+        .set_text("Sélectionnez un acteur pour afficher ses propriétés.");
     let details_scroll = gtk::ScrolledWindow::builder()
         .hexpand(true)
         .vexpand(true)
@@ -1209,7 +1227,9 @@ fn styles_page() -> gtk::Box {
     details.set_wrap_mode(gtk::WrapMode::WordChar);
     details.set_left_margin(12);
     details.set_top_margin(12);
-    details.buffer().set_text("Sélectionnez un acteur pour inspecter ses styles.");
+    details
+        .buffer()
+        .set_text("Sélectionnez un acteur pour inspecter ses styles.");
     let details_scroll = gtk::ScrolledWindow::builder()
         .hexpand(true)
         .vexpand(true)
@@ -1765,6 +1785,7 @@ fn console_page() -> gtk::Box {
     let run = gtk::Button::with_label("Exécuter dans GNOME Shell");
     run.add_css_class("suggested-action");
     run.set_halign(gtk::Align::Start);
+    run.set_tooltip_text(Some("Exécuter le code · Ctrl+Entrée"));
     let editor_for_run = editor.clone();
     let output_for_run = output.clone();
     let status_for_run = status.clone();
@@ -1789,10 +1810,12 @@ fn console_page() -> gtk::Box {
     });
 
     let clear = gtk::Button::with_label("Effacer le résultat");
+    clear.set_sensitive(false);
     let output_for_clear = output.clone();
     clear.connect_clicked(move |_| output_for_clear.buffer().set_text(""));
 
     let copy = gtk::Button::with_label("Copier le résultat");
+    copy.set_sensitive(false);
     let output_for_copy = output.clone();
     copy.connect_clicked(move |_| {
         let buffer = output_for_copy.buffer();
@@ -1801,6 +1824,36 @@ fn console_page() -> gtk::Box {
             display.clipboard().set_text(text.as_str());
         }
     });
+
+    let run_for_editor = run.clone();
+    editor.buffer().connect_changed(move |buffer| {
+        let source = buffer.text(&buffer.start_iter(), &buffer.end_iter(), true);
+        run_for_editor.set_sensitive(!source.trim().is_empty());
+    });
+
+    let clear_for_output = clear.clone();
+    let copy_for_output = copy.clone();
+    output.buffer().connect_changed(move |buffer| {
+        let has_output = !buffer
+            .text(&buffer.start_iter(), &buffer.end_iter(), true)
+            .is_empty();
+        clear_for_output.set_sensitive(has_output);
+        copy_for_output.set_sensitive(has_output);
+    });
+
+    let editor_keys = gtk::EventControllerKey::new();
+    let run_for_shortcut = run.clone();
+    editor_keys.connect_key_pressed(move |_, key, _, modifiers| {
+        if key == gtk::gdk::Key::Return
+            && modifiers.contains(gtk::gdk::ModifierType::CONTROL_MASK)
+        {
+            run_for_shortcut.emit_clicked();
+            glib::Propagation::Stop
+        } else {
+            glib::Propagation::Proceed
+        }
+    });
+    editor.add_controller(editor_keys);
 
     let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     actions.set_margin_start(24);
@@ -2339,7 +2392,8 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        actor_detail_summary, actor_index_by_path, actor_matches, actor_path, actor_style_label,
+        actor_detail_summary, actor_index_by_path, actor_matches, actor_path, actor_selection_index,
+        actor_style_label,
         editable_actor_properties, extension_is_discovered, filter_computed_style, flatten_actors,
         format_actor_details, format_actor_details_filtered, format_computed_style,
         format_console_entry, remember_console_command, string_reply,
@@ -2402,6 +2456,10 @@ mod tests {
 
         assert_eq!(actor_index_by_path(&nodes, "0/1"), Some(1));
         assert_eq!(actor_index_by_path(&nodes, "0/9"), None);
+        assert_eq!(actor_selection_index(&nodes, Some("0/2")), Some(2));
+        assert_eq!(actor_selection_index(&nodes, Some("0/9")), Some(0));
+        assert_eq!(actor_selection_index(&nodes, None), Some(0));
+        assert_eq!(actor_selection_index(&[], None), None);
     }
 
     #[test]

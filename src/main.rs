@@ -510,7 +510,10 @@ fn actor_index_by_path(nodes: &[serde_json::Value], path: &str) -> Option<usize>
     nodes.iter().position(|node| actor_path(node) == Some(path))
 }
 
-fn actor_selection_index(nodes: &[serde_json::Value], previous_path: Option<&str>) -> Option<usize> {
+fn actor_selection_index(
+    nodes: &[serde_json::Value],
+    previous_path: Option<&str>,
+) -> Option<usize> {
     previous_path
         .and_then(|path| actor_index_by_path(nodes, path))
         .or_else(|| (!nodes.is_empty()).then_some(0))
@@ -2270,9 +2273,11 @@ fn build_ui(app: &adw::Application) {
         .build();
     let console_command = gtk::Entry::new();
     console_command.set_placeholder_text(Some("Évaluer une expression GJS dans GNOME Shell…"));
+    console_command.set_tooltip_text(Some("Entrée : exécuter · ↑/↓ : parcourir l’historique"));
     console_command.set_hexpand(true);
     let console_run = gtk::Button::with_label("Exécuter");
     console_run.add_css_class("suggested-action");
+    console_run.set_sensitive(false);
     let console_history = Rc::new(RefCell::new(Vec::<String>::new()));
     let history_position = Rc::new(RefCell::new(None::<usize>));
     let command_for_run = console_command.clone();
@@ -2300,6 +2305,10 @@ fn build_ui(app: &adw::Application) {
     console_run.connect_clicked(move |_| execute_from_button());
     let execute_from_entry = execute_console.clone();
     console_command.connect_activate(move |_| execute_from_entry());
+    let run_for_command = console_run.clone();
+    console_command.connect_changed(move |entry| {
+        run_for_command.set_sensitive(!entry.text().trim().is_empty());
+    });
 
     let history_keys = gtk::EventControllerKey::new();
     let command_for_history = console_command.clone();
@@ -2349,8 +2358,16 @@ fn build_ui(app: &adw::Application) {
     console_actions.append(&console_run);
     let console_clear = gtk::Button::from_icon_name("edit-clear-symbolic");
     console_clear.set_tooltip_text(Some("Effacer la sortie de la console"));
+    console_clear.set_sensitive(false);
     let output_for_clear = console_output.clone();
     console_clear.connect_clicked(move |_| output_for_clear.buffer().set_text(""));
+    let clear_for_console_output = console_clear.clone();
+    console_output.buffer().connect_changed(move |buffer| {
+        let has_output = !buffer
+            .text(&buffer.start_iter(), &buffer.end_iter(), true)
+            .is_empty();
+        clear_for_console_output.set_sensitive(has_output);
+    });
     console_actions.append(&console_clear);
     let console_panel = gtk::Box::new(gtk::Orientation::Vertical, 6);
     console_panel.append(&console_scroll);

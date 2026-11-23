@@ -1320,7 +1320,8 @@ fn populate_inline_declarations(list: &gtk::ListBox, css: &str, query: &str) {
         };
         let name = name.trim();
         let value = value.trim();
-        if name.is_empty() || value.is_empty()
+        if name.is_empty()
+            || value.is_empty()
             || (!query.is_empty()
                 && !name.to_lowercase().contains(&query)
                 && !value.to_lowercase().contains(&query))
@@ -2021,7 +2022,9 @@ fn styles_page() -> gtk::Box {
     let selected_css_for_edit = selected_inline_css.clone();
     let declaration_filter_for_edit = declaration_filter.clone();
     style_input.buffer().connect_changed(move |buffer| {
-        let css = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false).to_string();
+        let css = buffer
+            .text(&buffer.start_iter(), &buffer.end_iter(), false)
+            .to_string();
         *selected_css_for_edit.borrow_mut() = css.clone();
         populate_inline_declarations(
             &declaration_list_for_edit,

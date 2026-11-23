@@ -1771,40 +1771,45 @@ fn styles_page() -> gtk::Box {
     properties_panel.append(&properties_title);
     properties_panel.append(&details_scroll);
 
-    let inspector = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    inspector.set_margin_top(8);
-    inspector.set_margin_bottom(8);
-    inspector.set_margin_start(12);
-    inspector.set_margin_end(12);
+    let inspector_tabs = gtk::Notebook::new();
+    inspector_tabs.set_scrollable(true);
+    inspector_tabs.set_hexpand(true);
+    inspector_tabs.set_vexpand(true);
 
-    let styles_title = gtk::Label::new(Some("Styles"));
-    styles_title.add_css_class("heading");
-    styles_title.set_halign(gtk::Align::Start);
-    inspector.append(&styles_title);
-    inspector.append(&class_row);
-    inspector.append(&style_row);
+    let styles_panel = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    styles_panel.set_margin_top(12);
+    styles_panel.set_margin_bottom(12);
+    styles_panel.set_margin_start(12);
+    styles_panel.set_margin_end(12);
+    styles_panel.append(&class_row);
+    styles_panel.append(&style_row);
+    inspector_tabs.append_page(&styles_panel, Some(&gtk::Label::new(Some("Styles"))));
 
-    let computed_title = gtk::Label::new(Some("Style calculé"));
-    computed_title.add_css_class("heading");
-    computed_title.set_halign(gtk::Align::Start);
-    inspector.append(&computed_title);
-    inspector.append(&computed_actions);
-    inspector.append(&computed_search);
-    inspector.append(&computed_scroll);
+    let computed_panel = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    computed_panel.set_margin_top(12);
+    computed_panel.set_margin_bottom(12);
+    computed_panel.set_margin_start(12);
+    computed_panel.set_margin_end(12);
+    computed_panel.append(&computed_actions);
+    computed_panel.append(&computed_search);
+    computed_panel.append(&computed_scroll);
+    inspector_tabs.append_page(&computed_panel, Some(&gtk::Label::new(Some("Calculé"))));
 
-    let theme_title = gtk::Label::new(Some("Thème"));
-    theme_title.add_css_class("heading");
-    theme_title.set_halign(gtk::Align::Start);
-    inspector.append(&theme_title);
-    inspector.append(&theme_actions);
-    inspector.append(&custom_css_scroll);
-    inspector.append(&theme_scroll);
+    let theme_panel = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    theme_panel.set_margin_top(12);
+    theme_panel.set_margin_bottom(12);
+    theme_panel.set_margin_start(12);
+    theme_panel.set_margin_end(12);
+    theme_panel.append(&theme_actions);
+    theme_panel.append(&custom_css_scroll);
+    theme_panel.append(&theme_scroll);
+    inspector_tabs.append_page(&theme_panel, Some(&gtk::Label::new(Some("Thème"))));
 
     let inspector_scroll = gtk::ScrolledWindow::builder()
         .min_content_width(340)
         .hexpand(true)
         .vexpand(true)
-        .child(&inspector)
+        .child(&inspector_tabs)
         .build();
 
     let detail_split = gtk::Paned::new(gtk::Orientation::Horizontal);

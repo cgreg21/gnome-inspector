@@ -546,9 +546,9 @@ fn actor_parent_path(path: &str) -> Option<&str> {
 }
 
 fn actor_first_child_index(nodes: &[serde_json::Value], path: &str) -> Option<usize> {
-    nodes.iter().position(|node| {
-        actor_path(node).and_then(actor_parent_path) == Some(path)
-    })
+    nodes
+        .iter()
+        .position(|node| actor_path(node).and_then(actor_parent_path) == Some(path))
 }
 
 fn actor_selection_index(
@@ -2788,8 +2788,8 @@ mod tests {
         actor_breadcrumb, actor_detail_summary, actor_first_child_index, actor_index_by_path,
         actor_inspector_title, actor_matches, actor_parent_path, actor_path,
         actor_property_has_changed, actor_selection_index, editable_actor_properties,
-        extension_is_discovered,
-        filter_computed_style, flatten_actors, format_actor_details, format_actor_details_filtered,
+        extension_is_discovered, filter_computed_style, flatten_actors, format_actor_details,
+        format_actor_details_filtered,
         format_computed_style, format_console_entry, remember_console_command, string_reply,
         text_differs,
     };

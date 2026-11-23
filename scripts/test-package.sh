@@ -50,6 +50,8 @@ BUNDLE="$(find "$TEST_DIR/extracted" -mindepth 1 -maxdepth 1 -type d -print -qui
 [[ -x "$BUNDLE/bin/gnome-inspector" ]]
 [[ -f "$BUNDLE/extension/metadata.json" ]]
 [[ -x "$BUNDLE/check-runtime.sh" ]]
+[[ -f "$BUNDLE/CHANGELOG.md" ]]
+grep -Fq "0.1.0-alpha.1" "$BUNDLE/CHANGELOG.md"
 "$BUNDLE/bin/gnome-inspector" | grep -Fxq "packaged-gnome-inspector"
 
 bash "$BUNDLE/install.sh"

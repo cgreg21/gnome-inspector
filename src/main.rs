@@ -3349,8 +3349,8 @@ mod tests {
     use super::{
         actor_breadcrumb, actor_detail_summary, actor_first_child_index, actor_index_by_path,
         actor_inspector_title, actor_matches, actor_parent_path, actor_path,
-        actor_property_has_changed, actor_selection_index, computed_style_entries, editable_actor_properties,
-        extension_is_discovered, flatten_actors, format_actor_details,
+        actor_property_has_changed, actor_selection_index, computed_style_entries,
+        editable_actor_properties, extension_is_discovered, flatten_actors, format_actor_details,
         format_actor_details_filtered, format_computed_style, format_console_entry, layout_metric,
         remember_console_command, string_reply, text_differs, update_inline_declaration,
     };

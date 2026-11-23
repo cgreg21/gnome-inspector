@@ -1251,8 +1251,6 @@ fn actors_page() -> gtk::Box {
     let details_for_refresh = details.clone();
     let nodes_for_refresh = selected_nodes.clone();
     let status_for_refresh = status.clone();
-    let expand_all_for_refresh = expand_all.clone();
-    let collapse_all_for_refresh = collapse_all.clone();
     let expanders_for_refresh = expander_widgets.clone();
     refresh.connect_clicked(move |_| {
         refresh_actor_tree(
@@ -1546,6 +1544,8 @@ fn styles_page() -> gtk::Box {
     let class_for_refresh = class_input.clone();
     let style_for_refresh = style_input.clone();
     let status_for_refresh = status.clone();
+    let expand_all_for_refresh = expand_all.clone();
+    let collapse_all_for_refresh = collapse_all.clone();
     let expand_all = gtk::Button::with_label("Tout déplier");
     expand_all.set_tooltip_text(Some("Déplier tous les niveaux de l’arborescence"));
     expand_all.set_sensitive(false);

@@ -1385,7 +1385,17 @@ fn styles_page() -> gtk::Box {
     let tree_for_keys = list.clone();
     let nodes_for_keys = selected_nodes.clone();
     let expanders_for_keys = expanders_for_search.clone();
-    tree_keys.connect_key_pressed(move |_, key, _, _| {
+    let search_for_keys = search.clone();
+    tree_keys.connect_key_pressed(move |_, key, _, modifiers| {
+        if key == gtk::gdk::Key::f && modifiers.contains(gtk::gdk::ModifierType::CONTROL_MASK) {
+            search_for_keys.grab_focus();
+            return glib::Propagation::Stop;
+        }
+        if key == gtk::gdk::Key::Escape && !search_for_keys.text().is_empty() {
+            search_for_keys.set_text("");
+            return glib::Propagation::Stop;
+        }
+
         let Some(row) = tree_for_keys.selected_row() else {
             return glib::Propagation::Proceed;
         };

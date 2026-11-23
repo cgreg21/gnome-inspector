@@ -76,6 +76,9 @@ test('reads computed theme-node metrics safely', () => {
                 get_element_classes: () => ['button', 'suggested-action'],
                 get_pseudo_classes: () => ['hover'],
                 get_font: () => ({ to_string: () => 'Cantarell 11' }),
+                get_margin: side => [1, 2, 3, 4][side],
+                get_border_width: side => [5, 6, 7, 8][side],
+                get_padding: side => [9, 10, 11, 12][side],
                 get_width: () => 120,
                 get_height: () => 32,
                 get_min_width: () => 80,
@@ -89,7 +92,7 @@ test('reads computed theme-node metrics safely', () => {
         },
     };
 
-    const result = buildComputedStyle(actor);
+    const result = buildComputedStyle(actor, { TOP: 0, RIGHT: 1, BOTTOM: 2, LEFT: 3 });
 
     assert.equal(result.available, true);
     assert.equal(result.node, 'StWidget.button');
@@ -98,6 +101,18 @@ test('reads computed theme-node metrics safely', () => {
     assert.equal(result.font, 'Cantarell 11');
     assert.equal(result.width, 120);
     assert.equal(result.horizontalPadding, 20);
+    assert.deepEqual(
+        [result.marginTop, result.marginRight, result.marginBottom, result.marginLeft],
+        [1, 2, 3, 4]
+    );
+    assert.deepEqual(
+        [result.borderTop, result.borderRight, result.borderBottom, result.borderLeft],
+        [5, 6, 7, 8]
+    );
+    assert.deepEqual(
+        [result.paddingTop, result.paddingRight, result.paddingBottom, result.paddingLeft],
+        [9, 10, 11, 12]
+    );
 });
 
 test('returns a safe unavailable result when theme-node access fails', () => {

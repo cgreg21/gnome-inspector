@@ -1838,8 +1838,7 @@ fn styles_page() -> gtk::Box {
     let style_keys = gtk::EventControllerKey::new();
     let apply_style_for_shortcut = apply_style.clone();
     style_keys.connect_key_pressed(move |_, key, _, modifiers| {
-        if key == gtk::gdk::Key::Return
-            && modifiers.contains(gtk::gdk::ModifierType::CONTROL_MASK)
+        if key == gtk::gdk::Key::Return && modifiers.contains(gtk::gdk::ModifierType::CONTROL_MASK)
         {
             apply_style_for_shortcut.emit_clicked();
             glib::Propagation::Stop
@@ -2135,7 +2134,9 @@ fn styles_page() -> gtk::Box {
     let classes_for_copy = class_input.clone();
     copy_classes.connect_clicked(move |_| {
         if let Some(display) = gtk::gdk::Display::default() {
-            display.clipboard().set_text(classes_for_copy.text().as_str());
+            display
+                .clipboard()
+                .set_text(classes_for_copy.text().as_str());
         }
     });
     let copy_inline_style = gtk::Button::from_icon_name("edit-copy-symbolic");
@@ -2143,7 +2144,9 @@ fn styles_page() -> gtk::Box {
     let style_for_copy = style_input.clone();
     copy_inline_style.connect_clicked(move |_| {
         if let Some(display) = gtk::gdk::Display::default() {
-            display.clipboard().set_text(&text_view_contents(&style_for_copy));
+            display
+                .clipboard()
+                .set_text(&text_view_contents(&style_for_copy));
         }
     });
     let class_copy_state = copy_classes.clone();

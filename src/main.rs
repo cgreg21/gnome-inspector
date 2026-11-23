@@ -3610,7 +3610,7 @@ mod tests {
 
     #[test]
     fn computed_style_entries_are_separate_filterable_properties() {
-        let report = "font: Sans 12px\\nwidth: 640\\ncolor: rgba(1, 2, 3, 1)";
+        let report = "font: Sans 12px\nwidth: 640\ncolor: rgba(1, 2, 3, 1)";
         assert_eq!(
             computed_style_entries(report, "WIDTH"),
             vec![(String::from("width"), String::from("640"))]

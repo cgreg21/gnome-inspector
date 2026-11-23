@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-VERSION="$(sed -n 's/^version = "\\([^"]*\\)"/\\1/p' "$ROOT_DIR/Cargo.toml" | head -n 1)"
+VERSION="$(awk -F '"' '/^version = / { print $2; exit }' "$ROOT_DIR/Cargo.toml")"
 
 bash "$ROOT_DIR/scripts/check-release-tag.sh" "v$VERSION"
 if bash "$ROOT_DIR/scripts/check-release-tag.sh" "v$VERSION-wrong"; then

@@ -408,6 +408,9 @@ fn actor_picker_button(
     status: &gtk::Label,
 ) -> gtk::Button {
     let button = gtk::Button::with_label("Sélectionner dans Shell");
+    button.set_tooltip_text(Some(
+        "Sélectionner un acteur visuellement dans GNOME Shell (Ctrl+Maj+C)",
+    ));
     let list = list.clone();
     let nodes = nodes.clone();
     let status = status.clone();
@@ -2181,6 +2184,20 @@ fn styles_page() -> gtk::Box {
     actions.set_margin_top(6);
     actions.add_css_class("toolbar");
     let pick_actor = actor_picker_button(&list, &selected_nodes, &status);
+    let picker_keys = gtk::EventControllerKey::new();
+    let picker_for_keys = pick_actor.clone();
+    picker_keys.connect_key_pressed(move |_, key, _, modifiers| {
+        if key == gtk::gdk::Key::c
+            && modifiers.contains(gtk::gdk::ModifierType::CONTROL_MASK)
+            && modifiers.contains(gtk::gdk::ModifierType::SHIFT_MASK)
+        {
+            picker_for_keys.emit_clicked();
+            glib::Propagation::Stop
+        } else {
+            glib::Propagation::Proceed
+        }
+    });
+    list.add_controller(picker_keys);
     actions.append(&search);
     actions.append(&pick_actor);
     actions.append(&expand_all);

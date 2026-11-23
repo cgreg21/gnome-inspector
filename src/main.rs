@@ -2204,6 +2204,7 @@ fn build_ui(app: &adw::Application) {
     let output_for_run = console_output.clone();
     let history_for_run = console_history.clone();
     let position_for_run = history_position.clone();
+    let scroll_for_run = console_scroll.clone();
     let execute_console: Rc<dyn Fn()> = Rc::new(move || {
         let source = command_for_run.text();
         if source.trim().is_empty() {
@@ -2215,7 +2216,7 @@ fn build_ui(app: &adw::Application) {
         let buffer = output_for_run.buffer();
         let mut end = buffer.end_iter();
         buffer.insert(&mut end, &format_console_entry(&source, &result));
-        let adjustment = console_scroll.vadjustment();
+        let adjustment = scroll_for_run.vadjustment();
         adjustment.set_value(adjustment.upper());
         command_for_run.set_text("");
         command_for_run.grab_focus();

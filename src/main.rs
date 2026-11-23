@@ -1238,9 +1238,11 @@ fn styles_page() -> gtk::Box {
     let class_input = gtk::Entry::new();
     class_input.set_placeholder_text(Some("Classes CSS : button primary"));
     class_input.set_hexpand(true);
+    class_input.set_sensitive(false);
     let style_input = gtk::Entry::new();
     style_input.set_placeholder_text(Some("Style inline : color: white;"));
     style_input.set_hexpand(true);
+    style_input.set_sensitive(false);
 
     let nodes_for_selection = selected_nodes.clone();
     let path_for_selection = selected_path.clone();
@@ -1362,6 +1364,7 @@ fn styles_page() -> gtk::Box {
     class_row.set_margin_start(24);
     class_row.set_margin_end(24);
     let apply_class = gtk::Button::with_label("Appliquer les classes");
+    apply_class.set_sensitive(false);
     let class_for_apply = class_input.clone();
     let path_for_class = selected_path.clone();
     let status_for_class = status.clone();
@@ -1405,6 +1408,7 @@ fn styles_page() -> gtk::Box {
     style_row.set_margin_start(24);
     style_row.set_margin_end(24);
     let apply_style = gtk::Button::with_label("Appliquer le style inline");
+    apply_style.set_sensitive(false);
     let style_for_apply = style_input.clone();
     let path_for_style = selected_path.clone();
     let status_for_style = status.clone();
@@ -1443,6 +1447,19 @@ fn styles_page() -> gtk::Box {
     });
     style_row.append(&style_input);
     style_row.append(&apply_style);
+
+    let list_for_edit_state = list.clone();
+    let class_for_edit_state = class_input.clone();
+    let style_for_edit_state = style_input.clone();
+    let apply_class_for_edit_state = apply_class.clone();
+    let apply_style_for_edit_state = apply_style.clone();
+    list_for_edit_state.connect_row_selected(move |_, row| {
+        let enabled = row.is_some();
+        class_for_edit_state.set_sensitive(enabled);
+        style_for_edit_state.set_sensitive(enabled);
+        apply_class_for_edit_state.set_sensitive(enabled);
+        apply_style_for_edit_state.set_sensitive(enabled);
+    });
 
     let computed_details = gtk::TextView::new();
     computed_details.set_editable(false);

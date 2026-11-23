@@ -222,7 +222,7 @@ export default class GnomeInspectorExtension extends Extension {
         if (!actor || typeof actor.get_theme_node !== 'function')
             return JSON.stringify({ available: false, error: 'Actor path is invalid or the actor has no computed theme style.' });
 
-        return JSON.stringify(buildComputedStyle(actor));
+        return JSON.stringify(buildComputedStyle(actor, St.Side));
     }
 
     GetThemeInfo() {

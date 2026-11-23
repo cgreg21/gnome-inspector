@@ -107,6 +107,9 @@ jobs:
       - name: Test GNOME runtime compatibility
         run: bash scripts/test-runtime.sh
 
+      - name: Test release tag validation
+        run: bash scripts/test-release-tag.sh
+
       - name: Test per-user installation and removal
         run: bash scripts/test-install.sh
 
@@ -114,7 +117,7 @@ jobs:
         run: bash scripts/test-package.sh
 
       - name: ShellCheck integration scripts
-        run: shellcheck scripts/test-gnome-shell-51.sh scripts/test-install.sh scripts/test-package.sh scripts/test-runtime.sh scripts/check-runtime.sh scripts/package-alpha.sh scripts/install-bundle.sh scripts/uninstall-bundle.sh scripts/capture-readme-screenshots.sh scripts/install-extension.sh scripts/install.sh scripts/uninstall.sh
+        run: shellcheck scripts/test-gnome-shell-51.sh scripts/test-install.sh scripts/test-package.sh scripts/test-runtime.sh scripts/test-release-tag.sh scripts/check-release-tag.sh scripts/check-runtime.sh scripts/package-alpha.sh scripts/install-bundle.sh scripts/uninstall-bundle.sh scripts/capture-readme-screenshots.sh scripts/install-extension.sh scripts/install.sh scripts/uninstall.sh
 
       - name: Validate workflow syntax
         uses: docker://rhysd/actionlint:1.7.11

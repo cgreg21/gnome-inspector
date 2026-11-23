@@ -1835,6 +1835,19 @@ fn styles_page() -> gtk::Box {
     let style_editor = gtk::Box::new(gtk::Orientation::Vertical, 6);
     style_editor.append(&style_scroll);
     style_editor.append(&apply_style);
+    let style_keys = gtk::EventControllerKey::new();
+    let apply_style_for_shortcut = apply_style.clone();
+    style_keys.connect_key_pressed(move |_, key, _, modifiers| {
+        if key == gtk::gdk::Key::Return
+            && modifiers.contains(gtk::gdk::ModifierType::CONTROL_MASK)
+        {
+            apply_style_for_shortcut.emit_clicked();
+            glib::Propagation::Stop
+        } else {
+            glib::Propagation::Proceed
+        }
+    });
+    style_input.add_controller(style_keys);
     style_row.append(&style_editor);
 
     let original_class_for_change = original_class.clone();
@@ -2116,6 +2129,54 @@ fn styles_page() -> gtk::Box {
     styles_panel.set_margin_bottom(12);
     styles_panel.set_margin_start(12);
     styles_panel.set_margin_end(12);
+    let style_tools = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+    let copy_classes = gtk::Button::from_icon_name("edit-copy-symbolic");
+    copy_classes.set_tooltip_text(Some("Copier les classes CSS"));
+    let classes_for_copy = class_input.clone();
+    copy_classes.connect_clicked(move |_| {
+        if let Some(display) = gtk::gdk::Display::default() {
+            display.clipboard().set_text(classes_for_copy.text().as_str());
+        }
+    });
+    let copy_inline_style = gtk::Button::from_icon_name("edit-copy-symbolic");
+    copy_inline_style.set_tooltip_text(Some("Copier le style inline"));
+    let style_for_copy = style_input.clone();
+    copy_inline_style.connect_clicked(move |_| {
+        if let Some(display) = gtk::gdk::Display::default() {
+            display.clipboard().set_text(&text_view_contents(&style_for_copy));
+        }
+    });
+    let copy_actor_path = gtk::Button::from_icon_name("edit-copy-symbolic");
+    copy_actor_path.set_tooltip_text(Some("Copier le chemin de l’acteur"));
+    let path_for_style_tools = selected_path.clone();
+    copy_actor_path.connect_clicked(move |_| {
+        if let (Some(path), Some(display)) = (
+            path_for_style_tools.borrow().as_ref(),
+            gtk::gdk::Display::default(),
+        ) {
+            display.clipboard().set_text(path);
+        }
+    });
+    let copy_state = Rc::new(RefCell::new(Vec::new()));
+    let copy_state_for_selection = copy_state.clone();
+    let class_copy_state = copy_classes.clone();
+    let style_copy_state = copy_inline_style.clone();
+    let path_copy_state = copy_actor_path.clone();
+    list.connect_row_selected(move |_, row| {
+        let enabled = row.is_some();
+        class_copy_state.set_sensitive(enabled);
+        style_copy_state.set_sensitive(enabled);
+        path_copy_state.set_sensitive(enabled);
+        *copy_state_for_selection.borrow_mut() = if enabled { vec![true] } else { Vec::new() };
+    });
+    copy_classes.set_sensitive(false);
+    copy_inline_style.set_sensitive(false);
+    copy_actor_path.set_sensitive(false);
+    style_tools.append(&copy_classes);
+    style_tools.append(&copy_inline_style);
+    style_tools.append(&copy_actor_path);
+
+    styles_panel.append(&style_tools);
     styles_panel.append(&class_section);
     styles_panel.append(&inline_style_section);
     inspector_tabs.append_page(&styles_panel, Some(&gtk::Label::new(Some("Styles"))));
@@ -3143,4 +3204,4 @@ mod tests {
         assert_eq!(names, vec!["root", "panel", "button"]);
         assert_eq!(depths, vec![0, 1, 2]);
     }
-}
+}\n

@@ -153,6 +153,32 @@ fn populate_computed_style(list: &gtk::ListBox, report: &str, query: &str) {
     }
 }
 
+fn refresh_computed_style(
+    path: &str,
+    list: &gtk::ListBox,
+    report: &Rc<RefCell<String>>,
+    search: &gtk::SearchEntry,
+    layout_values: &[gtk::Label; 12],
+    layout_size: &gtk::Label,
+) -> Result<(), String> {
+    let json = actor_computed_style(path)?;
+    let value: serde_json::Value =
+        serde_json::from_str(&json).map_err(|error| error.to_string())?;
+    let formatted = format_computed_style(&json)?;
+
+    for (label, key) in layout_values.iter().zip(LAYOUT_METRICS) {
+        label.set_text(&layout_metric(&value, key));
+    }
+    layout_size.set_text(&format!(
+        "{} × {}",
+        layout_metric(&value, "width"),
+        layout_metric(&value, "height")
+    ));
+    *report.borrow_mut() = formatted;
+    populate_computed_style(list, &report.borrow(), search.text().as_str());
+    Ok(())
+}
+
 fn shell_version() -> Result<String, String> {
     string_reply(&shell_call("Ping")?, "Invalid Shell version reply.")
 }
@@ -998,7 +1024,6 @@ fn refresh_actor_tree(
 fn rows_len(nodes: &Rc<RefCell<Vec<serde_json::Value>>>) -> u64 {
     nodes.borrow().len() as u64
 }
-
 fn actors_page() -> gtk::Box {
     let page = gtk::Box::new(gtk::Orientation::Vertical, 12);
     page.append(&page_heading(
@@ -1998,7 +2023,6 @@ fn styles_page() -> gtk::Box {
                 let has_expandable_nodes = !expanders_for_search.borrow().is_empty();
                 expand_all_for_refresh.set_sensitive(has_expandable_nodes);
                 collapse_all_for_refresh.set_sensitive(has_expandable_nodes);
-
                 let count = snapshot
                     .get("actorCount")
                     .and_then(serde_json::Value::as_u64)
@@ -2255,7 +2279,8 @@ fn styles_page() -> gtk::Box {
     });
     let computed_actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     computed_actions.set_margin_start(0);
-    let computed_refresh = gtk::Button::with_label("Lire le style calculé de l’acteur");
+    let computed_refresh = gtk::Button::from_icon_name("view-refresh-symbolic");
+    computed_refresh.set_tooltip_text(Some("Actualiser les styles calculés"));
     let computed_view = computed_details.clone();
     let computed_path = selected_path.clone();
     let computed_status = status.clone();
@@ -2290,34 +2315,62 @@ fn styles_page() -> gtk::Box {
             computed_status.add_css_class("error");
             return;
         };
-        match actor_computed_style(&path).and_then(|json| {
-            let value = serde_json::from_str::<serde_json::Value>(&json)
-                .map_err(|error| error.to_string())?;
-            let report = format_computed_style(&json)?;
-            Ok((report, value))
-        }) {
-            Ok((report, value)) => {
-                for (label, key) in layout_values_for_refresh.iter().zip(LAYOUT_METRICS) {
-                    label.set_text(&layout_metric(&value, key));
-                }
-                layout_size_for_refresh.set_text(&format!(
-                    "{} × {}",
-                    layout_metric(&value, "width"),
-                    layout_metric(&value, "height")
-                ));
-                *report_for_refresh.borrow_mut() = report;
-                populate_computed_style(
-                    &computed_view,
-                    &report_for_refresh.borrow(),
-                    search_for_refresh.text().as_str(),
-                );
-                computed_status
-                    .set_text("Style calculé actualisé ; filtrez par nom ou valeur de propriété.");
+        match refresh_computed_style(
+            &path,
+            &computed_view,
+            &report_for_refresh,
+            &search_for_refresh,
+            &layout_values_for_refresh,
+            &layout_size_for_refresh,
+        ) {
+            Ok(()) => {
+                computed_status.set_text("Styles calculés actualisés.");
                 computed_status.remove_css_class("error");
             }
             Err(error) => {
                 computed_status.set_text(&format!("Échec de lecture du style calculé : {error}"));
                 computed_status.add_css_class("error");
+            }
+        }
+    });
+
+    let path_for_live_style = selected_path.clone();
+    let list_for_live_style = computed_details.clone();
+    let report_for_live_style = computed_report.clone();
+    let search_for_live_style = computed_search.clone();
+    let values_for_live_style = layout_values.clone();
+    let size_for_live_style = layout_size.clone();
+    let status_for_live_style = status.clone();
+    list.connect_row_selected(move |_, row| {
+        let Some(path) = path_for_live_style.borrow().clone().filter(|_| row.is_some()) else {
+            *report_for_live_style.borrow_mut() = String::new();
+            populate_computed_style(
+                &list_for_live_style,
+                "",
+                search_for_live_style.text().as_str(),
+            );
+            for label in &values_for_live_style {
+                label.set_text("—");
+            }
+            size_for_live_style.set_text("— × —");
+            return;
+        };
+
+        match refresh_computed_style(
+            &path,
+            &list_for_live_style,
+            &report_for_live_style,
+            &search_for_live_style,
+            &values_for_live_style,
+            &size_for_live_style,
+        ) {
+            Ok(()) => {
+                status_for_live_style.set_text("Styles calculés synchronisés avec l’acteur sélectionné.");
+                status_for_live_style.remove_css_class("error");
+            }
+            Err(error) => {
+                status_for_live_style.set_text(&format!("Échec de lecture du style calculé : {error}"));
+                status_for_live_style.add_css_class("error");
             }
         }
     });
@@ -2997,8 +3050,7 @@ fn performance_page() -> gtk::Box {
                     .map(|stage| {
                         format!(
                             "{} × {} px",
-                            stage
-                                .get("width")
+                            stage                                .get("width")
                                 .and_then(serde_json::Value::as_u64)
                                 .unwrap_or(0),
                             stage

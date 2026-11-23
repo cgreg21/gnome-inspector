@@ -3505,9 +3505,12 @@ fn build_ui(app: &adw::Application) {
         .child(&console_panel)
         .build();
 
-    let console_toggle = gtk::ToggleButton::with_label("Console");
+    let console_toggle = gtk::ToggleButton::new();
+    console_toggle.set_child(Some(&gtk::Image::from_icon_name(
+        "utilities-terminal-symbolic",
+    )));
     console_toggle.set_tooltip_text(Some(
-        "Afficher la console GJS persistante (exécute du code dans GNOME Shell)",
+        "Afficher la console GJS intégrée (exécute du code dans GNOME Shell)",
     ));
     let console_for_toggle = console_revealer.clone();
     console_toggle.connect_toggled(move |button| {

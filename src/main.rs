@@ -868,6 +868,7 @@ fn actors_page() -> gtk::Box {
     details.set_wrap_mode(gtk::WrapMode::WordChar);
     details.set_left_margin(12);
     details.set_top_margin(12);
+    details.buffer().set_text("Sélectionnez un acteur pour afficher ses propriétés.");
     let details_scroll = gtk::ScrolledWindow::builder()
         .hexpand(true)
         .vexpand(true)
@@ -1050,9 +1051,12 @@ fn actors_page() -> gtk::Box {
     });
 
     let copy_path = gtk::Button::with_label("Copier le chemin");
+    copy_path.set_sensitive(false);
     let list_for_copy = list.clone();
     let nodes_for_copy = selected_nodes.clone();
     let status_for_copy = status.clone();
+    let copy_path_state = copy_path.clone();
+    list.connect_row_selected(move |_, row| copy_path_state.set_sensitive(row.is_some()));
     copy_path.connect_clicked(move |_| {
         let path = list_for_copy
             .selected_row()
@@ -1205,6 +1209,7 @@ fn styles_page() -> gtk::Box {
     details.set_wrap_mode(gtk::WrapMode::WordChar);
     details.set_left_margin(12);
     details.set_top_margin(12);
+    details.buffer().set_text("Sélectionnez un acteur pour inspecter ses styles.");
     let details_scroll = gtk::ScrolledWindow::builder()
         .hexpand(true)
         .vexpand(true)

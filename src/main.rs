@@ -2050,7 +2050,7 @@ fn styles_page() -> gtk::Box {
     layout_metrics.attach(&vertical_title, 0, 4, 2, 1);
     layout_metrics.attach(&layout_vertical_padding, 0, 5, 2, 1);
 
-    let layout_box = gtk::Frame::with_label("Modèle de boîte — mesures du thème GTK");
+    let layout_box = gtk::Frame::new(Some("Modèle de boîte — mesures du thème GTK"));
     layout_box.set_child(Some(&layout_metrics));
     layout_box.set_margin_top(24);
     layout_box.set_margin_bottom(24);
@@ -2066,7 +2066,6 @@ fn styles_page() -> gtk::Box {
     let layout_panel = gtk::Box::new(gtk::Orientation::Vertical, 12);
     layout_panel.append(&layout_box);
     layout_panel.append(&layout_note);
-    inspector_tabs.append_page(&layout_panel, Some(&gtk::Label::new(Some("Layout"))));
 
     computed_actions.append(&computed_refresh);
 
@@ -2300,6 +2299,7 @@ fn styles_page() -> gtk::Box {
     computed_panel.append(&computed_search);
     computed_panel.append(&computed_scroll);
     inspector_tabs.append_page(&computed_panel, Some(&gtk::Label::new(Some("Calculé"))));
+    inspector_tabs.append_page(&layout_panel, Some(&gtk::Label::new(Some("Layout"))));
 
     let theme_panel = gtk::Box::new(gtk::Orientation::Vertical, 10);
     theme_panel.set_margin_top(12);
@@ -3024,7 +3024,7 @@ mod tests {
         actor_property_has_changed, actor_selection_index, editable_actor_properties,
         extension_is_discovered, filter_computed_style, flatten_actors, format_actor_details,
         format_actor_details_filtered, format_computed_style, format_console_entry,
-        remember_console_command, string_reply, text_differs,
+        layout_metric, remember_console_command, string_reply, text_differs,
     };
     use glib::variant::ToVariant;
 

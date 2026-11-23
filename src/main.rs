@@ -936,7 +936,7 @@ fn actors_page() -> gtk::Box {
     empty_state.add_css_class("dim-label");
     list.set_placeholder(Some(&empty_state));
     let list_scroll = gtk::ScrolledWindow::builder()
-                .min_content_width(300)
+        .min_content_width(300)
         .max_content_width(420)
         .vexpand(true)
         .child(&list)
@@ -1305,7 +1305,7 @@ fn styles_page() -> gtk::Box {
     empty_state.add_css_class("dim-label");
     list.set_placeholder(Some(&empty_state));
     let list_scroll = gtk::ScrolledWindow::builder()
-               .min_content_width(280)
+        .min_content_width(280)
         .max_content_width(420)
         .vexpand(true)
         .child(&list)

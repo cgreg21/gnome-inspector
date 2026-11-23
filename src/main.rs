@@ -1738,6 +1738,7 @@ fn console_page() -> gtk::Box {
     let status = gtk::Label::new(Some("Prêt."));
     status.set_halign(gtk::Align::Start);
     status.set_margin_start(24);
+    status.add_css_class("dim-label");
 
     let run = gtk::Button::with_label("Exécuter dans GNOME Shell");
     run.add_css_class("suggested-action");
@@ -1753,12 +1754,29 @@ fn console_page() -> gtk::Box {
                 output_for_run.buffer().set_text(&result);
                 status_for_run.set_text("Exécution terminée.");
                 status_for_run.remove_css_class("error");
+                status_for_run.remove_css_class("dim-label");
+                status_for_run.add_css_class("success");
             }
             Err(error) => {
                 output_for_run.buffer().set_text(&error);
                 status_for_run.set_text("Échec de l’exécution.");
+                status_for_run.remove_css_class("success");
                 status_for_run.add_css_class("error");
             }
+        }
+    });
+
+    let clear = gtk::Button::with_label("Effacer le résultat");
+    let output_for_clear = output.clone();
+    clear.connect_clicked(move |_| output_for_clear.buffer().set_text(""));
+
+    let copy = gtk::Button::with_label("Copier le résultat");
+    let output_for_copy = output.clone();
+    copy.connect_clicked(move |_| {
+        let buffer = output_for_copy.buffer();
+        let text = buffer.text(&buffer.start_iter(), &buffer.end_iter(), true);
+        if let Some(display) = gtk::gdk::Display::default() {
+            display.clipboard().set_text(text.as_str());
         }
     });
 
@@ -1766,6 +1784,8 @@ fn console_page() -> gtk::Box {
     actions.set_margin_start(24);
     actions.set_margin_end(24);
     actions.append(&run);
+    actions.append(&copy);
+    actions.append(&clear);
     page.append(&actions);
     page.append(&editor_scroll);
     page.append(&status);
@@ -2123,8 +2143,8 @@ fn build_ui(app: &adw::Application) {
     let window = adw::ApplicationWindow::builder()
         .application(app)
         .title("GNOME Inspector")
-        .default_width(1100)
-        .default_height(720)
+        .default_width(1200)
+        .default_height(780)
         .build();
 
     let connection = gtk::Label::new(Some("Vérification de la connexion…"));
@@ -2195,6 +2215,8 @@ fn build_ui(app: &adw::Application) {
         let buffer = output_for_run.buffer();
         let mut end = buffer.end_iter();
         buffer.insert(&mut end, &format_console_entry(&source, &result));
+        let adjustment = console_scroll.vadjustment();
+        adjustment.set_value(adjustment.upper());
         command_for_run.set_text("");
         command_for_run.grab_focus();
     });
@@ -2249,6 +2271,11 @@ fn build_ui(app: &adw::Application) {
     console_actions.set_margin_bottom(8);
     console_actions.append(&console_command);
     console_actions.append(&console_run);
+    let console_clear = gtk::Button::from_icon_name("edit-clear-symbolic");
+    console_clear.set_tooltip_text(Some("Effacer la sortie de la console"));
+    let output_for_clear = console_output.clone();
+    console_clear.connect_clicked(move |_| output_for_clear.buffer().set_text(""));
+    console_actions.append(&console_clear);
     let console_panel = gtk::Box::new(gtk::Orientation::Vertical, 6);
     console_panel.append(&console_scroll);
     console_panel.append(&console_actions);

@@ -936,8 +936,8 @@ fn actors_page() -> gtk::Box {
     empty_state.add_css_class("dim-label");
     list.set_placeholder(Some(&empty_state));
     let list_scroll = gtk::ScrolledWindow::builder()
-        .min_content_width(260)
-        .max_content_width(380)
+                .min_content_width(300)
+        .max_content_width(420)
         .vexpand(true)
         .child(&list)
         .build();
@@ -983,16 +983,6 @@ fn actors_page() -> gtk::Box {
     details_panel.append(&details_scroll);
 
     let selected_actor = Rc::new(RefCell::new(None::<serde_json::Value>));
-    let tree_breadcrumb = gtk::Label::new(Some("Sélectionnez un élément dans l’arborescence"));
-    tree_breadcrumb.set_halign(gtk::Align::Start);
-    tree_breadcrumb.set_ellipsize(gtk::pango::EllipsizeMode::Middle);
-    tree_breadcrumb.set_margin_start(10);
-    tree_breadcrumb.set_margin_end(10);
-    tree_breadcrumb.set_margin_top(8);
-    tree_breadcrumb.set_margin_bottom(8);
-    tree_breadcrumb.add_css_class("dim-label");
-    tree_breadcrumb.add_css_class("monospace");
-
     let selected_nodes = Rc::new(RefCell::new(Vec::<serde_json::Value>::new()));
     let query = Rc::new(RefCell::new(String::new()));
     let expander_widgets = Rc::new(RefCell::new(Vec::<gtk::ToggleButton>::new()));
@@ -1315,7 +1305,7 @@ fn styles_page() -> gtk::Box {
     empty_state.add_css_class("dim-label");
     list.set_placeholder(Some(&empty_state));
     let list_scroll = gtk::ScrolledWindow::builder()
-        .min_content_width(280)
+               .min_content_width(280)
         .max_content_width(420)
         .vexpand(true)
         .child(&list)
@@ -1345,6 +1335,16 @@ fn styles_page() -> gtk::Box {
     selected_actor_path.set_halign(gtk::Align::Start);
     selected_actor_path.set_selectable(true);
     selected_actor_path.set_ellipsize(gtk::pango::EllipsizeMode::Middle);
+
+    let tree_breadcrumb = gtk::Label::new(Some("Sélectionnez un élément dans l’arborescence"));
+    tree_breadcrumb.set_halign(gtk::Align::Start);
+    tree_breadcrumb.set_ellipsize(gtk::pango::EllipsizeMode::Middle);
+    tree_breadcrumb.set_margin_start(10);
+    tree_breadcrumb.set_margin_end(10);
+    tree_breadcrumb.set_margin_top(8);
+    tree_breadcrumb.set_margin_bottom(8);
+    tree_breadcrumb.add_css_class("dim-label");
+    tree_breadcrumb.add_css_class("monospace");
 
     let selected_nodes = Rc::new(RefCell::new(Vec::<serde_json::Value>::new()));
     let query = Rc::new(RefCell::new(String::new()));

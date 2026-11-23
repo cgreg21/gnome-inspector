@@ -510,7 +510,10 @@ fn actor_index_by_path(nodes: &[serde_json::Value], path: &str) -> Option<usize>
     nodes.iter().position(|node| actor_path(node) == Some(path))
 }
 
-fn actor_selection_index(nodes: &[serde_json::Value], previous_path: Option<&str>) -> Option<usize> {
+fn actor_selection_index(
+    nodes: &[serde_json::Value],
+    previous_path: Option<&str>,
+) -> Option<usize> {
     previous_path
         .and_then(|path| actor_index_by_path(nodes, path))
         .or_else(|| (!nodes.is_empty()).then_some(0))

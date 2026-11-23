@@ -2041,12 +2041,29 @@ fn styles_page() -> gtk::Box {
                         .and_then(serde_json::Value::as_str)
                         .unwrap_or("");
                     if !classes.is_empty() {
-                        let class_label = gtk::Label::new(Some(classes));
+                        let classes = classes
+                            .split_whitespace()
+                            .map(|class| format!(".{class}"))
+                            .collect::<Vec<_>>()
+                            .join(" ");
+                        let class_label = gtk::Label::new(Some(&classes));
                         class_label.add_css_class("dim-label");
                         class_label.add_css_class("monospace");
                         class_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
                         class_label.set_max_width_chars(24);
                         content.append(&class_label);
+                    }
+
+                    let pseudo_class = node
+                        .get("pseudoClass")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or("");
+                    if !pseudo_class.is_empty() {
+                        let pseudo_label = gtk::Label::new(Some(&format!(":{pseudo_class}")));
+                        pseudo_label.add_css_class("dim-label");
+                        pseudo_label.add_css_class("monospace");
+                        pseudo_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+                        content.append(&pseudo_label);
                     }
 
                     let row = gtk::ListBoxRow::new();

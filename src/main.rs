@@ -661,6 +661,34 @@ fn actor_inspector_title(node: &serde_json::Value) -> String {
     format!("{name}  ·  {kind}")
 }
 
+fn actor_style_summary(node: &serde_json::Value) -> String {
+    let classes = node
+        .get("styleClass")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("")
+        .split_whitespace()
+        .map(|class| format!(".{class}"))
+        .collect::<Vec<_>>();
+    let pseudo_classes = node
+        .get("pseudoClass")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("")
+        .split_whitespace()
+        .map(|pseudo| format!(":{pseudo}"))
+        .collect::<Vec<_>>();
+    let summary = classes
+        .into_iter()
+        .chain(pseudo_classes)
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    if summary.is_empty() {
+        "Aucune classe ni pseudo-classe".to_string()
+    } else {
+        summary
+    }
+}
+
 fn actor_path(node: &serde_json::Value) -> Option<&str> {
     node.get("path").and_then(serde_json::Value::as_str)
 }
@@ -1612,6 +1640,11 @@ fn styles_page() -> gtk::Box {
     let selected_actor_title = gtk::Label::new(Some("Aucun élément sélectionné"));
     selected_actor_title.add_css_class("heading");
     selected_actor_title.set_halign(gtk::Align::Start);
+    let selected_actor_style = gtk::Label::new(Some("Aucune classe ni pseudo-classe"));
+    selected_actor_style.add_css_class("dim-label");
+    selected_actor_style.add_css_class("monospace");
+    selected_actor_style.set_halign(gtk::Align::Start);
+    selected_actor_style.set_selectable(true);
     let selected_actor_path = gtk::Label::new(Some("Sélectionnez un acteur dans l’arborescence"));
     selected_actor_path.add_css_class("dim-label");
     selected_actor_path.add_css_class("monospace");
@@ -1772,6 +1805,7 @@ fn styles_page() -> gtk::Box {
     let declaration_filter_for_selection = declaration_filter.clone();
     let updating_for_selection = updating_declaration.clone();
     let title_for_selection = selected_actor_title.clone();
+    let style_summary_for_selection = selected_actor_style.clone();
     let path_label_for_selection = selected_actor_path.clone();
     let breadcrumb_for_selection = tree_breadcrumb.clone();
     let tree_for_breadcrumb = list.clone();
@@ -1783,6 +1817,7 @@ fn styles_page() -> gtk::Box {
             if let Some(node) = nodes.get(index) {
                 show_actor_details(&details_for_selection, node);
                 title_for_selection.set_text(&actor_inspector_title(node));
+                style_summary_for_selection.set_text(&actor_style_summary(node));
                 let path = actor_path(node).unwrap_or("").to_string();
                 path_label_for_selection.set_text(&path);
                 path_label_for_selection.set_tooltip_text(Some(&actor_breadcrumb(&nodes, &path)));
@@ -2581,6 +2616,7 @@ fn styles_page() -> gtk::Box {
     selection_header.set_margin_start(8);
     selection_header.set_margin_end(8);
     selection_header.append(&selected_actor_title);
+    selection_header.append(&selected_actor_style);
 
     let selection_path_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     selection_path_row.append(&selected_actor_path);
@@ -3660,6 +3696,22 @@ mod tests {
         assert_eq!(layout_metric(&value, "paddingLeft"), "3 px");
         assert_eq!(layout_metric(&value, "paddingBottom"), "—");
         assert_eq!(layout_metric(&value, "unknown"), "—");
+    }
+
+    #[test]
+    fn formats_actor_style_classes_and_pseudo_classes_for_the_inspector() {
+        let node = serde_json::json!({
+            "styleClass": "button primary",
+            "pseudoClass": "hover focus"
+        });
+        assert_eq!(
+            actor_style_summary(&node),
+            ".button .primary :hover :focus"
+        );
+        assert_eq!(
+            actor_style_summary(&serde_json::json!({})),
+            "Aucune classe ni pseudo-classe"
+        );
     }
 
     #[test]

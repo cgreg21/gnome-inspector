@@ -68,8 +68,9 @@ inspection data; the mock service is only used for these documentation captures.
 
 The CSS captures are separate usage situations: navigating the actor tree, inspecting a selected actor with its style context, and drilling into a nested actor. They use a deterministic mock Shell tree so the same interactions can be reproduced in CI.
 
-The PNG files are versioned in `screenshots/`, so they are displayed directly on
-GitHub and remain available independently of CI artifact retention. GitHub Actions regenerates them with `scripts/capture-readme-screenshots.sh` on each CI run
+The PNG files are captured from the running GTK window (not generated mockups) and
+versioned in `screenshots/`, so they are displayed directly on GitHub and remain
+available independently of CI artifact retention. GitHub Actions regenerates them with `scripts/capture-readme-screenshots.sh` on each CI run
 and uploads the `gnome-inspector-readme-screenshots` artifact for review. The committed
 images are updated only when the workflow is started manually with
 `workflow_dispatch`; a normal push checks the captures but does not commit them.

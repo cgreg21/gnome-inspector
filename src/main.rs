@@ -53,6 +53,15 @@ fn format_computed_style(json: &str) -> Result<String, String> {
         .join("\n"))
 }
 
+fn layout_metric(value: &serde_json::Value, key: &str) -> String {
+    value
+        .get(key)
+        .and_then(serde_json::Value::as_f64)
+        .filter(|number| number.is_finite())
+        .map(|number| format!("{number:g} px"))
+        .unwrap_or_else(|| "—".to_string())
+}
+
 fn filter_computed_style(report: &str, query: &str) -> String {
     if query.trim().is_empty() {
         return report.to_string();
@@ -1965,6 +1974,14 @@ fn styles_page() -> gtk::Box {
         };
         match actor_computed_style(&path).and_then(|json| format_computed_style(&json)) {
             Ok(report) => {
+                if let Ok(value) = serde_json::from_str::<serde_json::Value>(
+                    &actor_computed_style(&path).unwrap_or_default(),
+                ) {
+                    layout_width_for_refresh.set_text(&layout_metric(&value, "width"));
+                    layout_height_for_refresh.set_text(&layout_metric(&value, "height"));
+                    layout_horizontal_for_refresh.set_text(&layout_metric(&value, "horizontalPadding"));
+                    layout_vertical_for_refresh.set_text(&layout_metric(&value, "verticalPadding"));
+                }
                 *report_for_refresh.borrow_mut() = report;
                 computed_view.buffer().set_text(&filter_computed_style(
                     &report_for_refresh.borrow(),
@@ -1980,8 +1997,66 @@ fn styles_page() -> gtk::Box {
             }
         }
     });
+    let layout_width = gtk::Label::new(Some("—"));
+    let layout_height = gtk::Label::new(Some("—"));
+    let layout_horizontal_padding = gtk::Label::new(Some("—"));
+    let layout_vertical_padding = gtk::Label::new(Some("—"));
+    for label in [
+        &layout_width,
+        &layout_height,
+        &layout_horizontal_padding,
+        &layout_vertical_padding,
+    ] {
+        label.add_css_class("title-2");
+        label.set_halign(gtk::Align::Center);
+    }
+
+    let layout_metrics = gtk::Grid::new();
+    layout_metrics.set_row_spacing(12);
+    layout_metrics.set_column_spacing(24);
+    layout_metrics.set_halign(gtk::Align::Center);
+    layout_metrics.set_valign(gtk::Align::Center);
+    let horizontal_title = gtk::Label::new(Some("Padding horizontal (total)"));
+    horizontal_title.add_css_class("dim-label");
+    let vertical_title = gtk::Label::new(Some("Padding vertical (total)"));
+    vertical_title.add_css_class("dim-label");
+    let width_title = gtk::Label::new(Some("Largeur"));
+    width_title.add_css_class("dim-label");
+    let height_title = gtk::Label::new(Some("Hauteur"));
+    height_title.add_css_class("dim-label");
+    layout_metrics.attach(&horizontal_title, 0, 0, 2, 1);
+    layout_metrics.attach(&layout_horizontal_padding, 0, 1, 2, 1);
+    layout_metrics.attach(&width_title, 0, 2, 1, 1);
+    layout_metrics.attach(&height_title, 1, 2, 1, 1);
+    layout_metrics.attach(&layout_width, 0, 3, 1, 1);
+    layout_metrics.attach(&layout_height, 1, 3, 1, 1);
+    layout_metrics.attach(&vertical_title, 0, 4, 2, 1);
+    layout_metrics.attach(&layout_vertical_padding, 0, 5, 2, 1);
+
+    let layout_box = gtk::Frame::with_label("Modèle de boîte — mesures du thème GTK");
+    layout_box.set_child(Some(&layout_metrics));
+    layout_box.set_margin_top(24);
+    layout_box.set_margin_bottom(24);
+    layout_box.set_margin_start(24);
+    layout_box.set_margin_end(24);
+    let layout_note = gtk::Label::new(Some(
+        "Les marges et bordures CSS ne sont pas exposées par l’API ThemeNode de GNOME Shell. Les valeurs de padding sont des totaux horizontaux et verticaux.",
+    ));
+    layout_note.set_wrap(true);
+    layout_note.add_css_class("dim-label");
+    layout_note.set_margin_start(24);
+    layout_note.set_margin_end(24);
+    let layout_panel = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    layout_panel.append(&layout_box);
+    layout_panel.append(&layout_note);
+    inspector_tabs.append_page(&layout_panel, Some(&gtk::Label::new(Some("Layout"))));
+
     computed_actions.append(&computed_refresh);
 
+    let layout_width_for_refresh = layout_width.clone();
+    let layout_height_for_refresh = layout_height.clone();
+    let layout_horizontal_for_refresh = layout_horizontal_padding.clone();
+    let layout_vertical_for_refresh = layout_vertical_padding.clone();
     let theme_details = gtk::TextView::new();
     theme_details.set_editable(false);
     theme_details.set_cursor_visible(false);
@@ -3135,6 +3210,22 @@ mod tests {
         assert!(formatted.contains("Propriétés (1)"));
         assert!(formatted.contains("label (gchararray; R) = OK"));
         assert!(!formatted.contains("nested"));
+    }
+
+    #[test]
+    fn formats_layout_metrics_without_inventing_unavailable_values() {
+        let value = serde_json::json!({
+            "width": 120,
+            "height": 48.5,
+            "horizontalPadding": 16,
+            "verticalPadding": null
+        });
+
+        assert_eq!(layout_metric(&value, "width"), "120 px");
+        assert_eq!(layout_metric(&value, "height"), "48.5 px");
+        assert_eq!(layout_metric(&value, "horizontalPadding"), "16 px");
+        assert_eq!(layout_metric(&value, "verticalPadding"), "—");
+        assert_eq!(layout_metric(&value, "margin"), "—");
     }
 
     #[test]

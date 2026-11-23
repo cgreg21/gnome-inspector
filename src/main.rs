@@ -2502,10 +2502,9 @@ mod tests {
     use super::{
         actor_detail_summary, actor_index_by_path, actor_matches, actor_path,
         actor_property_has_changed, actor_selection_index, actor_style_label,
-        editable_actor_properties, text_differs,
-        extension_is_discovered, filter_computed_style, flatten_actors, format_actor_details,
-        format_actor_details_filtered, format_computed_style, format_console_entry,
-        remember_console_command, string_reply,
+        editable_actor_properties, extension_is_discovered, filter_computed_style, flatten_actors,
+        format_actor_details, format_actor_details_filtered, format_computed_style,
+        format_console_entry, remember_console_command, string_reply, text_differs,
     };
     use glib::variant::ToVariant;
 

@@ -62,6 +62,8 @@ inspection data; the mock service is only used for these documentation captures.
 | CSS inspector: expanded actor tree | ![CSS inspector actor tree](screenshots/css-inspector-tree.png) |
 | CSS inspector: selected actor and style context | ![CSS inspector selected actor](screenshots/css-inspector-selection.png) |
 | CSS inspector: nested actor selection | ![CSS inspector nested actor](screenshots/css-inspector-deep-selection.png) |
+| CSS inspector: computed properties | ![Computed CSS properties](screenshots/css-computed.png) |
+| CSS inspector: box model | ![CSS box model](screenshots/css-layout.png) |
 | GJS console | ![GJS console](screenshots/gjs-console.png) |
 | GNOME Shell diagnostics | ![Diagnostics](screenshots/diagnostics.png) |
 | Performance dashboard and history | ![Performance](screenshots/performance.png) |

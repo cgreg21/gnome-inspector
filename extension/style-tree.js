@@ -93,7 +93,7 @@ export function resolveActorPath(root, path) {
     return actor ?? null;
 }
 
-export function buildComputedStyle(actor) {
+export function buildComputedStyle(actor, sides) {
     let node;
     try {
         node = actor?.get_theme_node?.();
@@ -131,6 +131,15 @@ export function buildComputedStyle(actor) {
         }
     }
 
+    function readSide(method, side) {
+        try {
+            const value = node[method]?.(side);
+            return typeof value === 'number' && Number.isFinite(value) ? value : null;
+        } catch {
+            return null;
+        }
+    }
+
     let font = null;
     try {
         font = node.get_font?.()?.to_string?.() ?? null;
@@ -153,6 +162,18 @@ export function buildComputedStyle(actor) {
         maxHeight: read('get_max_height'),
         horizontalPadding: read('get_horizontal_padding'),
         verticalPadding: read('get_vertical_padding'),
+        marginTop: readSide('get_margin', sides?.TOP),
+        marginRight: readSide('get_margin', sides?.RIGHT),
+        marginBottom: readSide('get_margin', sides?.BOTTOM),
+        marginLeft: readSide('get_margin', sides?.LEFT),
+        borderTop: readSide('get_border_width', sides?.TOP),
+        borderRight: readSide('get_border_width', sides?.RIGHT),
+        borderBottom: readSide('get_border_width', sides?.BOTTOM),
+        borderLeft: readSide('get_border_width', sides?.LEFT),
+        paddingTop: readSide('get_padding', sides?.TOP),
+        paddingRight: readSide('get_padding', sides?.RIGHT),
+        paddingBottom: readSide('get_padding', sides?.BOTTOM),
+        paddingLeft: readSide('get_padding', sides?.LEFT),
         letterSpacing: read('get_letter_spacing'),
     };
 }

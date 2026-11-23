@@ -95,15 +95,15 @@ sleep 1
 capture css-inspector-deep-selection
 
 # Inspect the selected actor in the Computed and Layout panels.
-xdotool mousemove --window "$window_id" 500 150 click 1
+xdotool mousemove --window "$window_id" 585 208 click 1
 sleep 1
 capture css-computed
-xdotool mousemove --window "$window_id" 570 150 click 1
+xdotool mousemove --window "$window_id" 665 208 click 1
 sleep 1
 capture css-layout
 
 # Return to the theme workspace before leaving the CSS module.
-xdotool mousemove --window "$window_id" 610 150 click 1
+xdotool mousemove --window "$window_id" 740 208 click 1
 sleep 1
 capture css-themes
 

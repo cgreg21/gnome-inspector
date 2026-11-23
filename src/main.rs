@@ -513,6 +513,29 @@ fn actor_style_label(node: &serde_json::Value, depth: usize) -> String {
     )
 }
 
+fn actor_breadcrumb(nodes: &[serde_json::Value], path: &str) -> String {
+    let mut prefixes = vec![String::new()];
+    let mut current = String::new();
+    for index in path.split('/').filter(|part| !part.is_empty()) {
+        if !current.is_empty() {
+            current.push('/');
+        }
+        current.push_str(index);
+        prefixes.push(current.clone());
+    }
+
+    prefixes
+        .iter()
+        .filter_map(|prefix| {
+            nodes
+                .iter()
+                .find(|node| actor_path(node) == Some(prefix.as_str()))
+                .and_then(|node| node.get("name").and_then(serde_json::Value::as_str))
+        })
+        .collect::<Vec<_>>()
+        .join("  ›  ")
+}
+
 fn actor_inspector_title(node: &serde_json::Value) -> String {
     let name = node
         .get("name")
@@ -895,7 +918,8 @@ fn actors_page() -> gtk::Box {
 
     let status = gtk::Label::new(Some("Aucune capture effectuée."));
     status.set_halign(gtk::Align::Start);
-    status.set_margin_start(24);
+    status.set_margin_start(8);
+    status.set_margin_end(8);
     status.add_css_class("dim-label");
 
     let list = gtk::ListBox::new();
@@ -912,8 +936,8 @@ fn actors_page() -> gtk::Box {
     empty_state.add_css_class("dim-label");
     list.set_placeholder(Some(&empty_state));
     let list_scroll = gtk::ScrolledWindow::builder()
-        .min_content_width(300)
-        .max_content_width(420)
+        .min_content_width(260)
+        .max_content_width(380)
         .vexpand(true)
         .child(&list)
         .build();
@@ -959,6 +983,16 @@ fn actors_page() -> gtk::Box {
     details_panel.append(&details_scroll);
 
     let selected_actor = Rc::new(RefCell::new(None::<serde_json::Value>));
+    let tree_breadcrumb = gtk::Label::new(Some("Sélectionnez un élément dans l’arborescence"));
+    tree_breadcrumb.set_halign(gtk::Align::Start);
+    tree_breadcrumb.set_ellipsize(gtk::pango::EllipsizeMode::Middle);
+    tree_breadcrumb.set_margin_start(10);
+    tree_breadcrumb.set_margin_end(10);
+    tree_breadcrumb.set_margin_top(8);
+    tree_breadcrumb.set_margin_bottom(8);
+    tree_breadcrumb.add_css_class("dim-label");
+    tree_breadcrumb.add_css_class("monospace");
+
     let selected_nodes = Rc::new(RefCell::new(Vec::<serde_json::Value>::new()));
     let query = Rc::new(RefCell::new(String::new()));
     let expander_widgets = Rc::new(RefCell::new(Vec::<gtk::ToggleButton>::new()));
@@ -1237,8 +1271,8 @@ fn actors_page() -> gtk::Box {
     });
 
     let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    actions.set_margin_start(24);
-    actions.set_margin_end(24);
+    actions.set_margin_start(8);
+    actions.set_margin_end(8);
     actions.append(&search);
     actions.append(&copy_path);
     actions.append(&pick_actor);
@@ -1258,11 +1292,7 @@ fn actors_page() -> gtk::Box {
 }
 
 fn styles_page() -> gtk::Box {
-    let page = gtk::Box::new(gtk::Orientation::Vertical, 12);
-    page.append(&page_heading(
-        "CSS et thèmes",
-        "Inspectez les acteurs, les classes CSS et les feuilles de style actives.",
-    ));
+    let page = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
     let status = gtk::Label::new(Some("Aucune capture CSS effectuée."));
     status.set_halign(gtk::Align::Start);
@@ -1354,6 +1384,7 @@ fn styles_page() -> gtk::Box {
     let style_for_selection = style_input.clone();
     let title_for_selection = selected_actor_title.clone();
     let path_label_for_selection = selected_actor_path.clone();
+    let breadcrumb_for_selection = tree_breadcrumb.clone();
     list.connect_row_selected(move |_, row| {
         if let Some(row) = row
             && let Ok(index) = row.widget_name().parse::<usize>()
@@ -1361,8 +1392,17 @@ fn styles_page() -> gtk::Box {
         {
             show_actor_details(&details_for_selection, node);
             title_for_selection.set_text(&actor_inspector_title(node));
-            path_label_for_selection.set_text(actor_path(node).unwrap_or("Chemin indisponible"));
-            *path_for_selection.borrow_mut() = actor_path(node).map(str::to_string);
+            let path = actor_path(node).unwrap_or("");
+            path_label_for_selection.set_text(path);
+            path_label_for_selection.set_tooltip_text(Some(&actor_breadcrumb(
+                &nodes_for_selection.borrow(),
+                path,
+            )));
+            breadcrumb_for_selection.set_text(&actor_breadcrumb(
+                &nodes_for_selection.borrow(),
+                path,
+            ));
+            *path_for_selection.borrow_mut() = Some(path.to_string());
             class_for_selection.set_text(
                 node.get("styleClass")
                     .and_then(serde_json::Value::as_str)
@@ -1465,8 +1505,8 @@ fn styles_page() -> gtk::Box {
     actions.append(&refresh);
 
     let class_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    class_row.set_margin_start(24);
-    class_row.set_margin_end(24);
+    class_row.set_margin_start(0);
+    class_row.set_margin_end(0);
     let original_class = Rc::new(RefCell::new(String::new()));
     let original_style = Rc::new(RefCell::new(String::new()));
 
@@ -1516,8 +1556,8 @@ fn styles_page() -> gtk::Box {
     class_row.append(&apply_class);
 
     let style_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    style_row.set_margin_start(24);
-    style_row.set_margin_end(24);
+    style_row.set_margin_start(0);
+    style_row.set_margin_end(0);
     let apply_style = gtk::Button::with_label("Appliquer le style inline");
     apply_style.set_sensitive(false);
     let style_for_apply = style_input.clone();
@@ -1626,7 +1666,7 @@ fn styles_page() -> gtk::Box {
         view_for_search.buffer().set_text(&filtered);
     });
     let computed_actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    computed_actions.set_margin_start(24);
+    computed_actions.set_margin_start(0);
     let computed_refresh = gtk::Button::with_label("Lire le style calculé de l’acteur");
     let computed_view = computed_details.clone();
     let computed_path = selected_path.clone();
@@ -1671,7 +1711,7 @@ fn styles_page() -> gtk::Box {
         .child(&theme_details)
         .build();
     let theme_actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    theme_actions.set_margin_start(24);
+    theme_actions.set_margin_start(0);
     let theme_refresh = gtk::Button::with_label("Découvrir les feuilles de style");
     let theme_view = theme_details.clone();
     let theme_status = status.clone();
@@ -1782,17 +1822,12 @@ fn styles_page() -> gtk::Box {
     });
     theme_actions.append(&custom_css_save);
 
-    let properties_panel = gtk::Box::new(gtk::Orientation::Vertical, 8);
-    properties_panel.set_margin_top(8);
-    properties_panel.set_margin_bottom(8);
-    properties_panel.set_margin_start(12);
-    properties_panel.set_margin_end(12);
     let selection_header = gtk::Box::new(gtk::Orientation::Vertical, 4);
     selection_header.add_css_class("card");
-    selection_header.set_margin_top(4);
+    selection_header.set_margin_top(8);
     selection_header.set_margin_bottom(4);
-    selection_header.set_margin_start(4);
-    selection_header.set_margin_end(4);
+    selection_header.set_margin_start(8);
+    selection_header.set_margin_end(8);
     selection_header.append(&selected_actor_title);
 
     let selection_path_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
@@ -1817,10 +1852,15 @@ fn styles_page() -> gtk::Box {
     });
     selection_path_row.append(&copy_actor_path);
     selection_header.append(&selection_path_row);
-    let properties_title = gtk::Label::new(Some("Propriétés"));
+
+    let properties_panel = gtk::Box::new(gtk::Orientation::Vertical, 8);
+    properties_panel.set_margin_top(12);
+    properties_panel.set_margin_bottom(12);
+    properties_panel.set_margin_start(12);
+    properties_panel.set_margin_end(12);
+    let properties_title = gtk::Label::new(Some("Propriétés de l’acteur"));
     properties_title.add_css_class("heading");
     properties_title.set_halign(gtk::Align::Start);
-    properties_panel.append(&selection_header);
     properties_panel.append(&properties_title);
     properties_panel.append(&details_scroll);
 
@@ -1829,12 +1869,21 @@ fn styles_page() -> gtk::Box {
     inspector_tabs.set_hexpand(true);
     inspector_tabs.set_vexpand(true);
 
+    let styles_title = gtk::Label::new(Some("Classes CSS"));
+    styles_title.set_halign(gtk::Align::Start);
+    styles_title.add_css_class("heading");
+    let inline_style_title = gtk::Label::new(Some("element.style"));
+    inline_style_title.set_halign(gtk::Align::Start);
+    inline_style_title.add_css_class("heading");
+
     let styles_panel = gtk::Box::new(gtk::Orientation::Vertical, 10);
     styles_panel.set_margin_top(12);
     styles_panel.set_margin_bottom(12);
     styles_panel.set_margin_start(12);
     styles_panel.set_margin_end(12);
+    styles_panel.append(&styles_title);
     styles_panel.append(&class_row);
+    styles_panel.append(&inline_style_title);
     styles_panel.append(&style_row);
     inspector_tabs.append_page(&styles_panel, Some(&gtk::Label::new(Some("Styles"))));
 
@@ -1857,6 +1906,7 @@ fn styles_page() -> gtk::Box {
     theme_panel.append(&custom_css_scroll);
     theme_panel.append(&theme_scroll);
     inspector_tabs.append_page(&theme_panel, Some(&gtk::Label::new(Some("Thème"))));
+    inspector_tabs.append_page(&properties_panel, Some(&gtk::Label::new(Some("Propriétés"))));
 
     let inspector_scroll = gtk::ScrolledWindow::builder()
         .min_content_width(340)
@@ -1865,24 +1915,28 @@ fn styles_page() -> gtk::Box {
         .child(&inspector_tabs)
         .build();
 
-    let detail_split = gtk::Paned::new(gtk::Orientation::Horizontal);
-    detail_split.set_start_child(Some(&properties_panel));
-    detail_split.set_end_child(Some(&inspector_scroll));
-    detail_split.set_resize_start_child(true);
-    detail_split.set_shrink_start_child(false);
-    detail_split.set_position(360);
+    let inspector_panel = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    inspector_panel.append(&selection_header);
+    inspector_panel.append(&inspector_scroll);
+
+    let tree_panel = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    tree_panel.append(&list_scroll);
+    let breadcrumb_bar = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    breadcrumb_bar.add_css_class("toolbar");
+    breadcrumb_bar.append(&tree_breadcrumb);
+    tree_panel.append(&breadcrumb_bar);
 
     let split = gtk::Paned::new(gtk::Orientation::Horizontal);
-    split.set_start_child(Some(&list_scroll));
-    split.set_end_child(Some(&detail_split));
+    split.set_start_child(Some(&tree_panel));
+    split.set_end_child(Some(&inspector_panel));
     split.set_resize_start_child(false);
     split.set_shrink_start_child(false);
-    split.set_position(280);
+    split.set_position(330);
     split.set_vexpand(true);
 
     page.append(&actions);
-    page.append(&status);
     page.append(&split);
+    page.append(&status);
     page
 }
 
@@ -2558,7 +2612,8 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        actor_detail_summary, actor_index_by_path, actor_inspector_title, actor_matches,
+        actor_breadcrumb, actor_detail_summary, actor_index_by_path, actor_inspector_title,
+        actor_matches,
         actor_path, actor_property_has_changed, actor_selection_index, actor_style_label,
         editable_actor_properties, extension_is_discovered, filter_computed_style, flatten_actors,
         format_actor_details, format_actor_details_filtered, format_computed_style,
@@ -2703,6 +2758,19 @@ mod tests {
             actor_style_label(&node, 2),
             "    button  ·  suggested-action  ·  0/2/1"
         );
+    }
+
+    #[test]
+    fn actor_breadcrumb_shows_the_selected_actor_ancestry() {
+        let nodes = vec![
+            serde_json::json!({"name": "stage", "path": ""}),
+            serde_json::json!({"name": "panel", "path": "0"}),
+            serde_json::json!({"name": "button", "path": "0/2"}),
+        ];
+
+        assert_eq!(actor_breadcrumb(&nodes, "0/2"), "stage  ›  panel  ›  button");
+        assert_eq!(actor_breadcrumb(&nodes, ""), "stage");
+        assert_eq!(actor_breadcrumb(&nodes, "9"), "stage");
     }
 
     #[test]

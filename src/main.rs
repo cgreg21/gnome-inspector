@@ -34,6 +34,13 @@ fn string_reply(reply: &glib::Variant, error: &str) -> Result<String, String> {
         .ok_or_else(|| error.to_string())
 }
 
+fn text_view_contents(view: &gtk::TextView) -> String {
+    let buffer = view.buffer();
+    buffer
+        .text(&buffer.start_iter(), &buffer.end_iter(), false)
+        .to_string()
+}
+
 fn format_computed_style(json: &str) -> Result<String, String> {
     let value: serde_json::Value = serde_json::from_str(json).map_err(|error| error.to_string())?;
     let object = value
@@ -1436,10 +1443,19 @@ fn styles_page() -> gtk::Box {
     class_input.set_placeholder_text(Some("Classes CSS : button primary"));
     class_input.set_hexpand(true);
     class_input.set_sensitive(false);
-    let style_input = gtk::Entry::new();
-    style_input.set_placeholder_text(Some("Style inline : color: white;"));
-    style_input.set_hexpand(true);
+    let style_input = gtk::TextView::new();
+    style_input.set_monospace(true);
+    style_input.set_wrap_mode(gtk::WrapMode::None);
+    style_input.set_left_margin(8);
+    style_input.set_top_margin(8);
     style_input.set_sensitive(false);
+    style_input.add_css_class("card");
+    let style_scroll = gtk::ScrolledWindow::builder()
+        .min_content_height(96)
+        .max_content_height(160)
+        .hexpand(true)
+        .child(&style_input)
+        .build();
 
     let nodes_for_selection = selected_nodes.clone();
     let path_for_selection = selected_path.clone();
@@ -1468,7 +1484,7 @@ fn styles_page() -> gtk::Box {
                         .and_then(serde_json::Value::as_str)
                         .unwrap_or(""),
                 );
-                style_for_selection.set_text(
+                style_for_selection.buffer().set_text(
                     node.get("inlineStyle")
                         .and_then(serde_json::Value::as_str)
                         .unwrap_or(""),
@@ -1700,7 +1716,7 @@ fn styles_page() -> gtk::Box {
                 } else {
                     *path_for_refresh.borrow_mut() = None;
                     class_for_refresh.set_text("");
-                    style_for_refresh.set_text("");
+                    style_for_refresh.buffer().set_text("");
                     details_for_refresh.buffer().set_text("Aucun style trouvé.");
                 }
                 status_for_refresh.remove_css_class("error");
@@ -1787,12 +1803,13 @@ fn styles_page() -> gtk::Box {
             status_for_style.add_css_class("error");
             return;
         };
-        match set_actor_inline_style(&path, style_for_apply.text().as_str()) {
+        let css = text_view_contents(&style_for_apply);
+        match set_actor_inline_style(&path, &css) {
             Ok(reply) => match serde_json::from_str::<serde_json::Value>(&reply) {
                 Ok(result)
                     if result.get("ok").and_then(serde_json::Value::as_bool) == Some(true) =>
                 {
-                    *original_style_for_apply.borrow_mut() = style_for_apply.text().to_string();
+                    *original_style_for_apply.borrow_mut() = text_view_contents(&style_for_apply);
                     apply_style_for_success.set_sensitive(false);
                     status_for_style.set_text("Style inline appliqué.");
                     status_for_style.remove_css_class("error");
@@ -1816,8 +1833,10 @@ fn styles_page() -> gtk::Box {
             }
         }
     });
-    style_row.append(&style_input);
-    style_row.append(&apply_style);
+    let style_editor = gtk::Box::new(gtk::Orientation::Vertical, 6);
+    style_editor.append(&style_scroll);
+    style_editor.append(&apply_style);
+    style_row.append(&style_editor);
 
     let original_class_for_change = original_class.clone();
     let apply_class_for_change = apply_class.clone();
@@ -1830,10 +1849,11 @@ fn styles_page() -> gtk::Box {
 
     let original_style_for_change = original_style.clone();
     let apply_style_for_change = apply_style.clone();
-    style_input.connect_changed(move |entry| {
+    style_input.buffer().connect_changed(move |buffer| {
+        let value = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false);
         apply_style_for_change.set_sensitive(text_differs(
             &original_style_for_change.borrow(),
-            entry.text().as_str(),
+            value.as_str(),
         ));
     });
 
@@ -1850,7 +1870,7 @@ fn styles_page() -> gtk::Box {
         style_for_edit_state.set_sensitive(enabled);
         if enabled {
             *original_class_for_selection.borrow_mut() = class_for_edit_state.text().to_string();
-            *original_style_for_selection.borrow_mut() = style_for_edit_state.text().to_string();
+            *original_style_for_selection.borrow_mut() = text_view_contents(&style_for_edit_state);
         } else {
             original_class_for_selection.borrow_mut().clear();
             original_style_for_selection.borrow_mut().clear();
@@ -2085,22 +2105,20 @@ fn styles_page() -> gtk::Box {
     inspector_tabs.set_hexpand(true);
     inspector_tabs.set_vexpand(true);
 
-    let styles_title = gtk::Label::new(Some("Classes CSS"));
-    styles_title.set_halign(gtk::Align::Start);
-    styles_title.add_css_class("heading");
-    let inline_style_title = gtk::Label::new(Some("element.style"));
-    inline_style_title.set_halign(gtk::Align::Start);
-    inline_style_title.add_css_class("heading");
+    let class_section = gtk::Expander::new(Some("Classes CSS"));
+    class_section.set_expanded(true);
+    class_section.set_child(Some(&class_row));
+    let inline_style_section = gtk::Expander::new(Some("element.style"));
+    inline_style_section.set_expanded(true);
+    inline_style_section.set_child(Some(&style_row));
 
-    let styles_panel = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let styles_panel = gtk::Box::new(gtk::Orientation::Vertical, 8);
     styles_panel.set_margin_top(12);
     styles_panel.set_margin_bottom(12);
     styles_panel.set_margin_start(12);
     styles_panel.set_margin_end(12);
-    styles_panel.append(&styles_title);
-    styles_panel.append(&class_row);
-    styles_panel.append(&inline_style_title);
-    styles_panel.append(&style_row);
+    styles_panel.append(&class_section);
+    styles_panel.append(&inline_style_section);
     inspector_tabs.append_page(&styles_panel, Some(&gtk::Label::new(Some("Styles"))));
 
     let computed_panel = gtk::Box::new(gtk::Orientation::Vertical, 10);

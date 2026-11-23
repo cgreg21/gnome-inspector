@@ -1542,7 +1542,6 @@ fn styles_page() -> gtk::Box {
     let original_style = Rc::new(RefCell::new(String::new()));
 
     let original_class_for_change = original_class.clone();
-    let class_for_change = class_input.clone();
     let apply_class_for_change = apply_class.clone();
     class_input.connect_changed(move |entry| {
         apply_class_for_change.set_sensitive(text_differs(

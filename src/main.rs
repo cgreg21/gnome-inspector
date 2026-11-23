@@ -54,9 +54,18 @@ fn format_computed_style(json: &str) -> Result<String, String> {
 }
 
 const LAYOUT_METRICS: [&str; 12] = [
-    "marginTop", "marginRight", "marginBottom", "marginLeft",
-    "borderTop", "borderRight", "borderBottom", "borderLeft",
-    "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+    "marginTop",
+    "marginRight",
+    "marginBottom",
+    "marginLeft",
+    "borderTop",
+    "borderRight",
+    "borderBottom",
+    "borderLeft",
+    "paddingTop",
+    "paddingRight",
+    "paddingBottom",
+    "paddingLeft",
 ];
 
 fn layout_metric(value: &serde_json::Value, key: &str) -> String {
@@ -1972,8 +1981,7 @@ fn styles_page() -> gtk::Box {
     let computed_status = status.clone();
     let report_for_refresh = computed_report.clone();
     let search_for_refresh = computed_search.clone();
-    let layout_values: [gtk::Label; 12] =
-        std::array::from_fn(|_| gtk::Label::new(Some("—")));
+    let layout_values: [gtk::Label; 12] = std::array::from_fn(|_| gtk::Label::new(Some("—")));
     for label in &layout_values {
         label.add_css_class("title-3");
         label.add_css_class("monospace");

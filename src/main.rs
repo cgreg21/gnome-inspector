@@ -1445,6 +1445,9 @@ fn styles_page() -> gtk::Box {
     let class_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     class_row.set_margin_start(24);
     class_row.set_margin_end(24);
+    let original_class = Rc::new(RefCell::new(String::new()));
+    let original_style = Rc::new(RefCell::new(String::new()));
+
     let apply_class = gtk::Button::with_label("Appliquer les classes");
     apply_class.set_sensitive(false);
     let class_for_apply = class_input.clone();
@@ -1537,9 +1540,6 @@ fn styles_page() -> gtk::Box {
     });
     style_row.append(&style_input);
     style_row.append(&apply_style);
-
-    let original_class = Rc::new(RefCell::new(String::new()));
-    let original_style = Rc::new(RefCell::new(String::new()));
 
     let original_class_for_change = original_class.clone();
     let apply_class_for_change = apply_class.clone();

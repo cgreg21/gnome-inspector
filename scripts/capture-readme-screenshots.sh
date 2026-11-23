@@ -103,7 +103,7 @@ sleep 1
 capture css-layout
 
 # Return to the theme workspace before leaving the CSS module.
-xdotool mousemove --window "$window_id" 100 80 click 1
+xdotool mousemove --window "$window_id" 610 150 click 1
 sleep 1
 capture css-themes
 

@@ -1544,14 +1544,14 @@ fn styles_page() -> gtk::Box {
     let class_for_refresh = class_input.clone();
     let style_for_refresh = style_input.clone();
     let status_for_refresh = status.clone();
-    let expand_all_for_refresh = expand_all.clone();
-    let collapse_all_for_refresh = collapse_all.clone();
     let expand_all = gtk::Button::with_label("Tout déplier");
     expand_all.set_tooltip_text(Some("Déplier tous les niveaux de l’arborescence"));
     expand_all.set_sensitive(false);
     let collapse_all = gtk::Button::with_label("Tout replier");
     collapse_all.set_tooltip_text(Some("Replier tous les niveaux de l’arborescence"));
     collapse_all.set_sensitive(false);
+    let expand_all_for_refresh = expand_all.clone();
+    let collapse_all_for_refresh = collapse_all.clone();
     let expanders_for_expand_all = expanders_for_search.clone();
     expand_all.connect_clicked(move |_| {
         for (_, expander) in expanders_for_expand_all.borrow().iter() {

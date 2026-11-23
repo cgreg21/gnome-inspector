@@ -57,6 +57,7 @@ inspection data; the mock service is only used for these documentation captures.
 | --- | --- |
 | Overview and connection status | ![Overview](screenshots/overview.png) |
 | Actor hierarchy and properties | ![Actors](screenshots/actors.png) |
+| Actor selected with its properties | ![Selected actor](screenshots/actors-selected.png) |
 | CSS classes, inline styles and themes | ![CSS and themes](screenshots/css-themes.png) |
 | CSS inspector: expanded actor tree | ![CSS inspector actor tree](screenshots/css-inspector-tree.png) |
 | CSS inspector: selected actor and style context | ![CSS inspector selected actor](screenshots/css-inspector-selection.png) |

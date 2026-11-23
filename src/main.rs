@@ -513,6 +513,18 @@ fn actor_style_label(node: &serde_json::Value, depth: usize) -> String {
     )
 }
 
+fn actor_inspector_title(node: &serde_json::Value) -> String {
+    let name = node
+        .get("name")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("Acteur");
+    let kind = node
+        .get("type")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("Type inconnu");
+    format!("{name}  ·  {kind}")
+}
+
 fn actor_path(node: &serde_json::Value) -> Option<&str> {
     node.get("path").and_then(serde_json::Value::as_str)
 }
@@ -1292,6 +1304,15 @@ fn styles_page() -> gtk::Box {
         .vexpand(true)
         .child(&details)
         .build();
+    let selected_actor_title = gtk::Label::new(Some("Aucun élément sélectionné"));
+    selected_actor_title.add_css_class("heading");
+    selected_actor_title.set_halign(gtk::Align::Start);
+    let selected_actor_path = gtk::Label::new(Some("Sélectionnez un acteur dans l’arborescence"));
+    selected_actor_path.add_css_class("dim-label");
+    selected_actor_path.add_css_class("monospace");
+    selected_actor_path.set_halign(gtk::Align::Start);
+    selected_actor_path.set_selectable(true);
+    selected_actor_path.set_ellipsize(gtk::pango::EllipsizeMode::Middle);
 
     let selected_nodes = Rc::new(RefCell::new(Vec::<serde_json::Value>::new()));
     let query = Rc::new(RefCell::new(String::new()));
@@ -1331,16 +1352,17 @@ fn styles_page() -> gtk::Box {
     let details_for_selection = details.clone();
     let class_for_selection = class_input.clone();
     let style_for_selection = style_input.clone();
+    let title_for_selection = selected_actor_title.clone();
+    let path_label_for_selection = selected_actor_path.clone();
     list.connect_row_selected(move |_, row| {
         if let Some(row) = row
             && let Ok(index) = row.widget_name().parse::<usize>()
             && let Some(node) = nodes_for_selection.borrow().get(index)
         {
             show_actor_details(&details_for_selection, node);
-            *path_for_selection.borrow_mut() = node
-                .get("path")
-                .and_then(serde_json::Value::as_str)
-                .map(str::to_string);
+            title_for_selection.set_text(&actor_inspector_title(node));
+            path_label_for_selection.set_text(actor_path(node).unwrap_or("Chemin indisponible"));
+            *path_for_selection.borrow_mut() = actor_path(node).map(str::to_string);
             class_for_selection.set_text(
                 node.get("styleClass")
                     .and_then(serde_json::Value::as_str)
@@ -1765,9 +1787,18 @@ fn styles_page() -> gtk::Box {
     properties_panel.set_margin_bottom(8);
     properties_panel.set_margin_start(12);
     properties_panel.set_margin_end(12);
+    let selection_header = gtk::Box::new(gtk::Orientation::Vertical, 4);
+    selection_header.add_css_class("card");
+    selection_header.set_margin_top(4);
+    selection_header.set_margin_bottom(4);
+    selection_header.set_margin_start(4);
+    selection_header.set_margin_end(4);
+    selection_header.append(&selected_actor_title);
+    selection_header.append(&selected_actor_path);
     let properties_title = gtk::Label::new(Some("Propriétés"));
     properties_title.add_css_class("heading");
     properties_title.set_halign(gtk::Align::Start);
+    properties_panel.append(&selection_header);
     properties_panel.append(&properties_title);
     properties_panel.append(&details_scroll);
 
@@ -2506,7 +2537,8 @@ fn main() {
 mod tests {
     use super::{
         actor_detail_summary, actor_index_by_path, actor_matches, actor_path,
-        actor_property_has_changed, actor_selection_index, actor_style_label,
+        actor_inspector_title, actor_property_has_changed, actor_selection_index,
+        actor_style_label,
         editable_actor_properties, extension_is_discovered, filter_computed_style, flatten_actors,
         format_actor_details, format_actor_details_filtered, format_computed_style,
         format_console_entry, remember_console_command, string_reply, text_differs,
@@ -2650,6 +2682,12 @@ mod tests {
             actor_style_label(&node, 2),
             "    button  ·  suggested-action  ·  0/2/1"
         );
+    }
+
+    #[test]
+    fn actor_inspector_title_shows_name_and_type() {
+        let node = serde_json::json!({"name": "Panel", "type": "StBoxLayout"});
+        assert_eq!(actor_inspector_title(&node), "Panel  ·  StBoxLayout");
     }
 
     #[test]

@@ -1307,6 +1307,68 @@ fn actors_page() -> gtk::Box {
     page
 }
 
+fn populate_inline_declarations(list: &gtk::ListBox, css: &str, query: &str) {
+    while let Some(child) = list.first_child() {
+        list.remove(&child);
+    }
+
+    let query = query.trim().to_lowercase();
+    let mut count = 0;
+    for declaration in css.split(';') {
+        let Some((name, value)) = declaration.split_once(':') else {
+            continue;
+        };
+        let name = name.trim();
+        let value = value.trim();
+        if name.is_empty() || value.is_empty()
+            || (!query.is_empty()
+                && !name.to_lowercase().contains(&query)
+                && !value.to_lowercase().contains(&query))
+        {
+            continue;
+        }
+
+        let content = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+        content.set_margin_top(5);
+        content.set_margin_bottom(5);
+        content.set_margin_start(8);
+        content.set_margin_end(8);
+
+        let property = gtk::Label::new(Some(name));
+        property.add_css_class("monospace");
+        property.add_css_class("accent");
+        property.set_halign(gtk::Align::Start);
+        property.set_ellipsize(gtk::pango::EllipsizeMode::End);
+        property.set_hexpand(true);
+
+        let value = gtk::Label::new(Some(value));
+        value.add_css_class("monospace");
+        value.set_halign(gtk::Align::End);
+        value.set_selectable(true);
+        value.set_ellipsize(gtk::pango::EllipsizeMode::End);
+
+        content.append(&property);
+        content.append(&value);
+        let row = gtk::ListBoxRow::new();
+        row.set_child(Some(&content));
+        list.append(&row);
+        count += 1;
+    }
+
+    if count == 0 {
+        let message = if query.is_empty() {
+            "Aucune déclaration inline pour cet acteur."
+        } else {
+            "Aucune déclaration ne correspond au filtre."
+        };
+        let empty = gtk::Label::new(Some(message));
+        empty.set_margin_top(12);
+        empty.set_margin_bottom(12);
+        empty.add_css_class("dim-label");
+        list.set_placeholder(Some(&empty));
+    }
+}
+
 fn styles_page() -> gtk::Box {
     let page = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
@@ -1484,6 +1546,19 @@ fn styles_page() -> gtk::Box {
     style_input.set_top_margin(8);
     style_input.set_sensitive(false);
     style_input.add_css_class("card");
+    let declaration_filter = gtk::SearchEntry::new();
+    declaration_filter.set_placeholder_text(Some("Filtrer les déclarations inline…"));
+    declaration_filter.set_sensitive(false);
+    let declaration_list = gtk::ListBox::new();
+    declaration_list.set_selection_mode(gtk::SelectionMode::None);
+    declaration_list.add_css_class("boxed-list");
+    let declaration_scroll = gtk::ScrolledWindow::builder()
+        .min_content_height(90)
+        .max_content_height(180)
+        .child(&declaration_list)
+        .build();
+    let selected_inline_css = Rc::new(RefCell::new(String::new()));
+
     let style_scroll = gtk::ScrolledWindow::builder()
         .min_content_height(96)
         .max_content_height(160)
@@ -1496,6 +1571,9 @@ fn styles_page() -> gtk::Box {
     let details_for_selection = details.clone();
     let class_for_selection = class_input.clone();
     let style_for_selection = style_input.clone();
+    let declarations_for_selection = declaration_list.clone();
+    let selected_inline_css_for_selection = selected_inline_css.clone();
+    let declaration_filter_for_selection = declaration_filter.clone();
     let title_for_selection = selected_actor_title.clone();
     let path_label_for_selection = selected_actor_path.clone();
     let breadcrumb_for_selection = tree_breadcrumb.clone();
@@ -1517,11 +1595,19 @@ fn styles_page() -> gtk::Box {
                         .and_then(serde_json::Value::as_str)
                         .unwrap_or(""),
                 );
-                style_for_selection.buffer().set_text(
-                    node.get("inlineStyle")
-                        .and_then(serde_json::Value::as_str)
-                        .unwrap_or(""),
+                let inline_css = node
+                    .get("inlineStyle")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("")
+                    .to_string();
+                style_for_selection.buffer().set_text(&inline_css);
+                *selected_inline_css_for_selection.borrow_mut() = inline_css.clone();
+                populate_inline_declarations(
+                    &declarations_for_selection,
+                    &inline_css,
+                    declaration_filter_for_selection.text().as_str(),
                 );
+                declaration_filter_for_selection.set_sensitive(true);
 
                 while let Some(child) = breadcrumb_for_selection.first_child() {
                     breadcrumb_for_selection.remove(&child);
@@ -1577,6 +1663,9 @@ fn styles_page() -> gtk::Box {
     let path_for_refresh = selected_path.clone();
     let class_for_refresh = class_input.clone();
     let style_for_refresh = style_input.clone();
+    let declarations_for_refresh = declaration_list.clone();
+    let selected_inline_css_for_refresh = selected_inline_css.clone();
+    let declaration_filter_for_refresh = declaration_filter.clone();
     let status_for_refresh = status.clone();
     let expand_all = gtk::Button::with_label("Tout déplier");
     expand_all.set_tooltip_text(Some("Déplier tous les niveaux de l’arborescence"));
@@ -1775,6 +1864,13 @@ fn styles_page() -> gtk::Box {
                     *path_for_refresh.borrow_mut() = None;
                     class_for_refresh.set_text("");
                     style_for_refresh.buffer().set_text("");
+                    *selected_inline_css_for_refresh.borrow_mut() = String::new();
+                    populate_inline_declarations(
+                        &declarations_for_refresh,
+                        "",
+                        declaration_filter_for_refresh.text().as_str(),
+                    );
+                    declaration_filter_for_refresh.set_sensitive(false);
                     details_for_refresh.buffer().set_text("Aucun style trouvé.");
                 }
                 status_for_refresh.remove_css_class("error");
@@ -2312,7 +2408,23 @@ fn styles_page() -> gtk::Box {
     style_tools.append(&copy_classes);
     style_tools.append(&copy_inline_style);
 
+    let declarations_heading = gtk::Label::new(Some("Déclarations de element.style"));
+    declarations_heading.add_css_class("heading");
+    declarations_heading.set_halign(gtk::Align::Start);
+    let declarations_for_filter = declaration_list.clone();
+    let selected_css_for_filter = selected_inline_css.clone();
+    declaration_filter.connect_search_changed(move |entry| {
+        populate_inline_declarations(
+            &declarations_for_filter,
+            &selected_css_for_filter.borrow(),
+            entry.text().as_str(),
+        );
+    });
+
     styles_panel.append(&style_tools);
+    styles_panel.append(&declarations_heading);
+    styles_panel.append(&declaration_filter);
+    styles_panel.append(&declaration_scroll);
     styles_panel.append(&class_section);
     styles_panel.append(&inline_style_section);
     inspector_tabs.append_page(&styles_panel, Some(&gtk::Label::new(Some("Styles"))));

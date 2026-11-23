@@ -75,7 +75,9 @@ click_page 283
 xdotool mousemove --window "$window_id" 1130 168 click 1
 sleep 2
 capture actors
-xdotool mousemove --window "$window_id" 100 240 click 1
+xdotool mousemove --window "$window_id" 47 250 click 1
+sleep 0.5
+xdotool mousemove --window "$window_id" 130 292 click 1
 sleep 1
 capture actors-selected
 
@@ -86,11 +88,11 @@ xdotool mousemove --window "$window_id" 935 80 click 1
 sleep 1
 capture css-inspector-tree
 
-xdotool mousemove --window "$window_id" 100 180 click 1
+xdotool mousemove --window "$window_id" 100 206 click 1
 sleep 1
 capture css-inspector-selection
 
-xdotool mousemove --window "$window_id" 100 210 click 1
+xdotool mousemove --window "$window_id" 100 365 click 1
 sleep 1
 capture css-inspector-deep-selection
 capture css-themes

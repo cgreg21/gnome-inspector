@@ -89,6 +89,82 @@ fn filter_computed_style(report: &str, query: &str) -> String {
         .join("\n")
 }
 
+fn computed_style_entries(report: &str, query: &str) -> Vec<(String, String)> {
+    let query = query.trim().to_lowercase();
+    report
+        .lines()
+        .filter_map(|line| {
+            let (name, value) = line.split_once(':')?;
+            let name = name.trim();
+            let value = value.trim();
+            (!name.is_empty()
+                && (query.is_empty()
+                    || name.to_lowercase().contains(&query)
+                    || value.to_lowercase().contains(&query)))
+            .then(|| (name.to_string(), value.to_string()))
+        })
+        .collect()
+}
+
+fn populate_computed_style(list: &gtk::ListBox, report: &str, query: &str) {
+    while let Some(child) = list.first_child() {
+        list.remove(&child);
+    }
+
+    for (name, value) in computed_style_entries(report, query) {
+        let row_content = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+        row_content.set_margin_top(5);
+        row_content.set_margin_bottom(5);
+        row_content.set_margin_start(10);
+        row_content.set_margin_end(8);
+
+        let property = gtk::Label::new(Some(&name));
+        property.add_css_class("monospace");
+        property.add_css_class("accent");
+        property.set_halign(gtk::Align::Start);
+        property.set_xalign(0.0);
+        property.set_width_chars(20);
+        property.set_max_width_chars(28);
+        property.set_ellipsize(gtk::pango::EllipsizeMode::End);
+
+        let value_label = gtk::Label::new(Some(&value));
+        value_label.add_css_class("monospace");
+        value_label.set_halign(gtk::Align::Start);
+        value_label.set_xalign(0.0);
+        value_label.set_hexpand(true);
+        value_label.set_selectable(true);
+        value_label.set_wrap(true);
+
+        let copy = gtk::Button::from_icon_name("edit-copy-symbolic");
+        copy.set_has_frame(false);
+        copy.set_tooltip_text(Some("Copier la valeur calculée"));
+        copy.connect_clicked(move |_| {
+            if let Some(display) = gtk::gdk::Display::default() {
+                display.clipboard().set_text(&value);
+            }
+        });
+
+        row_content.append(&property);
+        row_content.append(&value_label);
+        row_content.append(&copy);
+        let row = gtk::ListBoxRow::new();
+        row.set_child(Some(&row_content));
+        list.append(&row);
+    }
+
+    if list.first_child().is_none() {
+        let empty = gtk::Label::new(Some(if query.trim().is_empty() {
+            "Aucune propriété calculée disponible."
+        } else {
+            "Aucune propriété ne correspond au filtre."
+        }));
+        empty.set_margin_top(16);
+        empty.set_margin_bottom(16);
+        empty.add_css_class("dim-label");
+        list.set_placeholder(Some(&empty));
+    }
+}
+
 fn shell_version() -> Result<String, String> {
     string_reply(&shell_call("Ping")?, "Invalid Shell version reply.")
 }
@@ -2169,16 +2245,12 @@ fn styles_page() -> gtk::Box {
         apply_style_for_edit_state.set_sensitive(false);
     });
 
-    let computed_details = gtk::TextView::new();
-    computed_details.set_editable(false);
-    computed_details.set_cursor_visible(false);
-    computed_details.set_monospace(true);
-    computed_details.set_wrap_mode(gtk::WrapMode::WordChar);
-    computed_details.set_left_margin(12);
-    computed_details.set_top_margin(12);
+    let computed_details = gtk::ListBox::new();
+    computed_details.set_selection_mode(gtk::SelectionMode::None);
+    computed_details.add_css_class("boxed-list");
     let computed_scroll = gtk::ScrolledWindow::builder()
-        .min_content_height(100)
-        .max_content_height(160)
+        .min_content_height(180)
+        .max_content_height(320)
         .child(&computed_details)
         .build();
     let computed_report = Rc::new(RefCell::new(String::new()));
@@ -2187,9 +2259,11 @@ fn styles_page() -> gtk::Box {
     let report_for_search = computed_report.clone();
     let view_for_search = computed_details.clone();
     computed_search.connect_search_changed(move |entry| {
-        let report = report_for_search.borrow();
-        let filtered = filter_computed_style(&report, entry.text().as_str());
-        view_for_search.buffer().set_text(&filtered);
+        populate_computed_style(
+            &view_for_search,
+            &report_for_search.borrow(),
+            entry.text().as_str(),
+        );
     });
     let computed_actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     computed_actions.set_margin_start(0);
@@ -2244,10 +2318,11 @@ fn styles_page() -> gtk::Box {
                     layout_metric(&value, "height")
                 ));
                 *report_for_refresh.borrow_mut() = report;
-                computed_view.buffer().set_text(&filter_computed_style(
+                populate_computed_style(
+                    &computed_view,
                     &report_for_refresh.borrow(),
                     search_for_refresh.text().as_str(),
-                ));
+                );
                 computed_status
                     .set_text("Style calculé actualisé ; filtrez par nom ou valeur de propriété.");
                 computed_status.remove_css_class("error");
@@ -3286,7 +3361,7 @@ mod tests {
     use super::{
         actor_breadcrumb, actor_detail_summary, actor_first_child_index, actor_index_by_path,
         actor_inspector_title, actor_matches, actor_parent_path, actor_path,
-        actor_property_has_changed, actor_selection_index, editable_actor_properties,
+        actor_property_has_changed, actor_selection_index, computed_style_entries, editable_actor_properties,
         extension_is_discovered, filter_computed_style, flatten_actors, format_actor_details,
         format_actor_details_filtered, format_computed_style, format_console_entry, layout_metric,
         remember_console_command, string_reply, text_differs, update_inline_declaration,
@@ -3540,6 +3615,21 @@ mod tests {
         );
         assert_eq!(filter_computed_style(&report, ""), report);
         assert_eq!(filter_computed_style(&report, "missing"), "");
+    }
+
+    #[test]
+    fn computed_style_entries_are_separate_filterable_properties() {
+        let report = "font: Sans 12px\\nwidth: 640\\ncolor: rgba(1, 2, 3, 1)";
+        assert_eq!(
+            computed_style_entries(report, "WIDTH"),
+            vec![(String::from("width"), String::from("640"))]
+        );
+        assert_eq!(
+            computed_style_entries(report, "rgba"),
+            vec![(String::from("color"), String::from("rgba(1, 2, 3, 1)"))]
+        );
+        assert_eq!(computed_style_entries(report, "").len(), 3);
+        assert!(computed_style_entries(report, "missing").is_empty());
     }
 
     #[test]

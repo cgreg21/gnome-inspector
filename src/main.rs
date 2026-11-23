@@ -181,6 +181,10 @@ fn actor_property_has_changed(node: &serde_json::Value, name: &str, value: &str)
         .is_some_and(|(_, original)| original != value)
 }
 
+fn text_differs(original: &str, value: &str) -> bool {
+    original != value
+}
+
 fn theme_info() -> Result<String, String> {
     string_reply(
         &shell_call("GetThemeInfo")?,
@@ -1446,6 +1450,8 @@ fn styles_page() -> gtk::Box {
     let class_for_apply = class_input.clone();
     let path_for_class = selected_path.clone();
     let status_for_class = status.clone();
+    let original_class_for_apply = original_class.clone();
+    let apply_class_for_success = apply_class.clone();
     apply_class.connect_clicked(move |_| {
         let Some(path) = path_for_class.borrow().clone() else {
             status_for_class.set_text("Sélectionnez d’abord un acteur.");
@@ -1457,6 +1463,8 @@ fn styles_page() -> gtk::Box {
                 Ok(result)
                     if result.get("ok").and_then(serde_json::Value::as_bool) == Some(true) =>
                 {
+                    *original_class_for_apply.borrow_mut() = class_for_apply.text().to_string();
+                    apply_class_for_success.set_sensitive(false);
                     status_for_class.set_text("Classes CSS appliquées.");
                     status_for_class.remove_css_class("error");
                 }
@@ -1490,6 +1498,8 @@ fn styles_page() -> gtk::Box {
     let style_for_apply = style_input.clone();
     let path_for_style = selected_path.clone();
     let status_for_style = status.clone();
+    let original_style_for_apply = original_style.clone();
+    let apply_style_for_success = apply_style.clone();
     apply_style.connect_clicked(move |_| {
         let Some(path) = path_for_style.borrow().clone() else {
             status_for_style.set_text("Sélectionnez d’abord un acteur.");
@@ -1501,6 +1511,8 @@ fn styles_page() -> gtk::Box {
                 Ok(result)
                     if result.get("ok").and_then(serde_json::Value::as_bool) == Some(true) =>
                 {
+                    *original_style_for_apply.borrow_mut() = style_for_apply.text().to_string();
+                    apply_style_for_success.set_sensitive(false);
                     status_for_style.set_text("Style inline appliqué.");
                     status_for_style.remove_css_class("error");
                 }
@@ -1526,17 +1538,48 @@ fn styles_page() -> gtk::Box {
     style_row.append(&style_input);
     style_row.append(&apply_style);
 
+    let original_class = Rc::new(RefCell::new(String::new()));
+    let original_style = Rc::new(RefCell::new(String::new()));
+
+    let original_class_for_change = original_class.clone();
+    let class_for_change = class_input.clone();
+    let apply_class_for_change = apply_class.clone();
+    class_input.connect_changed(move |entry| {
+        apply_class_for_change.set_sensitive(text_differs(
+            &original_class_for_change.borrow(),
+            entry.text().as_str(),
+        ));
+    });
+
+    let original_style_for_change = original_style.clone();
+    let apply_style_for_change = apply_style.clone();
+    style_input.connect_changed(move |entry| {
+        apply_style_for_change.set_sensitive(text_differs(
+            &original_style_for_change.borrow(),
+            entry.text().as_str(),
+        ));
+    });
+
     let list_for_edit_state = list.clone();
     let class_for_edit_state = class_input.clone();
     let style_for_edit_state = style_input.clone();
+    let original_class_for_selection = original_class.clone();
+    let original_style_for_selection = original_style.clone();
     let apply_class_for_edit_state = apply_class.clone();
     let apply_style_for_edit_state = apply_style.clone();
     list_for_edit_state.connect_row_selected(move |_, row| {
         let enabled = row.is_some();
         class_for_edit_state.set_sensitive(enabled);
         style_for_edit_state.set_sensitive(enabled);
-        apply_class_for_edit_state.set_sensitive(enabled);
-        apply_style_for_edit_state.set_sensitive(enabled);
+        if enabled {
+            *original_class_for_selection.borrow_mut() = class_for_edit_state.text().to_string();
+            *original_style_for_selection.borrow_mut() = style_for_edit_state.text().to_string();
+        } else {
+            original_class_for_selection.borrow_mut().clear();
+            original_style_for_selection.borrow_mut().clear();
+        }
+        apply_class_for_edit_state.set_sensitive(false);
+        apply_style_for_edit_state.set_sensitive(false);
     });
 
     let computed_details = gtk::TextView::new();
@@ -2460,7 +2503,7 @@ mod tests {
     use super::{
         actor_detail_summary, actor_index_by_path, actor_matches, actor_path,
         actor_property_has_changed, actor_selection_index, actor_style_label,
-        editable_actor_properties,
+        editable_actor_properties, text_differs,
         extension_is_discovered, filter_computed_style, flatten_actors, format_actor_details,
         format_actor_details_filtered, format_computed_style, format_console_entry,
         remember_console_command, string_reply,
@@ -2560,6 +2603,13 @@ mod tests {
         assert!(!actor_property_has_changed(&node, "label", "OK"));
         assert!(actor_property_has_changed(&node, "label", "Cancel"));
         assert!(!actor_property_has_changed(&node, "missing", "value"));
+    }
+
+    #[test]
+    fn css_edit_actions_require_a_changed_value() {
+        assert!(!text_differs("button primary", "button primary"));
+        assert!(text_differs("button", "button primary"));
+        assert!(text_differs("color: red;", ""));
     }
 
     #[test]

@@ -58,7 +58,7 @@ fn layout_metric(value: &serde_json::Value, key: &str) -> String {
         .get(key)
         .and_then(serde_json::Value::as_f64)
         .filter(|number| number.is_finite())
-        .map(|number| format!("{number:g} px"))
+        .map(|number| format!("{number} px"))
         .unwrap_or_else(|| "—".to_string())
 }
 
@@ -1966,22 +1966,41 @@ fn styles_page() -> gtk::Box {
     let computed_status = status.clone();
     let report_for_refresh = computed_report.clone();
     let search_for_refresh = computed_search.clone();
+    let layout_width = gtk::Label::new(Some("—"));
+    let layout_height = gtk::Label::new(Some("—"));
+    let layout_horizontal_padding = gtk::Label::new(Some("—"));
+    let layout_vertical_padding = gtk::Label::new(Some("—"));
+    for label in [
+        &layout_width,
+        &layout_height,
+        &layout_horizontal_padding,
+        &layout_vertical_padding,
+    ] {
+        label.add_css_class("title-2");
+        label.set_halign(gtk::Align::Center);
+    }
+
+    let layout_width_for_refresh = layout_width.clone();
+    let layout_height_for_refresh = layout_height.clone();
+    let layout_horizontal_for_refresh = layout_horizontal_padding.clone();
+    let layout_vertical_for_refresh = layout_vertical_padding.clone();
     computed_refresh.connect_clicked(move |_| {
         let Some(path) = computed_path.borrow().clone() else {
             computed_status.set_text("Sélectionnez d’abord un acteur.");
             computed_status.add_css_class("error");
             return;
         };
-        match actor_computed_style(&path).and_then(|json| format_computed_style(&json)) {
-            Ok(report) => {
-                if let Ok(value) = serde_json::from_str::<serde_json::Value>(
-                    &actor_computed_style(&path).unwrap_or_default(),
-                ) {
-                    layout_width_for_refresh.set_text(&layout_metric(&value, "width"));
-                    layout_height_for_refresh.set_text(&layout_metric(&value, "height"));
-                    layout_horizontal_for_refresh.set_text(&layout_metric(&value, "horizontalPadding"));
-                    layout_vertical_for_refresh.set_text(&layout_metric(&value, "verticalPadding"));
-                }
+        match actor_computed_style(&path).and_then(|json| {
+            let value = serde_json::from_str::<serde_json::Value>(&json)
+                .map_err(|error| error.to_string())?;
+            let report = format_computed_style(&json)?;
+            Ok((report, value))
+        }) {
+            Ok((report, value)) => {
+                layout_width_for_refresh.set_text(&layout_metric(&value, "width"));
+                layout_height_for_refresh.set_text(&layout_metric(&value, "height"));
+                layout_horizontal_for_refresh.set_text(&layout_metric(&value, "horizontalPadding"));
+                layout_vertical_for_refresh.set_text(&layout_metric(&value, "verticalPadding"));
                 *report_for_refresh.borrow_mut() = report;
                 computed_view.buffer().set_text(&filter_computed_style(
                     &report_for_refresh.borrow(),
@@ -1997,20 +2016,6 @@ fn styles_page() -> gtk::Box {
             }
         }
     });
-    let layout_width = gtk::Label::new(Some("—"));
-    let layout_height = gtk::Label::new(Some("—"));
-    let layout_horizontal_padding = gtk::Label::new(Some("—"));
-    let layout_vertical_padding = gtk::Label::new(Some("—"));
-    for label in [
-        &layout_width,
-        &layout_height,
-        &layout_horizontal_padding,
-        &layout_vertical_padding,
-    ] {
-        label.add_css_class("title-2");
-        label.set_halign(gtk::Align::Center);
-    }
-
     let layout_metrics = gtk::Grid::new();
     layout_metrics.set_row_spacing(12);
     layout_metrics.set_column_spacing(24);
@@ -2053,10 +2058,6 @@ fn styles_page() -> gtk::Box {
 
     computed_actions.append(&computed_refresh);
 
-    let layout_width_for_refresh = layout_width.clone();
-    let layout_height_for_refresh = layout_height.clone();
-    let layout_horizontal_for_refresh = layout_horizontal_padding.clone();
-    let layout_vertical_for_refresh = layout_vertical_padding.clone();
     let theme_details = gtk::TextView::new();
     theme_details.set_editable(false);
     theme_details.set_cursor_visible(false);

@@ -510,10 +510,7 @@ fn actor_index_by_path(nodes: &[serde_json::Value], path: &str) -> Option<usize>
     nodes.iter().position(|node| actor_path(node) == Some(path))
 }
 
-fn actor_selection_index(
-    nodes: &[serde_json::Value],
-    previous_path: Option<&str>,
-) -> Option<usize> {
+fn actor_selection_index(nodes: &[serde_json::Value], previous_path: Option<&str>) -> Option<usize> {
     previous_path
         .and_then(|path| actor_index_by_path(nodes, path))
         .or_else(|| (!nodes.is_empty()).then_some(0))
@@ -1847,9 +1844,8 @@ fn console_page() -> gtk::Box {
     let editor_keys = gtk::EventControllerKey::new();
     let run_for_shortcut = run.clone();
     editor_keys.connect_key_pressed(move |_, key, _, modifiers| {
-        if key == gtk::gdk::Key::Return
-            && modifiers.contains(gtk::gdk::ModifierType::CONTROL_MASK)
-        {
+        let control_pressed = modifiers.contains(gtk::gdk::ModifierType::CONTROL_MASK);
+        if key == gtk::gdk::Key::Return && control_pressed {
             run_for_shortcut.emit_clicked();
             glib::Propagation::Stop
         } else {
@@ -2410,9 +2406,8 @@ fn main() {
 mod tests {
     use super::{
         actor_detail_summary, actor_index_by_path, actor_matches, actor_path, actor_selection_index,
-        actor_style_label,
-        editable_actor_properties, extension_is_discovered, filter_computed_style, flatten_actors,
-        format_actor_details, format_actor_details_filtered, format_computed_style,
+        actor_style_label, editable_actor_properties, extension_is_discovered, filter_computed_style,
+        flatten_actors, format_actor_details, format_actor_details_filtered, format_computed_style,
         format_console_entry, remember_console_command, string_reply,
     };
     use glib::variant::ToVariant;

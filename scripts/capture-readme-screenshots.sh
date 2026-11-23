@@ -80,11 +80,16 @@ click_page 437
 xdotool mousemove --window "$window_id" 980 168 click 1
 sleep 2
 xdotool mousemove --window "$window_id" 300 250 click 1
-sleep 0.5
+sleep 0.8
+capture css-inspector-tree
+
 xdotool mousemove --window "$window_id" 350 420 click 1
-sleep 0.5
+sleep 0.8
+capture css-inspector-selection
+
 xdotool mousemove --window "$window_id" 350 585 click 1
-sleep 1
+sleep 0.8
+capture css-inspector-deep-selection
 capture css-themes
 
 click_page 586

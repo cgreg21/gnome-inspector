@@ -494,25 +494,6 @@ fn actor_matches(node: &serde_json::Value, query: &str) -> bool {
             .is_some_and(|children| children.iter().any(|child| actor_matches(child, query)))
 }
 
-fn actor_style_label(node: &serde_json::Value, depth: usize) -> String {
-    let name = node
-        .get("name")
-        .and_then(serde_json::Value::as_str)
-        .unwrap_or("Acteur");
-    let classes = node
-        .get("styleClass")
-        .and_then(serde_json::Value::as_str)
-        .unwrap_or("");
-    let path = actor_path(node).unwrap_or("");
-    format!(
-        "{}{}  ·  {}  ·  {}",
-        "  ".repeat(depth),
-        name,
-        classes,
-        path
-    )
-}
-
 fn actor_breadcrumb(nodes: &[serde_json::Value], path: &str) -> String {
     let mut prefixes = vec![String::new()];
     let mut current = String::new();
@@ -554,6 +535,20 @@ fn actor_path(node: &serde_json::Value) -> Option<&str> {
 
 fn actor_index_by_path(nodes: &[serde_json::Value], path: &str) -> Option<usize> {
     nodes.iter().position(|node| actor_path(node) == Some(path))
+}
+
+fn actor_parent_path(path: &str) -> Option<&str> {
+    if path.is_empty() {
+        None
+    } else {
+        Some(path.rsplit_once('/').map_or("", |(parent, _)| parent))
+    }
+}
+
+fn actor_first_child_index(nodes: &[serde_json::Value], path: &str) -> Option<usize> {
+    nodes.iter().position(|node| {
+        actor_path(node).and_then(actor_parent_path) == Some(path)
+    })
 }
 
 fn actor_selection_index(
@@ -1381,6 +1376,7 @@ fn styles_page() -> gtk::Box {
 
     let tree_keys = gtk::EventControllerKey::new();
     let tree_for_keys = list.clone();
+    let nodes_for_keys = selected_nodes.clone();
     let expanders_for_keys = expanders_for_search.clone();
     tree_keys.connect_key_pressed(move |_, key, _, _| {
         let Some(row) = tree_for_keys.selected_row() else {
@@ -1389,22 +1385,46 @@ fn styles_page() -> gtk::Box {
         let Ok(index) = row.widget_name().parse::<usize>() else {
             return glib::Propagation::Proceed;
         };
+        let nodes = nodes_for_keys.borrow();
+        let Some(path) = nodes.get(index).and_then(actor_path) else {
+            return glib::Propagation::Proceed;
+        };
         let expander = expanders_for_keys
             .borrow()
             .iter()
             .find(|(row_index, _)| *row_index == index)
             .map(|(_, expander)| expander.clone());
-        let Some(expander) = expander else {
-            return glib::Propagation::Proceed;
-        };
+
         match key {
-            gtk::gdk::Key::Right if !expander.is_active() => {
-                expander.set_active(true);
-                glib::Propagation::Stop
+            gtk::gdk::Key::Right => {
+                if let Some(expander) = expander {
+                    if !expander.is_active() {
+                        expander.set_active(true);
+                    } else if let Some(child_index) = actor_first_child_index(&nodes, path)
+                        && let Some(child) = tree_for_keys.row_at_index(child_index as i32)
+                    {
+                        tree_for_keys.select_row(Some(&child));
+                    }
+                    glib::Propagation::Stop
+                } else {
+                    glib::Propagation::Proceed
+                }
             }
-            gtk::gdk::Key::Left if expander.is_active() => {
-                expander.set_active(false);
-                glib::Propagation::Stop
+            gtk::gdk::Key::Left => {
+                if let Some(expander) = expander
+                    && expander.is_active()
+                {
+                    expander.set_active(false);
+                    glib::Propagation::Stop
+                } else if let Some(parent_path) = actor_parent_path(path)
+                    && let Some(parent_index) = actor_index_by_path(&nodes, parent_path)
+                    && let Some(parent) = tree_for_keys.row_at_index(parent_index as i32)
+                {
+                    tree_for_keys.select_row(Some(&parent));
+                    glib::Propagation::Stop
+                } else {
+                    glib::Propagation::Proceed
+                }
             }
             _ => glib::Propagation::Proceed,
         }
@@ -2765,9 +2785,10 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        actor_breadcrumb, actor_detail_summary, actor_index_by_path, actor_inspector_title,
-        actor_matches, actor_path, actor_property_has_changed, actor_selection_index,
-        actor_style_label, editable_actor_properties, extension_is_discovered,
+        actor_breadcrumb, actor_detail_summary, actor_first_child_index, actor_index_by_path,
+        actor_inspector_title, actor_matches, actor_parent_path, actor_path,
+        actor_property_has_changed, actor_selection_index, editable_actor_properties,
+        extension_is_discovered,
         filter_computed_style, flatten_actors, format_actor_details, format_actor_details_filtered,
         format_computed_style, format_console_entry, remember_console_command, string_reply,
         text_differs,
@@ -2798,20 +2819,6 @@ mod tests {
     }
 
     #[test]
-    fn css_actor_rows_include_name_classes_and_stable_path() {
-        let node = serde_json::json!({
-            "name": "panel",
-            "styleClass": "main-panel active",
-            "path": "0/2"
-        });
-
-        assert_eq!(
-            actor_style_label(&node, 1),
-            "  panel  ·  main-panel active  ·  0/2"
-        );
-    }
-
-    #[test]
     fn actor_search_keeps_matching_descendant_context() {
         let tree = serde_json::json!({
             "name": "stage",
@@ -2832,6 +2839,24 @@ mod tests {
         assert!(!actor_matches(&tree, "missing"));
         assert!(actor_matches(&tree, "label"));
         assert!(actor_matches(&tree, "confirm"));
+    }
+
+    #[test]
+    fn actor_tree_keyboard_navigation_resolves_parent_and_first_child() {
+        let nodes = vec![
+            serde_json::json!({"path": ""}),
+            serde_json::json!({"path": "0"}),
+            serde_json::json!({"path": "0/1"}),
+            serde_json::json!({"path": "0/1/2"}),
+            serde_json::json!({"path": "0/3"}),
+        ];
+
+        assert_eq!(actor_parent_path(""), None);
+        assert_eq!(actor_parent_path("0"), Some(""));
+        assert_eq!(actor_parent_path("0/1/2"), Some("0/1"));
+        assert_eq!(actor_first_child_index(&nodes, ""), Some(1));
+        assert_eq!(actor_first_child_index(&nodes, "0/1"), Some(3));
+        assert_eq!(actor_first_child_index(&nodes, "0/3"), None);
     }
 
     #[test]
@@ -2911,20 +2936,6 @@ mod tests {
         assert!(by_value.contains("label (gchararray"));
         assert!(!by_value.contains("reactive (gboolean"));
         assert!(by_value.contains("Propriétés (1/2)"));
-    }
-
-    #[test]
-    fn css_actor_labels_include_stable_paths_for_search() {
-        let node = serde_json::json!({
-            "name": "button",
-            "styleClass": "suggested-action",
-            "path": "0/2/1"
-        });
-
-        assert_eq!(
-            actor_style_label(&node, 2),
-            "    button  ·  suggested-action  ·  0/2/1"
-        );
     }
 
     #[test]

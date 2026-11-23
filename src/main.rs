@@ -1024,6 +1024,7 @@ fn refresh_actor_tree(
 fn rows_len(nodes: &Rc<RefCell<Vec<serde_json::Value>>>) -> u64 {
     nodes.borrow().len() as u64
 }
+
 fn actors_page() -> gtk::Box {
     let page = gtk::Box::new(gtk::Orientation::Vertical, 12);
     page.append(&page_heading(
@@ -2023,6 +2024,7 @@ fn styles_page() -> gtk::Box {
                 let has_expandable_nodes = !expanders_for_search.borrow().is_empty();
                 expand_all_for_refresh.set_sensitive(has_expandable_nodes);
                 collapse_all_for_refresh.set_sensitive(has_expandable_nodes);
+
                 let count = snapshot
                     .get("actorCount")
                     .and_then(serde_json::Value::as_u64)
@@ -2365,16 +2367,17 @@ fn styles_page() -> gtk::Box {
             &size_for_live_style,
         ) {
             Ok(()) => {
-                status_for_live_style.set_text("Styles calculés synchronisés avec l’acteur sélectionné.");
+                status_for_live_style
+                    .set_text("Styles calculés synchronisés avec l’acteur sélectionné.");
                 status_for_live_style.remove_css_class("error");
             }
             Err(error) => {
-                status_for_live_style.set_text(&format!("Échec de lecture du style calculé : {error}"));
+                status_for_live_style
+                    .set_text(&format!("Échec de lecture du style calculé : {error}"));
                 status_for_live_style.add_css_class("error");
             }
         }
     });
-
     let content_frame = gtk::Frame::new(Some("Contenu"));
     content_frame.set_child(Some(&layout_size));
 
@@ -3050,7 +3053,8 @@ fn performance_page() -> gtk::Box {
                     .map(|stage| {
                         format!(
                             "{} × {} px",
-                            stage                                .get("width")
+                            stage
+                                .get("width")
                                 .and_then(serde_json::Value::as_u64)
                                 .unwrap_or(0),
                             stage

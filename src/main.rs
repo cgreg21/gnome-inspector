@@ -2146,35 +2146,17 @@ fn styles_page() -> gtk::Box {
             display.clipboard().set_text(&text_view_contents(&style_for_copy));
         }
     });
-    let copy_actor_path = gtk::Button::from_icon_name("edit-copy-symbolic");
-    copy_actor_path.set_tooltip_text(Some("Copier le chemin de l’acteur"));
-    let path_for_style_tools = selected_path.clone();
-    copy_actor_path.connect_clicked(move |_| {
-        if let (Some(path), Some(display)) = (
-            path_for_style_tools.borrow().as_ref(),
-            gtk::gdk::Display::default(),
-        ) {
-            display.clipboard().set_text(path);
-        }
-    });
-    let copy_state = Rc::new(RefCell::new(Vec::new()));
-    let copy_state_for_selection = copy_state.clone();
     let class_copy_state = copy_classes.clone();
     let style_copy_state = copy_inline_style.clone();
-    let path_copy_state = copy_actor_path.clone();
     list.connect_row_selected(move |_, row| {
         let enabled = row.is_some();
         class_copy_state.set_sensitive(enabled);
         style_copy_state.set_sensitive(enabled);
-        path_copy_state.set_sensitive(enabled);
-        *copy_state_for_selection.borrow_mut() = if enabled { vec![true] } else { Vec::new() };
     });
     copy_classes.set_sensitive(false);
     copy_inline_style.set_sensitive(false);
-    copy_actor_path.set_sensitive(false);
     style_tools.append(&copy_classes);
     style_tools.append(&copy_inline_style);
-    style_tools.append(&copy_actor_path);
 
     styles_panel.append(&style_tools);
     styles_panel.append(&class_section);

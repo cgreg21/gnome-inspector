@@ -1296,7 +1296,9 @@ fn styles_page() -> gtk::Box {
 
     let status = gtk::Label::new(Some("Aucune capture CSS effectuée."));
     status.set_halign(gtk::Align::Start);
-    status.set_margin_start(24);
+    status.set_margin_start(8);
+    status.set_margin_end(8);
+    status.set_margin_bottom(4);
     status.add_css_class("dim-label");
 
     let list = gtk::ListBox::new();
@@ -1313,7 +1315,7 @@ fn styles_page() -> gtk::Box {
     empty_state.add_css_class("dim-label");
     list.set_placeholder(Some(&empty_state));
     let list_scroll = gtk::ScrolledWindow::builder()
-        .min_content_width(300)
+        .min_content_width(280)
         .max_content_width(420)
         .vexpand(true)
         .child(&list)
@@ -1423,9 +1425,8 @@ fn styles_page() -> gtk::Box {
     let class_for_refresh = class_input.clone();
     let style_for_refresh = style_input.clone();
     let status_for_refresh = status.clone();
-    let refresh = gtk::Button::with_label("Actualiser les styles");
-    refresh.add_css_class("suggested-action");
-    refresh.set_halign(gtk::Align::Start);
+    let refresh = gtk::Button::from_icon_name("view-refresh-symbolic");
+    refresh.set_tooltip_text(Some("Actualiser l’arborescence et les styles"));
     refresh.connect_clicked(move |_| {
         let previous_path = path_for_refresh.borrow().clone();
         match style_tree().and_then(|json| {
@@ -1499,8 +1500,10 @@ fn styles_page() -> gtk::Box {
     });
 
     let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    actions.set_margin_start(24);
-    actions.set_margin_end(24);
+    actions.set_margin_start(8);
+    actions.set_margin_end(8);
+    actions.set_margin_top(6);
+    actions.add_css_class("toolbar");
     actions.append(&search);
     actions.append(&refresh);
 

@@ -2696,6 +2696,9 @@ fn styles_page() -> gtk::Box {
     inspector_tabs.set_hexpand(true);
     inspector_tabs.set_vexpand(true);
 
+    let declarations_heading = gtk::Label::new(Some("Déclarations de element.style"));
+    declarations_heading.add_css_class("heading");
+    declarations_heading.set_halign(gtk::Align::Start);
     let class_section = inspector_section("Classes CSS", &class_row, true);
     let inline_style_content = gtk::Box::new(gtk::Orientation::Vertical, 8);
     inline_style_content.append(&declarations_heading);
@@ -2742,9 +2745,6 @@ fn styles_page() -> gtk::Box {
     style_tools.append(&copy_classes);
     style_tools.append(&copy_inline_style);
 
-    let declarations_heading = gtk::Label::new(Some("Déclarations de element.style"));
-    declarations_heading.add_css_class("heading");
-    declarations_heading.set_halign(gtk::Align::Start);
     let declarations_for_filter = declaration_list.clone();
     let selected_css_for_filter = selected_inline_css.clone();
     let style_for_filter = style_input.clone();
@@ -3493,7 +3493,7 @@ fn main() {
 mod tests {
     use super::{
         actor_breadcrumb, actor_detail_summary, actor_first_child_index, actor_index_by_path,
-        actor_inspector_title, actor_matches, actor_parent_path, actor_path,
+        actor_inspector_title, actor_matches, actor_parent_path, actor_path, actor_style_summary,
         actor_property_has_changed, actor_selection_index, computed_style_entries,
         editable_actor_properties, extension_is_discovered, flatten_actors, format_actor_details,
         format_actor_details_filtered, format_computed_style, format_console_entry, layout_metric,

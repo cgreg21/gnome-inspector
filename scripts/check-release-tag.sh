@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 TAG="${1:-}"
-VERSION="$(sed -n 's/^version = "\\([^"]*\\)"/\\1/p' "$ROOT_DIR/Cargo.toml" | head -n 1)"
+VERSION="$(awk -F '"' '/^version = / { print $2; exit }' "$ROOT_DIR/Cargo.toml")"
 
 if [[ -z "$TAG" || -z "$VERSION" ]]; then
     echo "Usage: $0 v<package-version>" >&2

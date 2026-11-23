@@ -1349,14 +1349,17 @@ fn styles_page() -> gtk::Box {
     let selected_nodes = Rc::new(RefCell::new(Vec::<serde_json::Value>::new()));
     let query = Rc::new(RefCell::new(String::new()));
     let query_for_filter = query.clone();
+    let nodes_for_filter = selected_nodes.clone();
     list.set_filter_func(move |row| {
         let query = query_for_filter.borrow();
         if query.is_empty() {
             return true;
         }
-        row.child()
-            .and_then(|child| child.downcast::<gtk::Label>().ok())
-            .is_some_and(|label| label.text().to_lowercase().contains(query.as_str()))
+        row.widget_name()
+            .parse::<usize>()
+            .ok()
+            .and_then(|index| nodes_for_filter.borrow().get(index).cloned())
+            .is_some_and(|node| actor_matches(&node, query.as_str()))
     });
 
     let search = gtk::SearchEntry::new();
@@ -1364,8 +1367,20 @@ fn styles_page() -> gtk::Box {
     search.set_hexpand(true);
     let query_for_search = query.clone();
     let list_for_search = list.clone();
+    let expanders_for_search = Rc::new(RefCell::new(Vec::<gtk::ToggleButton>::new()));
+    let expanded_for_search = Rc::new(RefCell::new(Vec::<bool>::new()));
+    let search_expanders = expanders_for_search.clone();
+    let search_expanded = expanded_for_search.clone();
     search.connect_search_changed(move |entry| {
-        *query_for_search.borrow_mut() = entry.text().to_lowercase();
+        let query = entry.text().to_lowercase();
+        *query_for_search.borrow_mut() = query.clone();
+        for (index, expander) in search_expanders.borrow().iter().enumerate() {
+            let expanded = !query.is_empty() || index == 0;
+            expander.set_active(expanded);
+            if let Some(state) = search_expanded.borrow_mut().get_mut(index) {
+                *state = expanded;
+            }
+        }
         list_for_search.invalidate_filter();
     });
 
@@ -1442,18 +1457,125 @@ fn styles_page() -> gtk::Box {
                     .map(|(node, _)| node.clone())
                     .collect::<Vec<_>>();
                 *nodes_for_refresh.borrow_mut() = nodes;
+
+                let depths = rows.iter().map(|(_, depth)| *depth).collect::<Vec<_>>();
+                let mut parents = vec![None; rows.len()];
+                let mut ancestors = Vec::<usize>::new();
+                for (index, depth) in depths.iter().enumerate() {
+                    while ancestors.len() > *depth {
+                        ancestors.pop();
+                    }
+                    if *depth > 0 {
+                        parents[index] = ancestors.last().copied();
+                    }
+                    ancestors.push(index);
+                }
+
+                let expanded = Rc::new(RefCell::new(
+                    depths.iter().map(|depth| *depth == 0).collect::<Vec<_>>(),
+                ));
+                *expanded_for_search.borrow_mut() = expanded.borrow().clone();
+                expanders_for_search.borrow_mut().clear();
+                let row_widgets = Rc::new(RefCell::new(Vec::<gtk::ListBoxRow>::new()));
+
                 for (index, (node, depth)) in rows.into_iter().enumerate() {
-                    let label = gtk::Label::new(Some(&actor_style_label(&node, depth)));
-                    label.set_halign(gtk::Align::Start);
-                    label.set_ellipsize(gtk::pango::EllipsizeMode::End);
-                    label.set_margin_top(5);
-                    label.set_margin_bottom(5);
-                    label.set_margin_start(8);
-                    label.set_margin_end(8);
+                    let content = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+                    content.set_margin_top(2);
+                    content.set_margin_bottom(2);
+                    content.set_margin_start(4 + depth as i32 * 14);
+                    content.set_margin_end(8);
+
+                    let has_children = node
+                        .get("children")
+                        .and_then(serde_json::Value::as_array)
+                        .is_some_and(|children| !children.is_empty());
+                    if has_children {
+                        let expander = gtk::ToggleButton::with_label("▸");
+                        expander.set_active(depth == 0);
+                        expander.set_has_frame(false);
+                        expander.set_size_request(22, 24);
+                        expander.set_tooltip_text(Some("Déplier ou replier les éléments enfants"));
+                        expanders_for_search.borrow_mut().push(expander.clone());
+
+                        let expanded_for_toggle = expanded.clone();
+                        let parents_for_toggle = parents.clone();
+                        let rows_for_toggle = row_widgets.clone();
+                        expander.connect_toggled(move |button| {
+                            let is_expanded = button.is_active();
+                            button.set_label(if is_expanded { "▾" } else { "▸" });
+                            if let Some(state) = expanded_for_toggle.borrow_mut().get_mut(index) {
+                                *state = is_expanded;
+                            }
+                            let states = expanded_for_toggle.borrow();
+                            for (row_index, row) in rows_for_toggle.borrow().iter().enumerate() {
+                                let mut parent = parents_for_toggle[row_index];
+                                let mut visible = true;
+                                while let Some(parent_index) = parent {
+                                    if !states[parent_index] {
+                                        visible = false;
+                                        break;
+                                    }
+                                    parent = parents_for_toggle[parent_index];
+                                }
+                                row.set_visible(visible);
+                            }
+                        });
+                        content.append(&expander);
+                    } else {
+                        let spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+                        spacer.set_size_request(22, -1);
+                        content.append(&spacer);
+                    }
+
+                    let name = node
+                        .get("name")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or("Acteur");
+                    let name_label = gtk::Label::new(Some(name));
+                    name_label.set_halign(gtk::Align::Start);
+                    name_label.set_hexpand(true);
+                    name_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+                    content.append(&name_label);
+
+                    let kind = node
+                        .get("type")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or("Actor");
+                    let type_label = gtk::Label::new(Some(kind));
+                    type_label.add_css_class("dim-label");
+                    type_label.add_css_class("caption");
+                    type_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+                    content.append(&type_label);
+
+                    let classes = node
+                        .get("styleClass")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or("");
+                    if !classes.is_empty() {
+                        let class_label = gtk::Label::new(Some(classes));
+                        class_label.add_css_class("dim-label");
+                        class_label.add_css_class("monospace");
+                        class_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+                        class_label.set_max_width_chars(24);
+                        content.append(&class_label);
+                    }
+
                     let row = gtk::ListBoxRow::new();
                     row.set_widget_name(&index.to_string());
-                    row.set_child(Some(&label));
+                    row.set_tooltip_text(actor_path(&node));
+                    row.set_child(Some(&content));
+                    let mut parent = parents[index];
+                    let mut visible = true;
+                    while let Some(parent_index) = parent {
+                        if !expanded.borrow()[parent_index] {
+                            visible = false;
+                            break;
+                        }
+                        parent = parents[parent_index];
+                    }
+                    row.set_visible(visible);
                     list_for_refresh.append(&row);
+                    row_widgets.borrow_mut().push(row);
                 }
 
                 let count = snapshot
@@ -2644,6 +2766,20 @@ mod tests {
         assert!(include_str!("../extension/extension.js").contains("GnomeInspectorExtension"));
         assert!(include_str!("../extension/actor-tree.js").contains("buildActorTree"));
         assert!(include_str!("../extension/style-tree.js").contains("buildStyleTree"));
+    }
+
+    #[test]
+    fn css_actor_rows_include_name_classes_and_stable_path() {
+        let node = serde_json::json!({
+            "name": "panel",
+            "styleClass": "main-panel active",
+            "path": "0/2"
+        });
+
+        assert_eq!(
+            actor_style_label(&node, 1),
+            "  panel  ·  main-panel active  ·  0/2"
+        );
     }
 
     #[test]

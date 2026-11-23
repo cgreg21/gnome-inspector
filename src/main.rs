@@ -420,10 +420,16 @@ fn actor_picker_button(
             let status = status.clone();
             glib::timeout_add_local(std::time::Duration::from_millis(250), move || {
                 match actor_picker_result() {
-                    Ok(result) => match result.get("status").and_then(serde_json::Value::as_str) {
+                    Ok(result) => match result
+                        .get("status")
+                        .and_then(serde_json::Value::as_str)
+                    {
                         Some("pending") => glib::ControlFlow::Continue,
                         Some("selected") => {
-                            let path = result.get("path").and_then(serde_json::Value::as_str).unwrap_or("");
+                            let path = result
+                                .get("path")
+                                .and_then(serde_json::Value::as_str)
+                                .unwrap_or("");
                             let index = nodes.borrow().iter().position(|node| {
                                 node.get("path").and_then(serde_json::Value::as_str) == Some(path)
                             });
@@ -433,7 +439,9 @@ fn actor_picker_button(
                                 list.select_row(Some(&row));
                                 status.set_text(&format!("Acteur sélectionné · chemin {path}"));
                             } else {
-                                status.set_text("Acteur sélectionné dans Shell ; actualisez l’arbre pour synchroniser la ligne.");
+                                status.set_text(
+                                    "Acteur sélectionné dans Shell ; actualisez l’arbre pour synchroniser la ligne.",
+                                );
                             }
                             glib::ControlFlow::Break
                         }

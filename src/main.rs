@@ -2344,7 +2344,11 @@ fn styles_page() -> gtk::Box {
     let size_for_live_style = layout_size.clone();
     let status_for_live_style = status.clone();
     list.connect_row_selected(move |_, row| {
-        let Some(path) = path_for_live_style.borrow().clone().filter(|_| row.is_some()) else {
+        let Some(path) = path_for_live_style
+            .borrow()
+            .clone()
+            .filter(|_| row.is_some())
+        else {
             *report_for_live_style.borrow_mut() = String::new();
             populate_computed_style(
                 &list_for_live_style,

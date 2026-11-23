@@ -3023,8 +3023,8 @@ mod tests {
         actor_inspector_title, actor_matches, actor_parent_path, actor_path,
         actor_property_has_changed, actor_selection_index, editable_actor_properties,
         extension_is_discovered, filter_computed_style, flatten_actors, format_actor_details,
-        format_actor_details_filtered, format_computed_style, format_console_entry,
-        layout_metric, remember_console_command, string_reply, text_differs,
+        format_actor_details_filtered, format_computed_style, format_console_entry, layout_metric,
+        remember_console_command, string_reply, text_differs,
     };
     use glib::variant::ToVariant;
 

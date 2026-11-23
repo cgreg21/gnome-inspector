@@ -1331,15 +1331,15 @@ fn styles_page() -> gtk::Box {
     selected_actor_path.set_selectable(true);
     selected_actor_path.set_ellipsize(gtk::pango::EllipsizeMode::Middle);
 
-    let tree_breadcrumb = gtk::Label::new(Some("Sélectionnez un élément dans l’arborescence"));
+    let tree_breadcrumb = gtk::Box::new(gtk::Orientation::Horizontal, 4);
     tree_breadcrumb.set_halign(gtk::Align::Start);
-    tree_breadcrumb.set_ellipsize(gtk::pango::EllipsizeMode::Middle);
     tree_breadcrumb.set_margin_start(10);
     tree_breadcrumb.set_margin_end(10);
-    tree_breadcrumb.set_margin_top(8);
-    tree_breadcrumb.set_margin_bottom(8);
-    tree_breadcrumb.add_css_class("dim-label");
-    tree_breadcrumb.add_css_class("monospace");
+    tree_breadcrumb.set_margin_top(6);
+    tree_breadcrumb.set_margin_bottom(6);
+    let breadcrumb_hint = gtk::Label::new(Some("Sélectionnez un élément dans l’arborescence"));
+    breadcrumb_hint.add_css_class("dim-label");
+    tree_breadcrumb.append(&breadcrumb_hint);
 
     let selected_nodes = Rc::new(RefCell::new(Vec::<serde_json::Value>::new()));
     let query = Rc::new(RefCell::new(String::new()));
@@ -1449,30 +1449,76 @@ fn styles_page() -> gtk::Box {
     let title_for_selection = selected_actor_title.clone();
     let path_label_for_selection = selected_actor_path.clone();
     let breadcrumb_for_selection = tree_breadcrumb.clone();
+    let tree_for_breadcrumb = list.clone();
     list.connect_row_selected(move |_, row| {
         if let Some(row) = row
             && let Ok(index) = row.widget_name().parse::<usize>()
-            && let Some(node) = nodes_for_selection.borrow().get(index)
         {
-            show_actor_details(&details_for_selection, node);
-            title_for_selection.set_text(&actor_inspector_title(node));
-            let path = actor_path(node).unwrap_or("");
-            path_label_for_selection.set_text(path);
-            path_label_for_selection
-                .set_tooltip_text(Some(&actor_breadcrumb(&nodes_for_selection.borrow(), path)));
-            breadcrumb_for_selection
-                .set_text(&actor_breadcrumb(&nodes_for_selection.borrow(), path));
-            *path_for_selection.borrow_mut() = Some(path.to_string());
-            class_for_selection.set_text(
-                node.get("styleClass")
-                    .and_then(serde_json::Value::as_str)
-                    .unwrap_or(""),
-            );
-            style_for_selection.set_text(
-                node.get("inlineStyle")
-                    .and_then(serde_json::Value::as_str)
-                    .unwrap_or(""),
-            );
+            let nodes = nodes_for_selection.borrow();
+            if let Some(node) = nodes.get(index) {
+                show_actor_details(&details_for_selection, node);
+                title_for_selection.set_text(&actor_inspector_title(node));
+                let path = actor_path(node).unwrap_or("").to_string();
+                path_label_for_selection.set_text(&path);
+                path_label_for_selection
+                    .set_tooltip_text(Some(&actor_breadcrumb(&nodes, &path)));
+                *path_for_selection.borrow_mut() = Some(path.clone());
+                class_for_selection.set_text(
+                    node.get("styleClass")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or(""),
+                );
+                style_for_selection.set_text(
+                    node.get("inlineStyle")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or(""),
+                );
+
+                while let Some(child) = breadcrumb_for_selection.first_child() {
+                    breadcrumb_for_selection.remove(&child);
+                }
+                let mut prefixes = vec![String::new()];
+                let mut current = String::new();
+                for part in path.split('/').filter(|part| !part.is_empty()) {
+                    if !current.is_empty() {
+                        current.push('/');
+                    }
+                    current.push_str(part);
+                    prefixes.push(current.clone());
+                }
+                let crumbs = prefixes
+                    .iter()
+                    .filter_map(|prefix| {
+                        let crumb_index = actor_index_by_path(&nodes, prefix)?;
+                        let crumb_node = nodes.get(crumb_index)?;
+                        let name = crumb_node
+                            .get("name")
+                            .and_then(serde_json::Value::as_str)
+                            .unwrap_or("Acteur");
+                        Some((crumb_index, name.to_string(), prefix.clone()))
+                    })
+                    .collect::<Vec<_>>();
+                for (position, (crumb_index, name, crumb_path)) in crumbs.iter().enumerate() {
+                    if position > 0 {
+                        let separator = gtk::Label::new(Some("›"));
+                        separator.add_css_class("dim-label");
+                        breadcrumb_for_selection.append(&separator);
+                    }
+                    let crumb = gtk::Button::with_label(name);
+                    crumb.set_has_frame(false);
+                    crumb.add_css_class("flat");
+                    crumb.add_css_class("monospace");
+                    crumb.set_tooltip_text(Some(crumb_path));
+                    let tree = tree_for_breadcrumb.clone();
+                    let index = *crumb_index;
+                    crumb.connect_clicked(move |_| {
+                        if let Some(target) = tree.row_at_index(index as i32) {
+                            tree.select_row(Some(&target));
+                        }
+                    });
+                    breadcrumb_for_selection.append(&crumb);
+                }
+            }
         }
     });
 

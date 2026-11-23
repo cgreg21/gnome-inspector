@@ -75,8 +75,6 @@ click_page 283
 xdotool mousemove --window "$window_id" 1130 168 click 1
 sleep 2
 capture actors
-xdotool mousemove --window "$window_id" 47 250 click 1
-sleep 0.5
 xdotool mousemove --window "$window_id" 130 292 click 1
 sleep 1
 capture actors-selected

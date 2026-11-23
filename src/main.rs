@@ -1976,7 +1976,7 @@ fn styles_page() -> gtk::Box {
         &layout_horizontal_padding,
         &layout_vertical_padding,
     ] {
-        label.add_css_class("title-2");
+        label.add_css_class("title-3");
         label.set_halign(gtk::Align::Center);
     }
 
@@ -1984,6 +1984,18 @@ fn styles_page() -> gtk::Box {
     let layout_height_for_refresh = layout_height.clone();
     let layout_horizontal_for_refresh = layout_horizontal_padding.clone();
     let layout_vertical_for_refresh = layout_vertical_padding.clone();
+    let layout_width_for_selection = layout_width.clone();
+    let layout_height_for_selection = layout_height.clone();
+    let layout_horizontal_for_selection = layout_horizontal_padding.clone();
+    let layout_vertical_for_selection = layout_vertical_padding.clone();
+    list.connect_row_selected(move |_, row| {
+        if row.is_some() {
+            layout_width_for_selection.set_text("—");
+            layout_height_for_selection.set_text("—");
+            layout_horizontal_for_selection.set_text("—");
+            layout_vertical_for_selection.set_text("—");
+        }
+    });
     computed_refresh.connect_clicked(move |_| {
         let Some(path) = computed_path.borrow().clone() else {
             computed_status.set_text("Sélectionnez d’abord un acteur.");

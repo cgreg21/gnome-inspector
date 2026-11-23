@@ -77,18 +77,6 @@ fn layout_metric(value: &serde_json::Value, key: &str) -> String {
         .unwrap_or_else(|| "—".to_string())
 }
 
-fn filter_computed_style(report: &str, query: &str) -> String {
-    if query.trim().is_empty() {
-        return report.to_string();
-    }
-    let query = query.to_lowercase();
-    report
-        .lines()
-        .filter(|line| line.to_lowercase().contains(&query))
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
 fn computed_style_entries(report: &str, query: &str) -> Vec<(String, String)> {
     let query = query.trim().to_lowercase();
     report
@@ -3362,7 +3350,7 @@ mod tests {
         actor_breadcrumb, actor_detail_summary, actor_first_child_index, actor_index_by_path,
         actor_inspector_title, actor_matches, actor_parent_path, actor_path,
         actor_property_has_changed, actor_selection_index, computed_style_entries, editable_actor_properties,
-        extension_is_discovered, filter_computed_style, flatten_actors, format_actor_details,
+        extension_is_discovered, flatten_actors, format_actor_details,
         format_actor_details_filtered, format_computed_style, format_console_entry, layout_metric,
         remember_console_command, string_reply, text_differs, update_inline_declaration,
     };
@@ -3604,17 +3592,20 @@ mod tests {
     }
 
     #[test]
-    fn formats_and_filters_computed_style_properties() {
+    fn formats_computed_style_properties_for_the_inspector() {
         let report = format_computed_style(r#"{"font":"Sans 12px","width":640}"#).unwrap();
         assert!(report.contains("font: \"Sans 12px\""));
         assert!(report.contains("width: 640"));
-        assert_eq!(filter_computed_style(&report, "WIDTH"), "width: 640");
         assert_eq!(
-            filter_computed_style(&report, "sans"),
-            "font: \"Sans 12px\""
+            computed_style_entries(&report, "WIDTH"),
+            vec![(String::from("width"), String::from("640"))]
         );
-        assert_eq!(filter_computed_style(&report, ""), report);
-        assert_eq!(filter_computed_style(&report, "missing"), "");
+        assert_eq!(
+            computed_style_entries(&report, "sans"),
+            vec![(String::from("font"), String::from("\"Sans 12px\""))]
+        );
+        assert_eq!(computed_style_entries(&report, "").len(), 2);
+        assert!(computed_style_entries(&report, "missing").is_empty());
     }
 
     #[test]

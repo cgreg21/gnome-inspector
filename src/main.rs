@@ -1794,7 +1794,27 @@ fn styles_page() -> gtk::Box {
     selection_header.set_margin_start(4);
     selection_header.set_margin_end(4);
     selection_header.append(&selected_actor_title);
-    selection_header.append(&selected_actor_path);
+
+    let selection_path_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    selection_path_row.append(&selected_actor_path);
+    let copy_actor_path = gtk::Button::from_icon_name("edit-copy-symbolic");
+    copy_actor_path.set_tooltip_text(Some("Copier le chemin de l’acteur sélectionné"));
+    copy_actor_path.set_sensitive(false);
+    let path_for_copy = selected_path.clone();
+    copy_actor_path.connect_clicked(move |_| {
+        if let (Some(path), Some(display)) =
+            (path_for_copy.borrow().as_ref(), gtk::gdk::Display::default())
+        {
+            display.clipboard().set_text(path);
+        }
+    });
+    let copy_for_selection = copy_actor_path.clone();
+    let path_for_selection_state = selected_path.clone();
+    list.connect_row_selected(move |_, row| {
+        copy_for_selection.set_sensitive(row.is_some() && path_for_selection_state.borrow().is_some());
+    });
+    selection_path_row.append(&copy_actor_path);
+    selection_header.append(&selection_path_row);
     let properties_title = gtk::Label::new(Some("Propriétés"));
     properties_title.add_css_class("heading");
     properties_title.set_halign(gtk::Align::Start);
@@ -2536,8 +2556,8 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        actor_detail_summary, actor_index_by_path, actor_inspector_title, actor_matches, actor_path,
-        actor_property_has_changed, actor_selection_index, actor_style_label,
+        actor_detail_summary, actor_index_by_path, actor_inspector_title, actor_matches,
+        actor_path, actor_property_has_changed, actor_selection_index, actor_style_label,
         editable_actor_properties, extension_is_discovered, filter_computed_style, flatten_actors,
         format_actor_details, format_actor_details_filtered, format_computed_style,
         format_console_entry, remember_console_command, string_reply, text_differs,

@@ -174,6 +174,13 @@ fn editable_actor_properties(node: &serde_json::Value) -> Vec<(String, String)> 
         .collect()
 }
 
+fn actor_property_has_changed(node: &serde_json::Value, name: &str, value: &str) -> bool {
+    editable_actor_properties(node)
+        .into_iter()
+        .find(|(property, _)| property == name)
+        .is_some_and(|(_, original)| original != value)
+}
+
 fn theme_info() -> Result<String, String> {
     string_reply(
         &shell_call("GetThemeInfo")?,
@@ -878,6 +885,16 @@ fn actors_page() -> gtk::Box {
     let list = gtk::ListBox::new();
     list.set_selection_mode(gtk::SelectionMode::Single);
     list.add_css_class("navigation-sidebar");
+    let empty_state = gtk::Label::new(Some(
+        "Aucun acteur affiché. Actualisez la capture ou modifiez votre recherche.",
+    ));
+    empty_state.set_wrap(true);
+    empty_state.set_margin_top(24);
+    empty_state.set_margin_bottom(24);
+    empty_state.set_margin_start(16);
+    empty_state.set_margin_end(16);
+    empty_state.add_css_class("dim-label");
+    list.set_placeholder(Some(&empty_state));
     let list_scroll = gtk::ScrolledWindow::builder()
         .min_content_width(300)
         .max_content_width(420)
@@ -968,7 +985,7 @@ fn actors_page() -> gtk::Box {
             }
             property_name_for_selection.set_sensitive(!editable.is_empty());
             property_value_for_selection.set_sensitive(!editable.is_empty());
-            apply_for_selection.set_sensitive(!editable.is_empty());
+            apply_for_selection.set_sensitive(false);
             if let Some((_, value)) = editable.first() {
                 property_name_for_selection.set_active(Some(0));
                 property_value_for_selection.set_text(value);
@@ -989,6 +1006,7 @@ fn actors_page() -> gtk::Box {
     let actor_for_property_choice = selected_actor.clone();
     let value_for_property_choice = property_value.clone();
     let name_for_property_choice = property_name.clone();
+    let apply_for_property_choice = apply_property.clone();
     property_name.connect_changed(move |_| {
         let Some(node) = actor_for_property_choice.borrow().as_ref().cloned() else {
             return;
@@ -1002,6 +1020,21 @@ fn actors_page() -> gtk::Box {
         {
             value_for_property_choice.set_text(&value);
         }
+        apply_for_property_choice.set_sensitive(false);
+    });
+
+    let actor_for_value_change = selected_actor.clone();
+    let name_for_value_change = property_name.clone();
+    let apply_for_value_change = apply_property.clone();
+    property_value.connect_changed(move |entry| {
+        let changed = actor_for_value_change
+            .borrow()
+            .as_ref()
+            .zip(name_for_value_change.active_id().as_ref())
+            .is_some_and(|(node, name)| {
+                actor_property_has_changed(node, name.as_str(), entry.text().as_str())
+            });
+        apply_for_value_change.set_sensitive(changed);
     });
 
     let actor_for_apply = selected_actor.clone();
@@ -1010,6 +1043,7 @@ fn actors_page() -> gtk::Box {
     let status_for_apply = status.clone();
     let details_for_apply = details.clone();
     let search_for_apply = property_search.clone();
+    let apply_property_for_success = apply_property.clone();
     apply_property.connect_clicked(move |_| {
         let Some(actor) = actor_for_apply.borrow().as_ref().cloned() else {
             status_for_apply.set_text("Sélectionnez un acteur.");
@@ -1040,6 +1074,7 @@ fn actors_page() -> gtk::Box {
                     property["value"] = value.clone();
                 }
                 *actor_for_apply.borrow_mut() = Some(updated.clone());
+                apply_property_for_success.set_sensitive(false);
                 show_actor_details_filtered(
                     &details_for_apply,
                     &updated,
@@ -1221,6 +1256,16 @@ fn styles_page() -> gtk::Box {
     let list = gtk::ListBox::new();
     list.set_selection_mode(gtk::SelectionMode::Single);
     list.add_css_class("navigation-sidebar");
+    let empty_state = gtk::Label::new(Some(
+        "Aucun acteur CSS affiché. Actualisez les styles pour commencer.",
+    ));
+    empty_state.set_wrap(true);
+    empty_state.set_margin_top(24);
+    empty_state.set_margin_bottom(24);
+    empty_state.set_margin_start(16);
+    empty_state.set_margin_end(16);
+    empty_state.add_css_class("dim-label");
+    list.set_placeholder(Some(&empty_state));
     let list_scroll = gtk::ScrolledWindow::builder()
         .min_content_width(300)
         .max_content_width(420)
@@ -2414,7 +2459,8 @@ fn main() {
 mod tests {
     use super::{
         actor_detail_summary, actor_index_by_path, actor_matches, actor_path,
-        actor_selection_index, actor_style_label, editable_actor_properties,
+        actor_property_has_changed, actor_selection_index, actor_style_label,
+        editable_actor_properties,
         extension_is_discovered, filter_computed_style, flatten_actors, format_actor_details,
         format_actor_details_filtered, format_computed_style, format_console_entry,
         remember_console_command, string_reply,
@@ -2501,6 +2547,19 @@ mod tests {
                 ("visible".to_string(), "true".to_string())
             ]
         );
+    }
+
+    #[test]
+    fn property_editor_is_enabled_only_when_a_value_changes() {
+        let node = serde_json::json!({
+            "properties": [
+                {"name": "label", "type": "gchararray", "writable": true, "value": "OK"}
+            ]
+        });
+
+        assert!(!actor_property_has_changed(&node, "label", "OK"));
+        assert!(actor_property_has_changed(&node, "label", "Cancel"));
+        assert!(!actor_property_has_changed(&node, "missing", "value"));
     }
 
     #[test]

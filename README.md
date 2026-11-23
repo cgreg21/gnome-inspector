@@ -68,7 +68,7 @@ inspection data; the mock service is only used for these documentation captures.
 | GNOME Shell diagnostics | ![Diagnostics](screenshots/diagnostics.png) |
 | Performance dashboard and history | ![Performance](screenshots/performance.png) |
 
-The CSS captures are separate usage situations: navigating the actor tree, inspecting a selected actor with its style context, and drilling into a nested actor. They use a deterministic mock Shell tree so the same interactions can be reproduced in CI.
+The CSS captures cover distinct usage situations: navigating the actor tree, inspecting selected and nested actors, reviewing computed properties, and reading the box model. They use a deterministic mock Shell tree so the same interactions can be reproduced in CI.
 
 The PNG files are versioned in `screenshots/`, so they are displayed directly on
 GitHub and remain available independently of CI artifact retention. GitHub Actions regenerates them with `scripts/capture-readme-screenshots.sh` on each CI run

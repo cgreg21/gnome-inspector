@@ -119,6 +119,12 @@ the extension is not discovered after installation, log out and back in so GNOME
 Shell rescans the extensions directory. The app reports this situation separately
 from an activation error.
 
+## Security and alpha limitations
+
+**GJS console warning:** the console evaluates entered JavaScript inside the connected GNOME Shell process, with that process's privileges. A command can change or disrupt the desktop session and may access data available to GNOME Shell. Run only code you have reviewed and trust. Do not paste commands from untrusted sources.
+
+This alpha targets GNOME Shell 51. The current release workflow builds Linux x86_64 archives; other architectures are not yet packaged. Performance reporting does not include CPU or memory history, and actor inspection is bounded and may report incomplete snapshots. See [CHANGELOG.md](CHANGELOG.md) for the alpha feature list and known limitations.
+
 ## Requirements
 
 - Rust stable and Cargo

@@ -1251,6 +1251,8 @@ fn actors_page() -> gtk::Box {
     let details_for_refresh = details.clone();
     let nodes_for_refresh = selected_nodes.clone();
     let status_for_refresh = status.clone();
+    let expand_all_for_refresh = expand_all.clone();
+    let collapse_all_for_refresh = collapse_all.clone();
     let expanders_for_refresh = expander_widgets.clone();
     refresh.connect_clicked(move |_| {
         refresh_actor_tree(
@@ -1544,6 +1546,25 @@ fn styles_page() -> gtk::Box {
     let class_for_refresh = class_input.clone();
     let style_for_refresh = style_input.clone();
     let status_for_refresh = status.clone();
+    let expand_all = gtk::Button::with_label("Tout déplier");
+    expand_all.set_tooltip_text(Some("Déplier tous les niveaux de l’arborescence"));
+    expand_all.set_sensitive(false);
+    let collapse_all = gtk::Button::with_label("Tout replier");
+    collapse_all.set_tooltip_text(Some("Replier tous les niveaux de l’arborescence"));
+    collapse_all.set_sensitive(false);
+    let expanders_for_expand_all = expanders_for_search.clone();
+    expand_all.connect_clicked(move |_| {
+        for (_, expander) in expanders_for_expand_all.borrow().iter() {
+            expander.set_active(true);
+        }
+    });
+    let expanders_for_collapse_all = expanders_for_search.clone();
+    collapse_all.connect_clicked(move |_| {
+        for (_, expander) in expanders_for_collapse_all.borrow().iter() {
+            expander.set_active(false);
+        }
+    });
+
     let refresh = gtk::Button::from_icon_name("view-refresh-symbolic");
     refresh.set_tooltip_text(Some("Actualiser l’arborescence et les styles"));
     refresh.connect_clicked(move |_| {
@@ -1688,6 +1709,10 @@ fn styles_page() -> gtk::Box {
                     row_widgets.borrow_mut().push(row);
                 }
 
+                let has_expandable_nodes = !expanders_for_search.borrow().is_empty();
+                expand_all_for_refresh.set_sensitive(has_expandable_nodes);
+                collapse_all_for_refresh.set_sensitive(has_expandable_nodes);
+
                 let count = snapshot
                     .get("actorCount")
                     .and_then(serde_json::Value::as_u64)
@@ -1733,6 +1758,8 @@ fn styles_page() -> gtk::Box {
     actions.set_margin_top(6);
     actions.add_css_class("toolbar");
     actions.append(&search);
+    actions.append(&expand_all);
+    actions.append(&collapse_all);
     actions.append(&refresh);
 
     let class_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);

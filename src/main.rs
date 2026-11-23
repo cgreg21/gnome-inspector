@@ -1384,17 +1384,22 @@ fn populate_inline_declarations(
         value_entry.set_tooltip_text(Some("Modifier la valeur puis appuyer sur Entrée"));
 
         let property_name = name.to_string();
-        let original_value = value.to_string();
         let editor_for_toggle = editor.clone();
         let updating_for_toggle = updating.clone();
         let value_for_toggle = value_entry.clone();
+        let property_for_toggle = property.clone();
         enabled.connect_toggled(move |button| {
             value_for_toggle.set_sensitive(button.is_active());
+            if button.is_active() {
+                property_for_toggle.remove_css_class("dim-label");
+            } else {
+                property_for_toggle.add_css_class("dim-label");
+            }
             let css = text_view_contents(&editor_for_toggle);
             let updated = update_inline_declaration(
                 &css,
                 &property_name,
-                &original_value,
+                value_for_toggle.text().as_str(),
                 button.is_active(),
             );
             updating_for_toggle.set(true);

@@ -1396,14 +1396,10 @@ fn styles_page() -> gtk::Box {
             title_for_selection.set_text(&actor_inspector_title(node));
             let path = actor_path(node).unwrap_or("");
             path_label_for_selection.set_text(path);
-            path_label_for_selection.set_tooltip_text(Some(&actor_breadcrumb(
-                &nodes_for_selection.borrow(),
-                path,
-            )));
-            breadcrumb_for_selection.set_text(&actor_breadcrumb(
-                &nodes_for_selection.borrow(),
-                path,
-            ));
+            path_label_for_selection
+                .set_tooltip_text(Some(&actor_breadcrumb(&nodes_for_selection.borrow(), path)));
+            breadcrumb_for_selection
+                .set_text(&actor_breadcrumb(&nodes_for_selection.borrow(), path));
             *path_for_selection.borrow_mut() = Some(path.to_string());
             class_for_selection.set_text(
                 node.get("styleClass")
@@ -1909,7 +1905,10 @@ fn styles_page() -> gtk::Box {
     theme_panel.append(&custom_css_scroll);
     theme_panel.append(&theme_scroll);
     inspector_tabs.append_page(&theme_panel, Some(&gtk::Label::new(Some("Thème"))));
-    inspector_tabs.append_page(&properties_panel, Some(&gtk::Label::new(Some("Propriétés"))));
+    inspector_tabs.append_page(
+        &properties_panel,
+        Some(&gtk::Label::new(Some("Propriétés"))),
+    );
 
     let inspector_scroll = gtk::ScrolledWindow::builder()
         .min_content_width(340)
@@ -2616,11 +2615,11 @@ fn main() {
 mod tests {
     use super::{
         actor_breadcrumb, actor_detail_summary, actor_index_by_path, actor_inspector_title,
-        actor_matches,
-        actor_path, actor_property_has_changed, actor_selection_index, actor_style_label,
-        editable_actor_properties, extension_is_discovered, filter_computed_style, flatten_actors,
-        format_actor_details, format_actor_details_filtered, format_computed_style,
-        format_console_entry, remember_console_command, string_reply, text_differs,
+        actor_matches, actor_path, actor_property_has_changed, actor_selection_index,
+        actor_style_label, editable_actor_properties, extension_is_discovered,
+        filter_computed_style, flatten_actors, format_actor_details, format_actor_details_filtered,
+        format_computed_style, format_console_entry, remember_console_command, string_reply,
+        text_differs,
     };
     use glib::variant::ToVariant;
 
@@ -2771,7 +2770,10 @@ mod tests {
             serde_json::json!({"name": "button", "path": "0/2"}),
         ];
 
-        assert_eq!(actor_breadcrumb(&nodes, "0/2"), "stage  ›  panel  ›  button");
+        assert_eq!(
+            actor_breadcrumb(&nodes, "0/2"),
+            "stage  ›  panel  ›  button"
+        );
         assert_eq!(actor_breadcrumb(&nodes, ""), "stage");
         assert_eq!(actor_breadcrumb(&nodes, "9"), "stage");
     }

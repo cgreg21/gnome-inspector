@@ -687,8 +687,13 @@ fn refresh_actor_tree(
                 let previous_path = list
                     .selected_row()
                     .and_then(|row| row.widget_name().parse::<usize>().ok())
-                    .and_then(|index| selected_nodes.borrow().get(index).and_then(actor_path))
-                    .map(str::to_owned);
+                    .and_then(|index| {
+                        selected_nodes
+                            .borrow()
+                            .get(index)
+                            .and_then(actor_path)
+                            .map(str::to_owned)
+                    });
                 let mut rows = Vec::new();
                 if let Some(root) = snapshot.get("root") {
                     flatten_actors(root, 0, &mut rows);

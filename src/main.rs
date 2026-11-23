@@ -1379,6 +1379,38 @@ fn styles_page() -> gtk::Box {
         list_for_search.invalidate_filter();
     });
 
+    let tree_keys = gtk::EventControllerKey::new();
+    let tree_for_keys = list.clone();
+    let expanders_for_keys = expanders_for_search.clone();
+    tree_keys.connect_key_pressed(move |_, key, _, _| {
+        let Some(row) = tree_for_keys.selected_row() else {
+            return glib::Propagation::Proceed;
+        };
+        let Ok(index) = row.widget_name().parse::<usize>() else {
+            return glib::Propagation::Proceed;
+        };
+        let expander = expanders_for_keys
+            .borrow()
+            .iter()
+            .find(|(row_index, _)| *row_index == index)
+            .map(|(_, expander)| expander.clone());
+        let Some(expander) = expander else {
+            return glib::Propagation::Proceed;
+        };
+        match key {
+            gtk::gdk::Key::Right if !expander.is_active() => {
+                expander.set_active(true);
+                glib::Propagation::Stop
+            }
+            gtk::gdk::Key::Left if expander.is_active() => {
+                expander.set_active(false);
+                glib::Propagation::Stop
+            }
+            _ => glib::Propagation::Proceed,
+        }
+    });
+    list.add_controller(tree_keys);
+
     let selected_path = Rc::new(RefCell::new(None::<String>));
     let class_input = gtk::Entry::new();
     class_input.set_placeholder_text(Some("Classes CSS : button primary"));
@@ -1486,10 +1518,13 @@ fn styles_page() -> gtk::Box {
                     if has_children {
                         let expander = gtk::ToggleButton::with_label("▸");
                         expander.set_active(depth == 0);
+                        expander.set_label(if depth == 0 { "▾" } else { "▸" });
                         expander.set_has_frame(false);
                         expander.set_size_request(22, 24);
                         expander.set_tooltip_text(Some("Déplier ou replier les éléments enfants"));
-                        expanders_for_search.borrow_mut().push((index, expander.clone()));
+                        expanders_for_search
+                            .borrow_mut()
+                            .push((index, expander.clone()));
 
                         let expanded_for_toggle = expanded.clone();
                         let parents_for_toggle = parents.clone();

@@ -2017,6 +2017,19 @@ fn styles_page() -> gtk::Box {
 
     let original_style_for_change = original_style.clone();
     let apply_style_for_change = apply_style.clone();
+    let declaration_list_for_edit = declaration_list.clone();
+    let selected_css_for_edit = selected_inline_css.clone();
+    let declaration_filter_for_edit = declaration_filter.clone();
+    style_input.buffer().connect_changed(move |buffer| {
+        let css = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false).to_string();
+        *selected_css_for_edit.borrow_mut() = css.clone();
+        populate_inline_declarations(
+            &declaration_list_for_edit,
+            &css,
+            declaration_filter_for_edit.text().as_str(),
+        );
+    });
+
     style_input.buffer().connect_changed(move |buffer| {
         let value = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false);
         apply_style_for_change.set_sensitive(text_differs(

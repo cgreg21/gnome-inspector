@@ -1,6 +1,6 @@
 use adw::prelude::*;
 use glib::variant::ToVariant;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::process::Command;
 use std::rc::Rc;
 
@@ -1307,7 +1307,39 @@ fn actors_page() -> gtk::Box {
     page
 }
 
-fn populate_inline_declarations(list: &gtk::ListBox, css: &str, query: &str) {
+fn update_inline_declaration(css: &str, name: &str, value: &str, enabled: bool) -> String {
+    let mut declarations = css
+        .split(';')
+        .filter_map(|declaration| {
+            let declaration = declaration.trim();
+            if declaration.is_empty() {
+                return None;
+            }
+            match declaration.split_once(':') {
+                Some((property, _)) if property.trim() == name => None,
+                _ => Some(declaration.to_string()),
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if enabled {
+        declarations.push(format!("{name}: {}", value.trim()));
+    }
+
+    if declarations.is_empty() {
+        String::new()
+    } else {
+        format!("{};", declarations.join("; "))
+    }
+}
+
+fn populate_inline_declarations(
+    list: &gtk::ListBox,
+    css: &str,
+    query: &str,
+    editor: &gtk::TextView,
+    updating: &Rc<Cell<bool>>,
+) {
     while let Some(child) = list.first_child() {
         list.remove(&child);
     }
@@ -1329,27 +1361,67 @@ fn populate_inline_declarations(list: &gtk::ListBox, css: &str, query: &str) {
             continue;
         }
 
-        let content = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-        content.set_margin_top(5);
-        content.set_margin_bottom(5);
-        content.set_margin_start(8);
-        content.set_margin_end(8);
+        let content = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        content.set_margin_top(4);
+        content.set_margin_bottom(4);
+        content.set_margin_start(6);
+        content.set_margin_end(6);
 
+        let enabled = gtk::CheckButton::new();
+        enabled.set_active(true);
+        enabled.set_tooltip_text(Some("Activer ou désactiver cette déclaration"));
         let property = gtk::Label::new(Some(name));
         property.add_css_class("monospace");
         property.add_css_class("accent");
         property.set_halign(gtk::Align::Start);
         property.set_ellipsize(gtk::pango::EllipsizeMode::End);
-        property.set_hexpand(true);
 
-        let value = gtk::Label::new(Some(value));
-        value.add_css_class("monospace");
-        value.set_halign(gtk::Align::End);
-        value.set_selectable(true);
-        value.set_ellipsize(gtk::pango::EllipsizeMode::End);
+        let value_entry = gtk::Entry::new();
+        value_entry.set_text(value);
+        value_entry.set_has_frame(false);
+        value_entry.add_css_class("monospace");
+        value_entry.set_hexpand(true);
+        value_entry.set_tooltip_text(Some("Modifier la valeur puis appuyer sur Entrée"));
 
+        let property_name = name.to_string();
+        let original_value = value.to_string();
+        let editor_for_toggle = editor.clone();
+        let updating_for_toggle = updating.clone();
+        let value_for_toggle = value_entry.clone();
+        enabled.connect_toggled(move |button| {
+            value_for_toggle.set_sensitive(button.is_active());
+            let css = text_view_contents(&editor_for_toggle);
+            let updated = update_inline_declaration(
+                &css,
+                &property_name,
+                &original_value,
+                button.is_active(),
+            );
+            updating_for_toggle.set(true);
+            editor_for_toggle.buffer().set_text(&updated);
+            updating_for_toggle.set(false);
+        });
+
+        let property_name = name.to_string();
+        let editor_for_value = editor.clone();
+        let updating_for_value = updating.clone();
+        let enabled_for_value = enabled.clone();
+        value_entry.connect_activate(move |entry| {
+            let css = text_view_contents(&editor_for_value);
+            let updated = update_inline_declaration(
+                &css,
+                &property_name,
+                entry.text().as_str(),
+                enabled_for_value.is_active(),
+            );
+            updating_for_value.set(true);
+            editor_for_value.buffer().set_text(&updated);
+            updating_for_value.set(false);
+        });
+
+        content.append(&enabled);
         content.append(&property);
-        content.append(&value);
+        content.append(&value_entry);
         let row = gtk::ListBoxRow::new();
         row.set_child(Some(&content));
         list.append(&row);
@@ -1559,6 +1631,7 @@ fn styles_page() -> gtk::Box {
         .child(&declaration_list)
         .build();
     let selected_inline_css = Rc::new(RefCell::new(String::new()));
+    let updating_declaration = Rc::new(Cell::new(false));
 
     let style_scroll = gtk::ScrolledWindow::builder()
         .min_content_height(96)
@@ -1575,6 +1648,7 @@ fn styles_page() -> gtk::Box {
     let declarations_for_selection = declaration_list.clone();
     let selected_inline_css_for_selection = selected_inline_css.clone();
     let declaration_filter_for_selection = declaration_filter.clone();
+    let updating_for_selection = updating_declaration.clone();
     let title_for_selection = selected_actor_title.clone();
     let path_label_for_selection = selected_actor_path.clone();
     let breadcrumb_for_selection = tree_breadcrumb.clone();
@@ -1607,6 +1681,8 @@ fn styles_page() -> gtk::Box {
                     &declarations_for_selection,
                     &inline_css,
                     declaration_filter_for_selection.text().as_str(),
+                    &style_for_selection,
+                    &updating_for_selection,
                 );
                 declaration_filter_for_selection.set_sensitive(true);
 
@@ -1667,6 +1743,7 @@ fn styles_page() -> gtk::Box {
     let declarations_for_refresh = declaration_list.clone();
     let selected_inline_css_for_refresh = selected_inline_css.clone();
     let declaration_filter_for_refresh = declaration_filter.clone();
+    let updating_for_refresh = updating_declaration.clone();
     let status_for_refresh = status.clone();
     let expand_all = gtk::Button::with_label("Tout déplier");
     expand_all.set_tooltip_text(Some("Déplier tous les niveaux de l’arborescence"));
@@ -1870,6 +1947,8 @@ fn styles_page() -> gtk::Box {
                         &declarations_for_refresh,
                         "",
                         declaration_filter_for_refresh.text().as_str(),
+                        &style_for_refresh,
+                        &updating_for_refresh,
                     );
                     declaration_filter_for_refresh.set_sensitive(false);
                     details_for_refresh.buffer().set_text("Aucun style trouvé.");
@@ -2021,16 +2100,22 @@ fn styles_page() -> gtk::Box {
     let declaration_list_for_edit = declaration_list.clone();
     let selected_css_for_edit = selected_inline_css.clone();
     let declaration_filter_for_edit = declaration_filter.clone();
+    let style_for_edit = style_input.clone();
+    let updating_for_edit = updating_declaration.clone();
     style_input.buffer().connect_changed(move |buffer| {
         let css = buffer
             .text(&buffer.start_iter(), &buffer.end_iter(), false)
             .to_string();
         *selected_css_for_edit.borrow_mut() = css.clone();
-        populate_inline_declarations(
-            &declaration_list_for_edit,
-            &css,
-            declaration_filter_for_edit.text().as_str(),
-        );
+        if !updating_for_edit.get() {
+            populate_inline_declarations(
+                &declaration_list_for_edit,
+                &css,
+                declaration_filter_for_edit.text().as_str(),
+                &style_for_edit,
+                &updating_for_edit,
+            );
+        }
     });
 
     style_input.buffer().connect_changed(move |buffer| {
@@ -2429,11 +2514,15 @@ fn styles_page() -> gtk::Box {
     declarations_heading.set_halign(gtk::Align::Start);
     let declarations_for_filter = declaration_list.clone();
     let selected_css_for_filter = selected_inline_css.clone();
+    let style_for_filter = style_input.clone();
+    let updating_for_filter = updating_declaration.clone();
     declaration_filter.connect_search_changed(move |entry| {
         populate_inline_declarations(
             &declarations_for_filter,
             &selected_css_for_filter.borrow(),
             entry.text().as_str(),
+            &style_for_filter,
+            &updating_for_filter,
         );
     });
 
@@ -3179,7 +3268,7 @@ mod tests {
         actor_property_has_changed, actor_selection_index, editable_actor_properties,
         extension_is_discovered, filter_computed_style, flatten_actors, format_actor_details,
         format_actor_details_filtered, format_computed_style, format_console_entry, layout_metric,
-        remember_console_command, string_reply, text_differs,
+        remember_console_command, string_reply, text_differs, update_inline_declaration,
     };
     use glib::variant::ToVariant;
 
@@ -3294,6 +3383,24 @@ mod tests {
         assert!(!actor_property_has_changed(&node, "label", "OK"));
         assert!(actor_property_has_changed(&node, "label", "Cancel"));
         assert!(!actor_property_has_changed(&node, "missing", "value"));
+    }
+
+    #[test]
+    fn inline_style_declarations_can_be_edited_and_toggled() {
+        let css = "color: red; padding: 4px;";
+
+        assert_eq!(
+            update_inline_declaration(css, "color", "blue", true),
+            "padding: 4px; color: blue;"
+        );
+        assert_eq!(
+            update_inline_declaration(css, "color", "red", false),
+            "padding: 4px;"
+        );
+        assert_eq!(
+            update_inline_declaration("padding: 4px;", "color", "blue", true),
+            "padding: 4px; color: blue;"
+        );
     }
 
     #[test]

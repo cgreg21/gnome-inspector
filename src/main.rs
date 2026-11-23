@@ -34,11 +34,7 @@ fn string_reply(reply: &glib::Variant, error: &str) -> Result<String, String> {
         .ok_or_else(|| error.to_string())
 }
 
-fn inspector_section(
-    title: &str,
-    child: &impl IsA<gtk::Widget>,
-    expanded: bool,
-) -> gtk::Expander {
+fn inspector_section(title: &str, child: &impl IsA<gtk::Widget>, expanded: bool) -> gtk::Expander {
     let section = gtk::Expander::new(Some(title));
     section.set_expanded(expanded);
     section.set_child(Some(child));
@@ -2680,8 +2676,7 @@ fn styles_page() -> gtk::Box {
     inline_style_content.append(&declaration_filter);
     inline_style_content.append(&declaration_scroll);
     inline_style_content.append(&style_row);
-    let inline_style_section =
-        inspector_section("element.style", &inline_style_content, true);
+    let inline_style_section = inspector_section("element.style", &inline_style_content, true);
 
     let styles_panel = gtk::Box::new(gtk::Orientation::Vertical, 8);
     styles_panel.set_margin_top(12);
@@ -3721,10 +3716,7 @@ mod tests {
             "styleClass": "button primary",
             "pseudoClass": "hover focus"
         });
-        assert_eq!(
-            actor_style_summary(&node),
-            ".button .primary :hover :focus"
-        );
+        assert_eq!(actor_style_summary(&node), ".button .primary :hover :focus");
         assert_eq!(
             actor_style_summary(&serde_json::json!({})),
             "Aucune classe ni pseudo-classe"

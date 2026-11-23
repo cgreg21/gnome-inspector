@@ -3249,15 +3249,19 @@ mod tests {
         let value = serde_json::json!({
             "width": 120,
             "height": 48.5,
-            "horizontalPadding": 16,
-            "verticalPadding": null
+            "marginTop": 1,
+            "borderRight": 2,
+            "paddingLeft": 3,
+            "paddingBottom": null
         });
 
         assert_eq!(layout_metric(&value, "width"), "120 px");
         assert_eq!(layout_metric(&value, "height"), "48.5 px");
-        assert_eq!(layout_metric(&value, "horizontalPadding"), "16 px");
-        assert_eq!(layout_metric(&value, "verticalPadding"), "—");
-        assert_eq!(layout_metric(&value, "margin"), "—");
+        assert_eq!(layout_metric(&value, "marginTop"), "1 px");
+        assert_eq!(layout_metric(&value, "borderRight"), "2 px");
+        assert_eq!(layout_metric(&value, "paddingLeft"), "3 px");
+        assert_eq!(layout_metric(&value, "paddingBottom"), "—");
+        assert_eq!(layout_metric(&value, "unknown"), "—");
     }
 
     #[test]

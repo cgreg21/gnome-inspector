@@ -34,6 +34,17 @@ fn string_reply(reply: &glib::Variant, error: &str) -> Result<String, String> {
         .ok_or_else(|| error.to_string())
 }
 
+fn inspector_section(
+    title: &str,
+    child: &impl IsA<gtk::Widget>,
+    expanded: bool,
+) -> gtk::Expander {
+    let section = gtk::Expander::new(Some(title));
+    section.set_expanded(expanded);
+    section.set_child(Some(child));
+    section
+}
+
 fn text_view_contents(view: &gtk::TextView) -> String {
     let buffer = view.buffer();
     buffer
@@ -2270,6 +2281,7 @@ fn styles_page() -> gtk::Box {
     let computed_report = Rc::new(RefCell::new(String::new()));
     let computed_search = gtk::SearchEntry::new();
     computed_search.set_placeholder_text(Some("Filtrer les propriétés calculées…"));
+    computed_search.set_hexpand(true);
     let report_for_search = computed_report.clone();
     let view_for_search = computed_details.clone();
     computed_search.connect_search_changed(move |entry| {
@@ -2435,6 +2447,7 @@ fn styles_page() -> gtk::Box {
     layout_panel.append(&layout_box);
     layout_panel.append(&layout_note);
 
+    computed_actions.append(&computed_search);
     computed_actions.append(&computed_refresh);
 
     let theme_details = gtk::TextView::new();
@@ -2608,12 +2621,14 @@ fn styles_page() -> gtk::Box {
     inspector_tabs.set_hexpand(true);
     inspector_tabs.set_vexpand(true);
 
-    let class_section = gtk::Expander::new(Some("Classes CSS"));
-    class_section.set_expanded(true);
-    class_section.set_child(Some(&class_row));
-    let inline_style_section = gtk::Expander::new(Some("element.style"));
-    inline_style_section.set_expanded(true);
-    inline_style_section.set_child(Some(&style_row));
+    let class_section = inspector_section("Classes CSS", &class_row, true);
+    let inline_style_content = gtk::Box::new(gtk::Orientation::Vertical, 8);
+    inline_style_content.append(&declarations_heading);
+    inline_style_content.append(&declaration_filter);
+    inline_style_content.append(&declaration_scroll);
+    inline_style_content.append(&style_row);
+    let inline_style_section =
+        inspector_section("element.style", &inline_style_content, true);
 
     let styles_panel = gtk::Box::new(gtk::Orientation::Vertical, 8);
     styles_panel.set_margin_top(12);
@@ -2671,9 +2686,6 @@ fn styles_page() -> gtk::Box {
     });
 
     styles_panel.append(&style_tools);
-    styles_panel.append(&declarations_heading);
-    styles_panel.append(&declaration_filter);
-    styles_panel.append(&declaration_scroll);
     styles_panel.append(&class_section);
     styles_panel.append(&inline_style_section);
     inspector_tabs.append_page(&styles_panel, Some(&gtk::Label::new(Some("Styles"))));
@@ -2684,7 +2696,6 @@ fn styles_page() -> gtk::Box {
     computed_panel.set_margin_start(12);
     computed_panel.set_margin_end(12);
     computed_panel.append(&computed_actions);
-    computed_panel.append(&computed_search);
     computed_panel.append(&computed_scroll);
     inspector_tabs.append_page(&computed_panel, Some(&gtk::Label::new(Some("Calculé"))));
     inspector_tabs.append_page(&layout_panel, Some(&gtk::Label::new(Some("Layout"))));

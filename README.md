@@ -78,7 +78,7 @@ GitHub Releases page, then run these commands from the extracted directory:
 
 Before copying files, the installer verifies GNOME Shell 51 and checks that all shared libraries required by the binary are available.
 
-The archive contains the prebuilt application, GNOME Shell extension, runtime checker, README, license,
+The archive contains the prebuilt application, GNOME Shell extension, runtime checker, README, changelog, license,
 and matching install/uninstall scripts. It does not require Cargo or Rust. GNOME Shell
 51 and `gnome-extensions` are still required. Remove it with `./uninstall.sh`; user
 configuration is preserved.
@@ -205,7 +205,8 @@ node --test --test-reporter=spec extension/*.test.js
 bash scripts/test-install.sh
 bash scripts/test-package.sh
 bash scripts/test-runtime.sh
-shellcheck scripts/test-gnome-shell-51.sh scripts/test-install.sh scripts/test-package.sh scripts/test-runtime.sh scripts/check-runtime.sh scripts/package-alpha.sh scripts/install-bundle.sh scripts/uninstall-bundle.sh scripts/capture-readme-screenshots.sh scripts/install-extension.sh scripts/install.sh scripts/uninstall.sh
+bash scripts/test-release-tag.sh
+shellcheck scripts/test-gnome-shell-51.sh scripts/test-install.sh scripts/test-package.sh scripts/test-runtime.sh scripts/test-release-tag.sh scripts/check-release-tag.sh scripts/check-runtime.sh scripts/package-alpha.sh scripts/install-bundle.sh scripts/uninstall-bundle.sh scripts/capture-readme-screenshots.sh scripts/install-extension.sh scripts/install.sh scripts/uninstall.sh
 ```
 
 CI additionally runs:

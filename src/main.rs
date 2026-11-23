@@ -1424,9 +1424,25 @@ fn populate_inline_declarations(
             updating_for_value.set(false);
         });
 
+        let property_name_for_copy = name.to_string();
+        let value_for_copy = value_entry.clone();
+        let copy_declaration = gtk::Button::from_icon_name("edit-copy-symbolic");
+        copy_declaration.set_has_frame(false);
+        copy_declaration.set_tooltip_text(Some("Copier cette déclaration CSS"));
+        copy_declaration.connect_clicked(move |_| {
+            if let Some(display) = gtk::gdk::Display::default() {
+                display.clipboard().set_text(&format!(
+                    "{}: {};",
+                    property_name_for_copy,
+                    value_for_copy.text()
+                ));
+            }
+        });
+
         content.append(&enabled);
         content.append(&property);
         content.append(&value_entry);
+        content.append(&copy_declaration);
         let row = gtk::ListBoxRow::new();
         row.set_child(Some(&content));
         list.append(&row);

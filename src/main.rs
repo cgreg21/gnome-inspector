@@ -1476,8 +1476,7 @@ fn styles_page() -> gtk::Box {
                 title_for_selection.set_text(&actor_inspector_title(node));
                 let path = actor_path(node).unwrap_or("").to_string();
                 path_label_for_selection.set_text(&path);
-                path_label_for_selection
-                    .set_tooltip_text(Some(&actor_breadcrumb(&nodes, &path)));
+                path_label_for_selection.set_tooltip_text(Some(&actor_breadcrumb(&nodes, &path)));
                 *path_for_selection.borrow_mut() = Some(path.clone());
                 class_for_selection.set_text(
                     node.get("styleClass")

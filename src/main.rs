@@ -1368,18 +1368,13 @@ fn styles_page() -> gtk::Box {
     let query_for_search = query.clone();
     let list_for_search = list.clone();
     let expanders_for_search = Rc::new(RefCell::new(Vec::<(usize, gtk::ToggleButton)>::new()));
-    let expanded_for_search = Rc::new(RefCell::new(Vec::<bool>::new()));
     let search_expanders = expanders_for_search.clone();
-    let search_expanded = expanded_for_search.clone();
     search.connect_search_changed(move |entry| {
         let query = entry.text().to_lowercase();
         *query_for_search.borrow_mut() = query.clone();
         for (index, expander) in search_expanders.borrow().iter() {
             let is_expanded = !query.is_empty() || *index == 0;
             expander.set_active(is_expanded);
-            if let Some(state) = search_expanded.borrow_mut().get_mut(*index) {
-                *state = is_expanded;
-            }
         }
         list_for_search.invalidate_filter();
     });
@@ -1474,7 +1469,6 @@ fn styles_page() -> gtk::Box {
                 let expanded = Rc::new(RefCell::new(
                     depths.iter().map(|depth| *depth == 0).collect::<Vec<_>>(),
                 ));
-                *expanded_for_search.borrow_mut() = expanded.borrow().clone();
                 expanders_for_search.borrow_mut().clear();
                 let row_widgets = Rc::new(RefCell::new(Vec::<gtk::ListBoxRow>::new()));
 

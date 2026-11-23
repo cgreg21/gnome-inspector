@@ -2715,6 +2715,31 @@ fn styles_page() -> gtk::Box {
     inspector_tabs.set_hexpand(true);
     inspector_tabs.set_vexpand(true);
 
+    let inspector_keys = gtk::EventControllerKey::new();
+    let tabs_for_keys = inspector_tabs.clone();
+    let search_for_tabs = search.clone();
+    inspector_keys.connect_key_pressed(move |_, key, _, modifiers| {
+        if !modifiers.contains(gtk::gdk::ModifierType::CONTROL_MASK) {
+            return glib::Propagation::Proceed;
+        }
+
+        match key.to_unicode() {
+            Some('1') => tabs_for_keys.set_current_page(Some(0)),
+            Some('2') => tabs_for_keys.set_current_page(Some(1)),
+            Some('3') => tabs_for_keys.set_current_page(Some(2)),
+            Some('f') | Some('F') => {
+                search_for_tabs.grab_focus();
+                return glib::Propagation::Stop;
+            }
+            _ => return glib::Propagation::Proceed,
+        }
+        glib::Propagation::Stop
+    });
+    inspector_tabs.add_controller(inspector_keys);
+    inspector_tabs.set_tooltip_text(Some(
+        "Raccourcis : Ctrl+1 Styles · Ctrl+2 Computed · Ctrl+3 Layout · Ctrl+F rechercher un acteur",
+    ));
+
     let declarations_heading = gtk::Label::new(Some("Déclarations de element.style"));
     declarations_heading.add_css_class("heading");
     declarations_heading.set_halign(gtk::Align::Start);
@@ -2790,7 +2815,7 @@ fn styles_page() -> gtk::Box {
     computed_panel.set_margin_end(12);
     computed_panel.append(&computed_actions);
     computed_panel.append(&computed_scroll);
-    inspector_tabs.append_page(&computed_panel, Some(&gtk::Label::new(Some("Calculé"))));
+    inspector_tabs.append_page(&computed_panel, Some(&gtk::Label::new(Some("Computed"))));
     inspector_tabs.append_page(&layout_panel, Some(&gtk::Label::new(Some("Layout"))));
 
     let theme_panel = gtk::Box::new(gtk::Orientation::Vertical, 10);

@@ -70,6 +70,8 @@ inspection data; the mock service is only used for these documentation captures.
 
 The CSS captures cover distinct usage situations: navigating the actor tree, inspecting selected and nested actors, reviewing computed properties, and reading the box model. They use a deterministic mock Shell tree so the same interactions can be reproduced in CI.
 
+The inspector also supports DevTools-style keyboard navigation: `Ctrl+1` opens Styles, `Ctrl+2` opens Computed, `Ctrl+3` opens Layout, and `Ctrl+F` focuses the actor search.
+
 The PNG files are versioned in `screenshots/`, so they are displayed directly on
 GitHub and remain available independently of CI artifact retention. GitHub Actions regenerates them with `scripts/capture-readme-screenshots.sh` on each CI run
 and uploads the `gnome-inspector-readme-screenshots` artifact for review. The committed

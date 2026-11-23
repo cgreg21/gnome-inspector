@@ -53,6 +53,12 @@ fn format_computed_style(json: &str) -> Result<String, String> {
         .join("\n"))
 }
 
+const LAYOUT_METRICS: [&str; 12] = [
+    "marginTop", "marginRight", "marginBottom", "marginLeft",
+    "borderTop", "borderRight", "borderBottom", "borderLeft",
+    "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+];
+
 fn layout_metric(value: &serde_json::Value, key: &str) -> String {
     value
         .get(key)
@@ -1966,34 +1972,28 @@ fn styles_page() -> gtk::Box {
     let computed_status = status.clone();
     let report_for_refresh = computed_report.clone();
     let search_for_refresh = computed_search.clone();
-    let layout_width = gtk::Label::new(Some("—"));
-    let layout_height = gtk::Label::new(Some("—"));
-    let layout_horizontal_padding = gtk::Label::new(Some("—"));
-    let layout_vertical_padding = gtk::Label::new(Some("—"));
-    for label in [
-        &layout_width,
-        &layout_height,
-        &layout_horizontal_padding,
-        &layout_vertical_padding,
-    ] {
+    let layout_values: [gtk::Label; 12] =
+        std::array::from_fn(|_| gtk::Label::new(Some("—")));
+    for label in &layout_values {
         label.add_css_class("title-3");
+        label.add_css_class("monospace");
         label.set_halign(gtk::Align::Center);
     }
+    let layout_size = gtk::Label::new(Some("— × —"));
+    layout_size.add_css_class("title-3");
+    layout_size.add_css_class("monospace");
+    layout_size.set_halign(gtk::Align::Center);
 
-    let layout_width_for_refresh = layout_width.clone();
-    let layout_height_for_refresh = layout_height.clone();
-    let layout_horizontal_for_refresh = layout_horizontal_padding.clone();
-    let layout_vertical_for_refresh = layout_vertical_padding.clone();
-    let layout_width_for_selection = layout_width.clone();
-    let layout_height_for_selection = layout_height.clone();
-    let layout_horizontal_for_selection = layout_horizontal_padding.clone();
-    let layout_vertical_for_selection = layout_vertical_padding.clone();
+    let layout_values_for_refresh = layout_values.clone();
+    let layout_size_for_refresh = layout_size.clone();
+    let layout_values_for_selection = layout_values.clone();
+    let layout_size_for_selection = layout_size.clone();
     list.connect_row_selected(move |_, row| {
         if row.is_some() {
-            layout_width_for_selection.set_text("—");
-            layout_height_for_selection.set_text("—");
-            layout_horizontal_for_selection.set_text("—");
-            layout_vertical_for_selection.set_text("—");
+            for label in &layout_values_for_selection {
+                label.set_text("—");
+            }
+            layout_size_for_selection.set_text("— × —");
         }
     });
     computed_refresh.connect_clicked(move |_| {
@@ -2009,10 +2009,14 @@ fn styles_page() -> gtk::Box {
             Ok((report, value))
         }) {
             Ok((report, value)) => {
-                layout_width_for_refresh.set_text(&layout_metric(&value, "width"));
-                layout_height_for_refresh.set_text(&layout_metric(&value, "height"));
-                layout_horizontal_for_refresh.set_text(&layout_metric(&value, "horizontalPadding"));
-                layout_vertical_for_refresh.set_text(&layout_metric(&value, "verticalPadding"));
+                for (label, key) in layout_values_for_refresh.iter().zip(LAYOUT_METRICS) {
+                    label.set_text(&layout_metric(&value, key));
+                }
+                layout_size_for_refresh.set_text(&format!(
+                    "{} × {}",
+                    layout_metric(&value, "width"),
+                    layout_metric(&value, "height")
+                ));
                 *report_for_refresh.borrow_mut() = report;
                 computed_view.buffer().set_text(&filter_computed_style(
                     &report_for_refresh.borrow(),
@@ -2028,36 +2032,51 @@ fn styles_page() -> gtk::Box {
             }
         }
     });
-    let layout_metrics = gtk::Grid::new();
-    layout_metrics.set_row_spacing(12);
-    layout_metrics.set_column_spacing(24);
-    layout_metrics.set_halign(gtk::Align::Center);
-    layout_metrics.set_valign(gtk::Align::Center);
-    let horizontal_title = gtk::Label::new(Some("Padding horizontal (total)"));
-    horizontal_title.add_css_class("dim-label");
-    let vertical_title = gtk::Label::new(Some("Padding vertical (total)"));
-    vertical_title.add_css_class("dim-label");
-    let width_title = gtk::Label::new(Some("Largeur"));
-    width_title.add_css_class("dim-label");
-    let height_title = gtk::Label::new(Some("Hauteur"));
-    height_title.add_css_class("dim-label");
-    layout_metrics.attach(&horizontal_title, 0, 0, 2, 1);
-    layout_metrics.attach(&layout_horizontal_padding, 0, 1, 2, 1);
-    layout_metrics.attach(&width_title, 0, 2, 1, 1);
-    layout_metrics.attach(&height_title, 1, 2, 1, 1);
-    layout_metrics.attach(&layout_width, 0, 3, 1, 1);
-    layout_metrics.attach(&layout_height, 1, 3, 1, 1);
-    layout_metrics.attach(&vertical_title, 0, 4, 2, 1);
-    layout_metrics.attach(&layout_vertical_padding, 0, 5, 2, 1);
 
-    let layout_box = gtk::Frame::new(Some("Modèle de boîte — mesures du thème GTK"));
-    layout_box.set_child(Some(&layout_metrics));
+    let content_frame = gtk::Frame::new(Some("Contenu"));
+    content_frame.set_child(Some(&layout_size));
+
+    let padding_grid = gtk::Grid::new();
+    padding_grid.set_row_spacing(8);
+    padding_grid.set_column_spacing(16);
+    padding_grid.set_halign(gtk::Align::Center);
+    padding_grid.attach(&layout_values[8], 1, 0, 1, 1);
+    padding_grid.attach(&layout_values[11], 0, 1, 1, 1);
+    padding_grid.attach(&content_frame, 1, 1, 1, 1);
+    padding_grid.attach(&layout_values[9], 2, 1, 1, 1);
+    padding_grid.attach(&layout_values[10], 1, 2, 1, 1);
+    let padding_frame = gtk::Frame::new(Some("Padding"));
+    padding_frame.set_child(Some(&padding_grid));
+
+    let border_grid = gtk::Grid::new();
+    border_grid.set_row_spacing(8);
+    border_grid.set_column_spacing(16);
+    border_grid.set_halign(gtk::Align::Center);
+    border_grid.attach(&layout_values[4], 1, 0, 1, 1);
+    border_grid.attach(&layout_values[7], 0, 1, 1, 1);
+    border_grid.attach(&padding_frame, 1, 1, 1, 1);
+    border_grid.attach(&layout_values[5], 2, 1, 1, 1);
+    border_grid.attach(&layout_values[6], 1, 2, 1, 1);
+    let border_frame = gtk::Frame::new(Some("Bordure"));
+    border_frame.set_child(Some(&border_grid));
+
+    let margin_grid = gtk::Grid::new();
+    margin_grid.set_row_spacing(8);
+    margin_grid.set_column_spacing(16);
+    margin_grid.set_halign(gtk::Align::Center);
+    margin_grid.attach(&layout_values[0], 1, 0, 1, 1);
+    margin_grid.attach(&layout_values[3], 0, 1, 1, 1);
+    margin_grid.attach(&border_frame, 1, 1, 1, 1);
+    margin_grid.attach(&layout_values[1], 2, 1, 1, 1);
+    margin_grid.attach(&layout_values[2], 1, 2, 1, 1);
+    let layout_box = gtk::Frame::new(Some("Modèle de boîte"));
+    layout_box.set_child(Some(&margin_grid));
     layout_box.set_margin_top(24);
     layout_box.set_margin_bottom(24);
     layout_box.set_margin_start(24);
     layout_box.set_margin_end(24);
     let layout_note = gtk::Label::new(Some(
-        "Les marges et bordures CSS ne sont pas exposées par l’API ThemeNode de GNOME Shell. Les valeurs de padding sont des totaux horizontaux et verticaux.",
+        "Valeurs par côté fournies par St.ThemeNode, en pixels physiques. Actualisez le style calculé pour les lire.",
     ));
     layout_note.set_wrap(true);
     layout_note.add_css_class("dim-label");

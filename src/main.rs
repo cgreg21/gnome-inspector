@@ -2184,20 +2184,6 @@ fn styles_page() -> gtk::Box {
     actions.set_margin_top(6);
     actions.add_css_class("toolbar");
     let pick_actor = actor_picker_button(&list, &selected_nodes, &status);
-    let picker_keys = gtk::EventControllerKey::new();
-    let picker_for_keys = pick_actor.clone();
-    picker_keys.connect_key_pressed(move |_, key, _, modifiers| {
-        if key == gtk::gdk::Key::c
-            && modifiers.contains(gtk::gdk::ModifierType::CONTROL_MASK)
-            && modifiers.contains(gtk::gdk::ModifierType::SHIFT_MASK)
-        {
-            picker_for_keys.emit_clicked();
-            glib::Propagation::Stop
-        } else {
-            glib::Propagation::Proceed
-        }
-    });
-    list.add_controller(picker_keys);
     actions.append(&search);
     actions.append(&pick_actor);
     actions.append(&expand_all);
@@ -2735,7 +2721,15 @@ fn styles_page() -> gtk::Box {
     let inspector_keys = gtk::EventControllerKey::new();
     let tabs_for_keys = inspector_tabs.clone();
     let search_for_tabs = search.clone();
+    let picker_for_keys = pick_actor.clone();
     inspector_keys.connect_key_pressed(move |_, key, _, modifiers| {
+        if modifiers.contains(gtk::gdk::ModifierType::CONTROL_MASK)
+            && modifiers.contains(gtk::gdk::ModifierType::SHIFT_MASK)
+            && (key == gtk::gdk::Key::c || key == gtk::gdk::Key::C)
+        {
+            picker_for_keys.emit_clicked();
+            return glib::Propagation::Stop;
+        }
         if !modifiers.contains(gtk::gdk::ModifierType::CONTROL_MASK) {
             return glib::Propagation::Proceed;
         }
@@ -2754,7 +2748,7 @@ fn styles_page() -> gtk::Box {
     });
     inspector_tabs.add_controller(inspector_keys);
     inspector_tabs.set_tooltip_text(Some(
-        "Raccourcis : Ctrl+1 Styles · Ctrl+2 Computed · Ctrl+3 Layout · Ctrl+F rechercher un acteur",
+        "Raccourcis : Ctrl+1 Styles · Ctrl+2 Computed · Ctrl+3 Layout · Ctrl+F rechercher · Ctrl+Maj+C sélectionner un acteur",
     ));
 
     let declarations_heading = gtk::Label::new(Some("Déclarations de element.style"));

@@ -11,6 +11,7 @@ import { buildActorTree } from './actor-tree.js';
 import { findActorPath } from './actor-picker.js';
 import { buildComputedStyle, buildStyleTree, resolveActorPath } from './style-tree.js';
 import { setActorProperty } from './property-editor.js';
+import { parseProcessMemory } from './process-metrics.js';
 import {
     readCustomStylesheet,
     reloadCustomStylesheets,
@@ -342,15 +343,12 @@ export default class GnomeInspectorExtension extends Extension {
                 return result;
             return JSON.stringify(result, null, 2) ?? String(result);
         } catch (error) {
-            return error?.stack || String(error);
-        }
-    }
-
-    _startPerformanceMonitoring() {
+            _startPerformanceMonitoring() {
         this._performance = {
             renderedFrames: 0,
             lastRenderedFrames: 0,
             lastSampleAt: GLib.get_monotonic_time(),
+            memory: this._readProcessMemory(),
             history: [],
         };
         this._performanceSignalId = global.stage.connect('after-paint', () => {
@@ -364,23 +362,37 @@ export default class GnomeInspectorExtension extends Extension {
                 const elapsedUs = now - this._performance.lastSampleAt;
                 const frames = this._performance.renderedFrames
                     - this._performance.lastRenderedFrames;
+                const memory = this._readProcessMemory();
                 if (elapsedUs > 0) {
                     this._performance.history.push({
                         sampledAt: GLib.get_real_time(),
                         intervalUs: elapsedUs,
                         renderedFrames: frames,
                         framesPerSecond: Math.round(frames * 100000000 / elapsedUs) / 100,
+                        residentMemoryBytes: memory?.residentBytes ?? null,
+                        peakResidentMemoryBytes: memory?.peakResidentBytes ?? null,
                     });
                     if (this._performance.history.length > 60)
                         this._performance.history.shift();
                 }
                 this._performance.lastSampleAt = now;
                 this._performance.lastRenderedFrames = this._performance.renderedFrames;
+                this._performance.memory = memory;
                 return GLib.SOURCE_CONTINUE;
             }
         );
     }
 
+    _readProcessMemory() {
+        try {
+            const [ok, contents] = GLib.file_get_contents('/proc/self/status');
+            if (!ok)
+                return null;
+            return parseProcessMemory(new TextDecoder().decode(contents));
+        } catch {
+            return null;
+        }
+    }
     _stopPerformanceMonitoring() {
         if (this._performanceTimer) {
             GLib.Source.remove(this._performanceTimer);

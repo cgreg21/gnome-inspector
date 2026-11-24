@@ -423,6 +423,8 @@ export default class GnomeInspectorExtension extends Extension {
             monitorCount: Main.layoutManager.monitors.length,
             renderedFrames: this._performance?.renderedFrames || 0,
             framesPerSecond: history.at(-1)?.framesPerSecond ?? null,
+            residentMemoryBytes: this._performance?.memory?.residentBytes ?? null,
+            peakResidentMemoryBytes: this._performance?.memory?.peakResidentBytes ?? null,
             performanceHistory: history,
         });
     }

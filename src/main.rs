@@ -2750,6 +2750,7 @@ fn styles_page() -> gtk::Box {
         }
         glib::Propagation::Stop
     });
+    inspector_keys.set_propagation_phase(gtk::PropagationPhase::Capture);
     page.add_controller(inspector_keys);
     inspector_tabs.set_tooltip_text(Some(
         "Raccourcis : Ctrl+1 Styles · Ctrl+2 Computed · Ctrl+3 Layout · Ctrl+F rechercher · Échap effacer la recherche · Ctrl+Maj+C sélectionner un acteur",

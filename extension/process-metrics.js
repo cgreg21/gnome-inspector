@@ -1,43 +1,18 @@
-export function parseProcessMemory(status) {
+export function parseProcessStatus(status) {
     if (typeof status !== 'string')
         return null;
 
     const resident = status.match(/^VmRSS:\s+(\d+)\s+kB$/m);
     const peak = status.match(/^VmHWM:\s+(\d+)\s+kB$/m);
-    if (!resident || !peak)
-        return null;
-
-    return {
-        residentBytes: Number(resident[1]) * 1024,
-        peakResidentBytes: Number(peak[1]) * 1024,
-    };
-}
-
-export function parseProcessActivity(status) {
-    if (typeof status !== 'string')
-        return null;
-
-    const readCounter = (name) => {
-        const match = status.match(new RegExp(`^${name}:\\s+(\\d+)export function parseProcessMemory(status) {
-    if (typeof status !== 'string')
-        return null;
-
-    const resident = status.match(/^VmRSS:\s+(\d+)\s+kB$/m);
-    const peak = status.match(/^VmHWM:\s+(\d+)\s+kB$/m);
-    if (!resident || !peak)
-        return null;
-
-    return {
-        residentBytes: Number(resident[1]) * 1024,
-        peakResidentBytes: Number(peak[1]) * 1024,
-    };
-}
-
-, 'm'));
-        return match ? Number(match[1]) : null;
+    const readCounter = field => {
+        const line = status.split('\n').find(entry => entry.startsWith(`${field}:`));
+        const value = line?.slice(field.length + 1).trim();
+        return value && /^\d+$/.test(value) ? Number(value) : null;
     };
 
     return {
+        residentBytes: resident ? Number(resident[1]) * 1024 : null,
+        peakResidentBytes: peak ? Number(peak[1]) * 1024 : null,
         threadCount: readCounter('Threads'),
         voluntaryContextSwitches: readCounter('voluntary_ctxt_switches'),
         involuntaryContextSwitches: readCounter('nonvoluntary_ctxt_switches'),

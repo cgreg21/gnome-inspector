@@ -3123,6 +3123,8 @@ fn performance_metric(title: &str) -> (gtk::Frame, gtk::Label) {
     let caption = gtk::Label::new(Some(title));
     caption.add_css_class("dim-label");
     caption.set_halign(gtk::Align::Start);
+    caption.set_wrap(true);
+    caption.set_max_width_chars(32);
     content.append(&caption);
     content.append(&value);
 

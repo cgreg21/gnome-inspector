@@ -8,7 +8,7 @@ change.
 ## Current status
 
 - **Stage:** alpha, targeting GNOME Shell 51.
-- **Active work:** validate the native CPU, memory and FPS history charts; then review metric lifecycle and unavailable values.
+- **Active work:** review metric lifecycle and unavailable values, then improve peak/current summaries.
 - **Scope:** keep the desktop app in Rust/GTK4/libadwaita and use GJS only for
   GNOME Shell-specific APIs.
 - **Principle:** KISS. Prefer small, testable changes and existing platform APIs.
@@ -32,7 +32,7 @@ change.
 
 - [ ] Review metric lifecycle, unavailable values and behavior when procfs cannot
   be read.
-- [ ] Add clear CPU and memory history charts using the existing bounded samples. (Implementation added; awaiting CI validation.)
+- [x] Add native CPU, memory and FPS history charts using the existing bounded samples; missing values create visible gaps.
 - [ ] Show useful peaks/current values and handle gaps without inventing data.
 - [ ] Add pause/resume and reset controls if they fit the existing data flow.
 - [ ] Consider export only after the in-app monitoring workflow is stable.

@@ -4,6 +4,7 @@
 
 ### Added
 
+- Native CPU, resident-memory and rendered-FPS history charts in the performance view.
 - Main-thread CPU utilization, cumulative CPU time and context-switch counters.
 - GNOME Shell process resident memory, peak resident memory and thread count.
 - A bounded 60-sample performance history containing the available metrics.

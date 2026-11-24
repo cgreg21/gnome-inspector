@@ -2,7 +2,6 @@
 
 A native GTK application for inspecting and debugging GNOME Shell.
 
-<text></text>
 **Alpha:** `0.1.0-alpha.1` · **Target:** GNOME Shell 51 · **Platform:** Linux
 
 GNOME Inspector consists of a Rust/GTK4/libadwaita desktop app and a GNOME Shell

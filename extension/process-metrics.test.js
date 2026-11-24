@@ -49,7 +49,7 @@ test('rejects process metrics outside the safe integer range', () => {
         'Threads: 9007199254740992',
         'voluntary_ctxt_switches: 9007199254740992',
         'nonvoluntary_ctxt_switches: 35',
-    ].join('\\n'));
+    ].join('\n'));
 
     assert.equal(result.residentBytes, null);
     assert.equal(result.peakResidentBytes, 320000 * 1024);

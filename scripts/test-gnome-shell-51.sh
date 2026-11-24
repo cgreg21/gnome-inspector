@@ -230,8 +230,10 @@ grep -q 'renderedFrames' <<<"$performance"
 grep -q 'framesPerSecond' <<<"$performance"
 grep -q 'residentMemoryBytes' <<<"$performance"
 grep -q 'peakResidentMemoryBytes' <<<"$performance"
+grep -q 'cpuPercent' <<<"$performance"
+grep -q 'cpuTimeNs' <<<"$performance"
 grep -q 'performanceHistory' <<<"$performance"
-echo "GNOME Shell frame-rate and process-memory history: OK"
+echo "GNOME Shell frame-rate, CPU and process-memory history: OK"
 
 style_update="$(timeout 10s gdbus call --session \
     --dest io.github.cgreg21.GnomeInspector.Shell \

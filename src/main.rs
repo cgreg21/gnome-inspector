@@ -3192,7 +3192,7 @@ fn performance_page() -> gtk::Box {
     history.set_editable(false);
     history.set_cursor_visible(false);
     history.set_monospace(true);
-    history.set_wrap_mode(gtk::WrapMode::WordChar);
+    history.set_wrap_mode(gtk::WrapMode::None);
     history.set_left_margin(12);
     history.set_top_margin(12);
     let history_scroll = gtk::ScrolledWindow::builder()

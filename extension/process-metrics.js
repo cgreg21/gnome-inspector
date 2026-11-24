@@ -30,3 +30,11 @@ export function parseProcessCpuTime(schedstat) {
     const nanoseconds = Number(runtime);
     return Number.isFinite(nanoseconds) ? nanoseconds : null;
 }
+
+export function calculateCpuPercent(cpuDeltaNs, elapsedUs) {
+    if (!Number.isFinite(cpuDeltaNs) || !Number.isFinite(elapsedUs)
+        || cpuDeltaNs < 0 || elapsedUs <= 0)
+        return null;
+
+    return Math.round(cpuDeltaNs / (elapsedUs * 1000) * 10000) / 100;
+}

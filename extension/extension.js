@@ -11,7 +11,7 @@ import { buildActorTree } from './actor-tree.js';
 import { findActorPath } from './actor-picker.js';
 import { buildComputedStyle, buildStyleTree, resolveActorPath } from './style-tree.js';
 import { setActorProperty } from './property-editor.js';
-import { parseProcessMemory } from './process-metrics.js';
+import { parseProcessCpuTime, parseProcessMemory } from './process-metrics.js';
 import {
     readCustomStylesheet,
     reloadCustomStylesheets,
@@ -352,6 +352,9 @@ export default class GnomeInspectorExtension extends Extension {
             renderedFrames: 0,
             lastRenderedFrames: 0,
             lastSampleAt: GLib.get_monotonic_time(),
+            lastCpuTimeNs: this._readProcessCpuTime(),
+            cpuTimeNs: null,
+            cpuPercent: null,
             memory: this._readProcessMemory(),
             history: [],
         };
@@ -367,12 +370,21 @@ export default class GnomeInspectorExtension extends Extension {
                 const frames = this._performance.renderedFrames
                     - this._performance.lastRenderedFrames;
                 const memory = this._readProcessMemory();
+                const cpuTimeNs = this._readProcessCpuTime();
+                const cpuDeltaNs = cpuTimeNs !== null && this._performance.lastCpuTimeNs !== null
+                    ? cpuTimeNs - this._performance.lastCpuTimeNs
+                    : null;
+                const cpuPercent = elapsedUs > 0 && cpuDeltaNs !== null && cpuDeltaNs >= 0
+                    ? Math.round(cpuDeltaNs / (elapsedUs * 1000) * 10000) / 100
+                    : null;
                 if (elapsedUs > 0) {
                     this._performance.history.push({
                         sampledAt: GLib.get_real_time(),
                         intervalUs: elapsedUs,
                         renderedFrames: frames,
                         framesPerSecond: Math.round(frames * 100000000 / elapsedUs) / 100,
+                        cpuPercent,
+                        cpuTimeNs,
                         residentMemoryBytes: memory?.residentBytes ?? null,
                         peakResidentMemoryBytes: memory?.peakResidentBytes ?? null,
                     });
@@ -381,6 +393,9 @@ export default class GnomeInspectorExtension extends Extension {
                 }
                 this._performance.lastSampleAt = now;
                 this._performance.lastRenderedFrames = this._performance.renderedFrames;
+                this._performance.lastCpuTimeNs = cpuTimeNs;
+                this._performance.cpuTimeNs = cpuTimeNs;
+                this._performance.cpuPercent = cpuPercent;
                 this._performance.memory = memory;
                 return GLib.SOURCE_CONTINUE;
             }
@@ -393,6 +408,17 @@ export default class GnomeInspectorExtension extends Extension {
             if (!ok)
                 return null;
             return parseProcessMemory(new TextDecoder().decode(contents));
+        } catch {
+            return null;
+        }
+    }
+
+    _readProcessCpuTime() {
+        try {
+            const [ok, contents] = GLib.file_get_contents('/proc/self/schedstat');
+            if (!ok)
+                return null;
+            return parseProcessCpuTime(new TextDecoder().decode(contents));
         } catch {
             return null;
         }
@@ -430,6 +456,8 @@ export default class GnomeInspectorExtension extends Extension {
             framesPerSecond: history.at(-1)?.framesPerSecond ?? null,
             residentMemoryBytes: this._performance?.memory?.residentBytes ?? null,
             peakResidentMemoryBytes: this._performance?.memory?.peakResidentBytes ?? null,
+            cpuPercent: this._performance?.cpuPercent ?? null,
+            cpuTimeNs: this._performance?.cpuTimeNs ?? null,
             performanceHistory: history,
         });
     }

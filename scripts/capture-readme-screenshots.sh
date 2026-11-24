@@ -72,18 +72,38 @@ click_page() {
 capture overview
 
 click_page 283
-xdotool mousemove --window "$window_id" 1020 168 click 1
+xdotool mousemove --window "$window_id" 1130 168 click 1
 sleep 2
 capture actors
+xdotool mousemove --window "$window_id" 130 292 click 1
+sleep 1
+capture actors-selected
 
 click_page 437
-xdotool mousemove --window "$window_id" 980 168 click 1
+xdotool mousemove --window "$window_id" 1164 80 click 1
 sleep 2
-xdotool mousemove --window "$window_id" 300 250 click 1
-sleep 0.5
-xdotool mousemove --window "$window_id" 350 420 click 1
-sleep 0.5
-xdotool mousemove --window "$window_id" 350 585 click 1
+xdotool mousemove --window "$window_id" 935 80 click 1
+sleep 1
+capture css-inspector-tree
+
+xdotool mousemove --window "$window_id" 100 206 click 1
+sleep 1
+capture css-inspector-selection
+
+xdotool mousemove --window "$window_id" 100 365 click 1
+sleep 1
+capture css-inspector-deep-selection
+
+# Inspect the selected actor in the Computed and Layout panels.
+xdotool key --clearmodifiers ctrl+2
+sleep 1
+capture css-computed
+xdotool mousemove --window "$window_id" 665 208 click 1
+sleep 1
+capture css-layout
+
+# Return to the theme workspace before leaving the CSS module.
+xdotool mousemove --window "$window_id" 740 208 click 1
 sleep 1
 capture css-themes
 

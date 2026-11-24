@@ -34,6 +34,47 @@ fn string_reply(reply: &glib::Variant, error: &str) -> Result<String, String> {
         .ok_or_else(|| error.to_string())
 }
 
+fn inspector_section(title: &str, child: &impl IsA<gtk::Widget>, expanded: bool) -> gtk::Expander {
+    let section = gtk::Expander::new(Some(title));
+    section.set_expanded(expanded);
+    section.set_child(Some(child));
+    section
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum InspectorShortcut {
+    ClearSearch,
+    PickActor,
+    FocusSearch,
+    SelectTab(u32),
+}
+
+fn inspector_shortcut(
+    key: gtk::gdk::Key,
+    modifiers: gtk::gdk::ModifierType,
+) -> Option<InspectorShortcut> {
+    if key == gtk::gdk::Key::Escape {
+        return Some(InspectorShortcut::ClearSearch);
+    }
+
+    let control = modifiers.contains(gtk::gdk::ModifierType::CONTROL_MASK);
+    let shift = modifiers.contains(gtk::gdk::ModifierType::SHIFT_MASK);
+    if control && shift && matches!(key.to_unicode(), Some('c' | 'C')) {
+        return Some(InspectorShortcut::PickActor);
+    }
+    if !control || shift {
+        return None;
+    }
+
+    match key.to_unicode() {
+        Some('1') => Some(InspectorShortcut::SelectTab(0)),
+        Some('2') => Some(InspectorShortcut::SelectTab(1)),
+        Some('3') => Some(InspectorShortcut::SelectTab(2)),
+        Some('f' | 'F') => Some(InspectorShortcut::FocusSearch),
+        _ => None,
+    }
+}
+
 fn text_view_contents(view: &gtk::TextView) -> String {
     let buffer = view.buffer();
     buffer
@@ -151,6 +192,32 @@ fn populate_computed_style(list: &gtk::ListBox, report: &str, query: &str) {
         empty.add_css_class("dim-label");
         list.set_placeholder(Some(&empty));
     }
+}
+
+fn refresh_computed_style(
+    path: &str,
+    list: &gtk::ListBox,
+    report: &Rc<RefCell<String>>,
+    search: &gtk::SearchEntry,
+    layout_values: &[gtk::Label; 12],
+    layout_size: &gtk::Label,
+) -> Result<(), String> {
+    let json = actor_computed_style(path)?;
+    let value: serde_json::Value =
+        serde_json::from_str(&json).map_err(|error| error.to_string())?;
+    let formatted = format_computed_style(&json)?;
+
+    for (label, key) in layout_values.iter().zip(LAYOUT_METRICS) {
+        label.set_text(&layout_metric(&value, key));
+    }
+    layout_size.set_text(&format!(
+        "{} × {}",
+        layout_metric(&value, "width"),
+        layout_metric(&value, "height")
+    ));
+    *report.borrow_mut() = formatted;
+    populate_computed_style(list, &report.borrow(), search.text().as_str());
+    Ok(())
 }
 
 fn shell_version() -> Result<String, String> {
@@ -367,6 +434,82 @@ fn start_actor_picker() -> Result<(), String> {
 fn actor_picker_result() -> Result<serde_json::Value, String> {
     let reply = actor_picker_call("GetActorPickerResult")?;
     serde_json::from_str(&reply).map_err(|error| error.to_string())
+}
+
+fn actor_picker_button(
+    list: &gtk::ListBox,
+    nodes: &Rc<RefCell<Vec<serde_json::Value>>>,
+    status: &gtk::Label,
+) -> gtk::Button {
+    let button = gtk::Button::with_label("Sélectionner dans Shell");
+    button.set_tooltip_text(Some(
+        "Sélectionner un acteur visuellement dans GNOME Shell (Ctrl+Maj+C)",
+    ));
+    let list = list.clone();
+    let nodes = nodes.clone();
+    let status = status.clone();
+
+    button.connect_clicked(move |_| match start_actor_picker() {
+        Ok(()) => {
+            status.set_text("Cliquez sur un acteur dans GNOME Shell · Échap pour annuler.");
+            let list = list.clone();
+            let nodes = nodes.clone();
+            let status = status.clone();
+            glib::timeout_add_local(std::time::Duration::from_millis(250), move || {
+                match actor_picker_result() {
+                    Ok(result) => match result
+                        .get("status")
+                        .and_then(serde_json::Value::as_str)
+                    {
+                        Some("pending") => glib::ControlFlow::Continue,
+                        Some("selected") => {
+                            let path = result
+                                .get("path")
+                                .and_then(serde_json::Value::as_str)
+                                .unwrap_or("");
+                            let index = nodes.borrow().iter().position(|node| {
+                                node.get("path").and_then(serde_json::Value::as_str) == Some(path)
+                            });
+                            if let Some(index) = index
+                                && let Some(row) = list.row_at_index(index as i32)
+                            {
+                                list.select_row(Some(&row));
+                                status.set_text(&format!("Acteur sélectionné · chemin {path}"));
+                            } else {
+                                status.set_text(
+                                    "Acteur sélectionné dans Shell ; actualisez l’arbre pour synchroniser la ligne.",
+                                );
+                            }
+                            glib::ControlFlow::Break
+                        }
+                        Some("cancelled") => {
+                            status.set_text("Sélection visuelle annulée.");
+                            glib::ControlFlow::Break
+                        }
+                        Some("timeout") => {
+                            status.set_text("Délai de sélection visuelle dépassé.");
+                            glib::ControlFlow::Break
+                        }
+                        _ => {
+                            status.set_text("Sélection visuelle inactive.");
+                            glib::ControlFlow::Break
+                        }
+                    },
+                    Err(error) => {
+                        status.set_text(&format!("Erreur de sélection visuelle : {error}"));
+                        status.add_css_class("error");
+                        glib::ControlFlow::Break
+                    }
+                }
+            });
+        }
+        Err(error) => {
+            status.set_text(&format!("Impossible de démarrer la sélection : {error}"));
+            status.add_css_class("error");
+        }
+    });
+
+    button
 }
 
 fn format_console_entry(source: &str, result: &str) -> String {
@@ -622,6 +765,34 @@ fn actor_inspector_title(node: &serde_json::Value) -> String {
         .and_then(serde_json::Value::as_str)
         .unwrap_or("Type inconnu");
     format!("{name}  ·  {kind}")
+}
+
+fn actor_style_summary(node: &serde_json::Value) -> String {
+    let classes = node
+        .get("styleClass")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("")
+        .split_whitespace()
+        .map(|class| format!(".{class}"))
+        .collect::<Vec<_>>();
+    let pseudo_classes = node
+        .get("pseudoClass")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("")
+        .split_whitespace()
+        .map(|pseudo| format!(":{pseudo}"))
+        .collect::<Vec<_>>();
+    let summary = classes
+        .into_iter()
+        .chain(pseudo_classes)
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    if summary.is_empty() {
+        "Aucune classe ni pseudo-classe".to_string()
+    } else {
+        summary
+    }
 }
 
 fn actor_path(node: &serde_json::Value) -> Option<&str> {
@@ -1274,63 +1445,7 @@ fn actors_page() -> gtk::Box {
         }
     });
 
-    let pick_actor = gtk::Button::with_label("Sélectionner dans Shell");
-    let list_for_picker = list.clone();
-    let nodes_for_picker = selected_nodes.clone();
-    let status_for_picker = status.clone();
-    pick_actor.connect_clicked(move |_| {
-        match start_actor_picker() {
-            Ok(()) => {
-                status_for_picker.set_text("Cliquez sur un acteur dans GNOME Shell · Échap pour annuler.");
-                let list = list_for_picker.clone();
-                let nodes = nodes_for_picker.clone();
-                let status = status_for_picker.clone();
-                glib::timeout_add_local(std::time::Duration::from_millis(250), move || {
-                    match actor_picker_result() {
-                        Ok(result) => match result.get("status").and_then(serde_json::Value::as_str) {
-                            Some("pending") => glib::ControlFlow::Continue,
-                            Some("selected") => {
-                                let path = result.get("path").and_then(serde_json::Value::as_str).unwrap_or("");
-                                let index = nodes.borrow().iter().position(|node| {
-                                    node.get("path").and_then(serde_json::Value::as_str) == Some(path)
-                                });
-                                if let Some(index) = index
-                                    && let Some(row) = list.row_at_index(index as i32)
-                                {
-                                    list.select_row(Some(&row));
-                                    status.set_text(&format!("Acteur sélectionné · chemin {path}"));
-                                } else {
-                                    status.set_text("Acteur sélectionné dans Shell ; actualisez l’arbre pour synchroniser la ligne.");
-                                }
-                                glib::ControlFlow::Break
-                            }
-                            Some("cancelled") => {
-                                status.set_text("Sélection visuelle annulée.");
-                                glib::ControlFlow::Break
-                            }
-                            Some("timeout") => {
-                                status.set_text("Délai de sélection visuelle dépassé.");
-                                glib::ControlFlow::Break
-                            }
-                            _ => {
-                                status.set_text("Sélection visuelle inactive.");
-                                glib::ControlFlow::Break
-                            }
-                        },
-                        Err(error) => {
-                            status.set_text(&format!("Erreur de sélection visuelle : {error}"));
-                            status.add_css_class("error");
-                            glib::ControlFlow::Break
-                        }
-                    }
-                });
-            }
-            Err(error) => {
-                status_for_picker.set_text(&format!("Impossible de démarrer la sélection : {error}"));
-                status_for_picker.add_css_class("error");
-            }
-        }
-    });
+    let pick_actor = actor_picker_button(&list, &selected_nodes, &status);
 
     let refresh = gtk::Button::with_label("Actualiser");
     refresh.add_css_class("suggested-action");
@@ -1575,6 +1690,11 @@ fn styles_page() -> gtk::Box {
     let selected_actor_title = gtk::Label::new(Some("Aucun élément sélectionné"));
     selected_actor_title.add_css_class("heading");
     selected_actor_title.set_halign(gtk::Align::Start);
+    let selected_actor_style = gtk::Label::new(Some("Aucune classe ni pseudo-classe"));
+    selected_actor_style.add_css_class("dim-label");
+    selected_actor_style.add_css_class("monospace");
+    selected_actor_style.set_halign(gtk::Align::Start);
+    selected_actor_style.set_selectable(true);
     let selected_actor_path = gtk::Label::new(Some("Sélectionnez un acteur dans l’arborescence"));
     selected_actor_path.add_css_class("dim-label");
     selected_actor_path.add_css_class("monospace");
@@ -1735,6 +1855,7 @@ fn styles_page() -> gtk::Box {
     let declaration_filter_for_selection = declaration_filter.clone();
     let updating_for_selection = updating_declaration.clone();
     let title_for_selection = selected_actor_title.clone();
+    let style_summary_for_selection = selected_actor_style.clone();
     let path_label_for_selection = selected_actor_path.clone();
     let breadcrumb_for_selection = tree_breadcrumb.clone();
     let tree_for_breadcrumb = list.clone();
@@ -1746,6 +1867,7 @@ fn styles_page() -> gtk::Box {
             if let Some(node) = nodes.get(index) {
                 show_actor_details(&details_for_selection, node);
                 title_for_selection.set_text(&actor_inspector_title(node));
+                style_summary_for_selection.set_text(&actor_style_summary(node));
                 let path = actor_path(node).unwrap_or("").to_string();
                 path_label_for_selection.set_text(&path);
                 path_label_for_selection.set_tooltip_text(Some(&actor_breadcrumb(&nodes, &path)));
@@ -1816,6 +1938,32 @@ fn styles_page() -> gtk::Box {
                     breadcrumb_for_selection.append(&crumb);
                 }
             }
+        } else {
+            title_for_selection.set_text("Aucun élément sélectionné");
+            style_summary_for_selection.set_text("Aucune classe ni pseudo-classe");
+            path_label_for_selection.set_text("Sélectionnez un acteur dans l’arborescence");
+            path_label_for_selection.set_tooltip_text(None);
+            *path_for_selection.borrow_mut() = None;
+            details_for_selection
+                .buffer()
+                .set_text("Sélectionnez un acteur pour inspecter ses styles.");
+            class_for_selection.set_text("");
+            style_for_selection.buffer().set_text("");
+            selected_inline_css_for_selection.borrow_mut().clear();
+            declaration_filter_for_selection.set_sensitive(false);
+            populate_inline_declarations(
+                &declarations_for_selection,
+                "",
+                "",
+                &style_for_selection,
+                &updating_for_selection,
+            );
+            while let Some(child) = breadcrumb_for_selection.first_child() {
+                breadcrumb_for_selection.remove(&child);
+            }
+            let hint = gtk::Label::new(Some("Sélectionnez un élément dans l’arborescence"));
+            hint.add_css_class("dim-label");
+            breadcrumb_for_selection.append(&hint);
         }
     });
 
@@ -1969,12 +2117,29 @@ fn styles_page() -> gtk::Box {
                         .and_then(serde_json::Value::as_str)
                         .unwrap_or("");
                     if !classes.is_empty() {
-                        let class_label = gtk::Label::new(Some(classes));
+                        let classes = classes
+                            .split_whitespace()
+                            .map(|class| format!(".{class}"))
+                            .collect::<Vec<_>>()
+                            .join(" ");
+                        let class_label = gtk::Label::new(Some(&classes));
                         class_label.add_css_class("dim-label");
                         class_label.add_css_class("monospace");
                         class_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
                         class_label.set_max_width_chars(24);
                         content.append(&class_label);
+                    }
+
+                    let pseudo_class = node
+                        .get("pseudoClass")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or("");
+                    if !pseudo_class.is_empty() {
+                        let pseudo_label = gtk::Label::new(Some(&format!(":{pseudo_class}")));
+                        pseudo_label.add_css_class("dim-label");
+                        pseudo_label.add_css_class("monospace");
+                        pseudo_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+                        content.append(&pseudo_label);
                     }
 
                     let row = gtk::ListBoxRow::new();
@@ -2052,7 +2217,9 @@ fn styles_page() -> gtk::Box {
     actions.set_margin_end(8);
     actions.set_margin_top(6);
     actions.add_css_class("toolbar");
+    let pick_actor = actor_picker_button(&list, &selected_nodes, &status);
     actions.append(&search);
+    actions.append(&pick_actor);
     actions.append(&expand_all);
     actions.append(&collapse_all);
     actions.append(&refresh);
@@ -2244,6 +2411,7 @@ fn styles_page() -> gtk::Box {
     let computed_report = Rc::new(RefCell::new(String::new()));
     let computed_search = gtk::SearchEntry::new();
     computed_search.set_placeholder_text(Some("Filtrer les propriétés calculées…"));
+    computed_search.set_hexpand(true);
     let report_for_search = computed_report.clone();
     let view_for_search = computed_details.clone();
     computed_search.connect_search_changed(move |entry| {
@@ -2255,7 +2423,8 @@ fn styles_page() -> gtk::Box {
     });
     let computed_actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     computed_actions.set_margin_start(0);
-    let computed_refresh = gtk::Button::with_label("Lire le style calculé de l’acteur");
+    let computed_refresh = gtk::Button::from_icon_name("view-refresh-symbolic");
+    computed_refresh.set_tooltip_text(Some("Actualiser les styles calculés"));
     let computed_view = computed_details.clone();
     let computed_path = selected_path.clone();
     let computed_status = status.clone();
@@ -2290,29 +2459,16 @@ fn styles_page() -> gtk::Box {
             computed_status.add_css_class("error");
             return;
         };
-        match actor_computed_style(&path).and_then(|json| {
-            let value = serde_json::from_str::<serde_json::Value>(&json)
-                .map_err(|error| error.to_string())?;
-            let report = format_computed_style(&json)?;
-            Ok((report, value))
-        }) {
-            Ok((report, value)) => {
-                for (label, key) in layout_values_for_refresh.iter().zip(LAYOUT_METRICS) {
-                    label.set_text(&layout_metric(&value, key));
-                }
-                layout_size_for_refresh.set_text(&format!(
-                    "{} × {}",
-                    layout_metric(&value, "width"),
-                    layout_metric(&value, "height")
-                ));
-                *report_for_refresh.borrow_mut() = report;
-                populate_computed_style(
-                    &computed_view,
-                    &report_for_refresh.borrow(),
-                    search_for_refresh.text().as_str(),
-                );
-                computed_status
-                    .set_text("Style calculé actualisé ; filtrez par nom ou valeur de propriété.");
+        match refresh_computed_style(
+            &path,
+            &computed_view,
+            &report_for_refresh,
+            &search_for_refresh,
+            &layout_values_for_refresh,
+            &layout_size_for_refresh,
+        ) {
+            Ok(()) => {
+                computed_status.set_text("Styles calculés actualisés.");
                 computed_status.remove_css_class("error");
             }
             Err(error) => {
@@ -2322,6 +2478,52 @@ fn styles_page() -> gtk::Box {
         }
     });
 
+    let path_for_live_style = selected_path.clone();
+    let list_for_live_style = computed_details.clone();
+    let report_for_live_style = computed_report.clone();
+    let search_for_live_style = computed_search.clone();
+    let values_for_live_style = layout_values.clone();
+    let size_for_live_style = layout_size.clone();
+    let status_for_live_style = status.clone();
+    list.connect_row_selected(move |_, row| {
+        let Some(path) = path_for_live_style
+            .borrow()
+            .clone()
+            .filter(|_| row.is_some())
+        else {
+            *report_for_live_style.borrow_mut() = String::new();
+            populate_computed_style(
+                &list_for_live_style,
+                "",
+                search_for_live_style.text().as_str(),
+            );
+            for label in &values_for_live_style {
+                label.set_text("—");
+            }
+            size_for_live_style.set_text("— × —");
+            return;
+        };
+
+        match refresh_computed_style(
+            &path,
+            &list_for_live_style,
+            &report_for_live_style,
+            &search_for_live_style,
+            &values_for_live_style,
+            &size_for_live_style,
+        ) {
+            Ok(()) => {
+                status_for_live_style
+                    .set_text("Styles calculés synchronisés avec l’acteur sélectionné.");
+                status_for_live_style.remove_css_class("error");
+            }
+            Err(error) => {
+                status_for_live_style
+                    .set_text(&format!("Échec de lecture du style calculé : {error}"));
+                status_for_live_style.add_css_class("error");
+            }
+        }
+    });
     let content_frame = gtk::Frame::new(Some("Contenu"));
     content_frame.set_child(Some(&layout_size));
 
@@ -2375,6 +2577,7 @@ fn styles_page() -> gtk::Box {
     layout_panel.append(&layout_box);
     layout_panel.append(&layout_note);
 
+    computed_actions.append(&computed_search);
     computed_actions.append(&computed_refresh);
 
     let theme_details = gtk::TextView::new();
@@ -2508,6 +2711,7 @@ fn styles_page() -> gtk::Box {
     selection_header.set_margin_start(8);
     selection_header.set_margin_end(8);
     selection_header.append(&selected_actor_title);
+    selection_header.append(&selected_actor_style);
 
     let selection_path_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     selection_path_row.append(&selected_actor_path);
@@ -2548,12 +2752,47 @@ fn styles_page() -> gtk::Box {
     inspector_tabs.set_hexpand(true);
     inspector_tabs.set_vexpand(true);
 
-    let class_section = gtk::Expander::new(Some("Classes CSS"));
-    class_section.set_expanded(true);
-    class_section.set_child(Some(&class_row));
-    let inline_style_section = gtk::Expander::new(Some("element.style"));
-    inline_style_section.set_expanded(true);
-    inline_style_section.set_child(Some(&style_row));
+    let inspector_keys = gtk::EventControllerKey::new();
+    let tabs_for_keys = inspector_tabs.clone();
+    let search_for_tabs = search.clone();
+    let picker_for_keys = pick_actor.clone();
+    inspector_keys.connect_key_pressed(move |_, key, _, modifiers| {
+        match inspector_shortcut(key, modifiers) {
+            Some(InspectorShortcut::ClearSearch) if !search_for_tabs.text().is_empty() => {
+                search_for_tabs.set_text("");
+                glib::Propagation::Stop
+            }
+            Some(InspectorShortcut::PickActor) => {
+                picker_for_keys.emit_clicked();
+                glib::Propagation::Stop
+            }
+            Some(InspectorShortcut::FocusSearch) => {
+                search_for_tabs.grab_focus();
+                glib::Propagation::Stop
+            }
+            Some(InspectorShortcut::SelectTab(index)) => {
+                tabs_for_keys.set_current_page(Some(index));
+                glib::Propagation::Stop
+            }
+            _ => glib::Propagation::Proceed,
+        }
+    });
+    inspector_keys.set_propagation_phase(gtk::PropagationPhase::Capture);
+    page.add_controller(inspector_keys);
+    inspector_tabs.set_tooltip_text(Some(
+        "Raccourcis : Ctrl+1 Styles · Ctrl+2 Computed · Ctrl+3 Layout · Ctrl+F rechercher · Échap effacer la recherche · Ctrl+Maj+C sélectionner un acteur",
+    ));
+
+    let declarations_heading = gtk::Label::new(Some("Déclarations de element.style"));
+    declarations_heading.add_css_class("heading");
+    declarations_heading.set_halign(gtk::Align::Start);
+    let class_section = inspector_section("Classes CSS", &class_row, true);
+    let inline_style_content = gtk::Box::new(gtk::Orientation::Vertical, 8);
+    inline_style_content.append(&declarations_heading);
+    inline_style_content.append(&declaration_filter);
+    inline_style_content.append(&declaration_scroll);
+    inline_style_content.append(&style_row);
+    let inline_style_section = inspector_section("element.style", &inline_style_content, true);
 
     let styles_panel = gtk::Box::new(gtk::Orientation::Vertical, 8);
     styles_panel.set_margin_top(12);
@@ -2593,9 +2832,6 @@ fn styles_page() -> gtk::Box {
     style_tools.append(&copy_classes);
     style_tools.append(&copy_inline_style);
 
-    let declarations_heading = gtk::Label::new(Some("Déclarations de element.style"));
-    declarations_heading.add_css_class("heading");
-    declarations_heading.set_halign(gtk::Align::Start);
     let declarations_for_filter = declaration_list.clone();
     let selected_css_for_filter = selected_inline_css.clone();
     let style_for_filter = style_input.clone();
@@ -2611,9 +2847,6 @@ fn styles_page() -> gtk::Box {
     });
 
     styles_panel.append(&style_tools);
-    styles_panel.append(&declarations_heading);
-    styles_panel.append(&declaration_filter);
-    styles_panel.append(&declaration_scroll);
     styles_panel.append(&class_section);
     styles_panel.append(&inline_style_section);
     inspector_tabs.append_page(&styles_panel, Some(&gtk::Label::new(Some("Styles"))));
@@ -2624,9 +2857,8 @@ fn styles_page() -> gtk::Box {
     computed_panel.set_margin_start(12);
     computed_panel.set_margin_end(12);
     computed_panel.append(&computed_actions);
-    computed_panel.append(&computed_search);
     computed_panel.append(&computed_scroll);
-    inspector_tabs.append_page(&computed_panel, Some(&gtk::Label::new(Some("Calculé"))));
+    inspector_tabs.append_page(&computed_panel, Some(&gtk::Label::new(Some("Computed"))));
     inspector_tabs.append_page(&layout_panel, Some(&gtk::Label::new(Some("Layout"))));
 
     let theme_panel = gtk::Box::new(gtk::Orientation::Vertical, 10);
@@ -3316,9 +3548,12 @@ fn build_ui(app: &adw::Application) {
         .child(&console_panel)
         .build();
 
-    let console_toggle = gtk::ToggleButton::with_label("Console");
+    let console_toggle = gtk::ToggleButton::new();
+    console_toggle.set_child(Some(&gtk::Image::from_icon_name(
+        "utilities-terminal-symbolic",
+    )));
     console_toggle.set_tooltip_text(Some(
-        "Afficher la console GJS persistante (exécute du code dans GNOME Shell)",
+        "Afficher la console GJS intégrée (exécute du code dans GNOME Shell)",
     ));
     let console_for_toggle = console_revealer.clone();
     console_toggle.connect_toggled(move |button| {
@@ -3347,12 +3582,13 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        actor_breadcrumb, actor_detail_summary, actor_first_child_index, actor_index_by_path,
-        actor_inspector_title, actor_matches, actor_parent_path, actor_path,
-        actor_property_has_changed, actor_selection_index, computed_style_entries,
-        editable_actor_properties, extension_is_discovered, flatten_actors, format_actor_details,
-        format_actor_details_filtered, format_computed_style, format_console_entry, layout_metric,
-        remember_console_command, string_reply, text_differs, update_inline_declaration,
+        InspectorShortcut, actor_breadcrumb, actor_detail_summary, actor_first_child_index,
+        actor_index_by_path, actor_inspector_title, actor_matches, actor_parent_path, actor_path,
+        actor_property_has_changed, actor_selection_index, actor_style_summary,
+        computed_style_entries, editable_actor_properties, extension_is_discovered, flatten_actors,
+        format_actor_details, format_actor_details_filtered, format_computed_style,
+        format_console_entry, inspector_shortcut, layout_metric, remember_console_command,
+        string_reply, text_differs, update_inline_declaration,
     };
     use glib::variant::ToVariant;
 
@@ -3589,6 +3825,54 @@ mod tests {
         assert_eq!(layout_metric(&value, "paddingLeft"), "3 px");
         assert_eq!(layout_metric(&value, "paddingBottom"), "—");
         assert_eq!(layout_metric(&value, "unknown"), "—");
+    }
+
+    #[test]
+    fn maps_inspector_keyboard_shortcuts_without_intercepting_other_keys() {
+        use gtk::gdk::{Key, ModifierType};
+
+        let control = ModifierType::CONTROL_MASK;
+        let control_shift = control | ModifierType::SHIFT_MASK;
+
+        assert_eq!(
+            inspector_shortcut(Key::_1, control),
+            Some(InspectorShortcut::SelectTab(0))
+        );
+        assert_eq!(
+            inspector_shortcut(Key::_2, control),
+            Some(InspectorShortcut::SelectTab(1))
+        );
+        assert_eq!(
+            inspector_shortcut(Key::_3, control),
+            Some(InspectorShortcut::SelectTab(2))
+        );
+        assert_eq!(
+            inspector_shortcut(Key::f, control),
+            Some(InspectorShortcut::FocusSearch)
+        );
+        assert_eq!(
+            inspector_shortcut(Key::c, control_shift),
+            Some(InspectorShortcut::PickActor)
+        );
+        assert_eq!(
+            inspector_shortcut(Key::Escape, ModifierType::empty()),
+            Some(InspectorShortcut::ClearSearch)
+        );
+        assert_eq!(inspector_shortcut(Key::x, control), None);
+        assert_eq!(inspector_shortcut(Key::f, ModifierType::empty()), None);
+    }
+
+    #[test]
+    fn formats_actor_style_classes_and_pseudo_classes_for_the_inspector() {
+        let node = serde_json::json!({
+            "styleClass": "button primary",
+            "pseudoClass": "hover focus"
+        });
+        assert_eq!(actor_style_summary(&node), ".button .primary :hover :focus");
+        assert_eq!(
+            actor_style_summary(&serde_json::json!({})),
+            "Aucune classe ni pseudo-classe"
+        );
     }
 
     #[test]

@@ -11,7 +11,7 @@ import { buildActorTree } from './actor-tree.js';
 import { findActorPath } from './actor-picker.js';
 import { buildComputedStyle, buildStyleTree, resolveActorPath } from './style-tree.js';
 import { setActorProperty } from './property-editor.js';
-import { parseProcessActivity, parseProcessCpuTime, parseProcessMemory } from './process-metrics.js';
+import { parseProcessCpuTime, parseProcessStatus } from './process-metrics.js';
 import {
     readCustomStylesheet,
     reloadCustomStylesheets,
@@ -355,8 +355,7 @@ export default class GnomeInspectorExtension extends Extension {
             lastCpuTimeNs: this._readProcessCpuTime(),
             cpuTimeNs: null,
             cpuPercent: null,
-            memory: this._readProcessMemory(),
-            activity: this._readProcessActivity(),
+            processStatus: this._readProcessStatus(),
             history: [],
         };
         this._performanceSignalId = global.stage.connect('after-paint', () => {
@@ -370,8 +369,7 @@ export default class GnomeInspectorExtension extends Extension {
                 const elapsedUs = now - this._performance.lastSampleAt;
                 const frames = this._performance.renderedFrames
                     - this._performance.lastRenderedFrames;
-                const memory = this._readProcessMemory();
-                const activity = this._readProcessActivity();
+                const processStatus = this._readProcessStatus();
                 const cpuTimeNs = this._readProcessCpuTime();
                 const cpuDeltaNs = cpuTimeNs !== null && this._performance.lastCpuTimeNs !== null
                     ? cpuTimeNs - this._performance.lastCpuTimeNs
@@ -387,11 +385,11 @@ export default class GnomeInspectorExtension extends Extension {
                         framesPerSecond: Math.round(frames * 100000000 / elapsedUs) / 100,
                         cpuPercent,
                         cpuTimeNs,
-                        residentMemoryBytes: memory?.residentBytes ?? null,
-                        peakResidentMemoryBytes: memory?.peakResidentBytes ?? null,
-                        threadCount: activity?.threadCount ?? null,
-                        voluntaryContextSwitches: activity?.voluntaryContextSwitches ?? null,
-                        involuntaryContextSwitches: activity?.involuntaryContextSwitches ?? null,
+                        residentMemoryBytes: processStatus?.residentBytes ?? null,
+                        peakResidentMemoryBytes: processStatus?.peakResidentBytes ?? null,
+                        threadCount: processStatus?.threadCount ?? null,
+                        voluntaryContextSwitches: processStatus?.voluntaryContextSwitches ?? null,
+                        involuntaryContextSwitches: processStatus?.involuntaryContextSwitches ?? null,
                     });
                     if (this._performance.history.length > 60)
                         this._performance.history.shift();
@@ -401,30 +399,18 @@ export default class GnomeInspectorExtension extends Extension {
                 this._performance.lastCpuTimeNs = cpuTimeNs;
                 this._performance.cpuTimeNs = cpuTimeNs;
                 this._performance.cpuPercent = cpuPercent;
-                this._performance.memory = memory;
-                this._performance.activity = activity;
+                this._performance.processStatus = processStatus;
                 return GLib.SOURCE_CONTINUE;
             }
         );
     }
 
-    _readProcessMemory() {
+    _readProcessStatus() {
         try {
             const [ok, contents] = GLib.file_get_contents('/proc/self/status');
             if (!ok)
                 return null;
-            return parseProcessMemory(new TextDecoder().decode(contents));
-        } catch {
-            return null;
-        }
-    }
-
-    _readProcessActivity() {
-        try {
-            const [ok, contents] = GLib.file_get_contents('/proc/self/status');
-            if (!ok)
-                return null;
-            return parseProcessActivity(new TextDecoder().decode(contents));
+            return parseProcessStatus(new TextDecoder().decode(contents));
         } catch {
             return null;
         }
@@ -471,13 +457,13 @@ export default class GnomeInspectorExtension extends Extension {
             monitorCount: Main.layoutManager.monitors.length,
             renderedFrames: this._performance?.renderedFrames || 0,
             framesPerSecond: history.at(-1)?.framesPerSecond ?? null,
-            residentMemoryBytes: this._performance?.memory?.residentBytes ?? null,
-            peakResidentMemoryBytes: this._performance?.memory?.peakResidentBytes ?? null,
+            residentMemoryBytes: this._performance?.processStatus?.residentBytes ?? null,
+            peakResidentMemoryBytes: this._performance?.processStatus?.peakResidentBytes ?? null,
             cpuPercent: this._performance?.cpuPercent ?? null,
             cpuTimeNs: this._performance?.cpuTimeNs ?? null,
-            threadCount: this._performance?.activity?.threadCount ?? null,
-            voluntaryContextSwitches: this._performance?.activity?.voluntaryContextSwitches ?? null,
-            involuntaryContextSwitches: this._performance?.activity?.involuntaryContextSwitches ?? null,
+            threadCount: this._performance?.processStatus?.threadCount ?? null,
+            voluntaryContextSwitches: this._performance?.processStatus?.voluntaryContextSwitches ?? null,
+            involuntaryContextSwitches: this._performance?.processStatus?.involuntaryContextSwitches ?? null,
             performanceHistory: history,
         });
     }

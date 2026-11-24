@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { parseProcessCpuTime, parseProcessMemory } from './process-metrics.js';
+import { parseProcessActivity, parseProcessCpuTime, parseProcessMemory } from './process-metrics.js';
 
 test('parses resident and peak process memory from proc status', () => {
     const result = parseProcessMemory([
@@ -20,6 +20,27 @@ test('parses resident and peak process memory from proc status', () => {
 test('returns null when process memory fields are unavailable', () => {
     assert.equal(parseProcessMemory('Name:\tgnome-shell\nVmRSS:\t12 kB'), null);
     assert.equal(parseProcessMemory(null), null);
+});
+
+test('parses process thread and context-switch counters', () => {
+    assert.deepEqual(parseProcessActivity([
+        'Threads:\\t14',
+        'voluntary_ctxt_switches:\\t1200',
+        'nonvoluntary_ctxt_switches:\\t35',
+    ].join('\\n')), {
+        threadCount: 14,
+        voluntaryContextSwitches: 1200,
+        involuntaryContextSwitches: 35,
+    });
+});
+
+test('returns null counters when process activity fields are unavailable', () => {
+    assert.deepEqual(parseProcessActivity('Name:\\tgnome-shell'), {
+        threadCount: null,
+        voluntaryContextSwitches: null,
+        involuntaryContextSwitches: null,
+    });
+    assert.equal(parseProcessActivity(null), null);
 });
 
 test('parses scheduler runtime in nanoseconds', () => {

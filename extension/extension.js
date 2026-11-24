@@ -343,7 +343,11 @@ export default class GnomeInspectorExtension extends Extension {
                 return result;
             return JSON.stringify(result, null, 2) ?? String(result);
         } catch (error) {
-            _startPerformanceMonitoring() {
+            return error?.stack || String(error);
+        }
+    }
+
+    _startPerformanceMonitoring() {
         this._performance = {
             renderedFrames: 0,
             lastRenderedFrames: 0,
@@ -393,6 +397,7 @@ export default class GnomeInspectorExtension extends Extension {
             return null;
         }
     }
+
     _stopPerformanceMonitoring() {
         if (this._performanceTimer) {
             GLib.Source.remove(this._performanceTimer);

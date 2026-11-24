@@ -176,6 +176,11 @@ Global theme stylesheet editing is not implemented. Actor
 inspection is bounded and may return incomplete data. See [CHANGELOG.md](CHANGELOG.md) for release
 details.
 
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for the current development priorities and
+completed milestones.
+
 ## Design
 
 - Keep the implementation simple (KISS).

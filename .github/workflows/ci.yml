@@ -6,6 +6,8 @@ on:
     paths-ignore:
       - "screenshots/**"
   pull_request:
+    paths-ignore:
+      - "screenshots/**"
   workflow_dispatch:
 
 concurrency:

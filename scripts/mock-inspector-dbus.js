@@ -155,7 +155,13 @@ class MockInspector {
             monitorCount: 1,
             renderedFrames: 4821,
             framesPerSecond: 60,
-            performanceHistory: history
+            residentMemoryBytes: 268435456,
+            peakResidentMemoryBytes: 301989888,
+            performanceHistory: history.map((sample, index) => ({
+                ...sample,
+                residentMemoryBytes: 260000000 + index * 1000000,
+                peakResidentMemoryBytes: 301989888
+            }))
         });
     }
 }

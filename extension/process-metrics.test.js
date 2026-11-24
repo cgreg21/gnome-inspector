@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { parseProcessMemory } from './process-metrics.js';
+import { parseProcessCpuTime, parseProcessMemory } from './process-metrics.js';
 
 test('parses resident and peak process memory from proc status', () => {
     const result = parseProcessMemory([
@@ -20,4 +20,14 @@ test('parses resident and peak process memory from proc status', () => {
 test('returns null when process memory fields are unavailable', () => {
     assert.equal(parseProcessMemory('Name:\tgnome-shell\nVmRSS:\t12 kB'), null);
     assert.equal(parseProcessMemory(null), null);
+});
+
+test('parses scheduler runtime in nanoseconds', () => {
+    assert.equal(parseProcessCpuTime('123456789 42 7'), 123456789);
+});
+
+test('returns null for unavailable or invalid scheduler runtime', () => {
+    assert.equal(parseProcessCpuTime(''), null);
+    assert.equal(parseProcessCpuTime('not-a-number 42 7'), null);
+    assert.equal(parseProcessCpuTime(null), null);
 });

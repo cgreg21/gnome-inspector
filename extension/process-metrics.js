@@ -3,7 +3,7 @@ export function parseProcessStatus(status) {
         return null;
 
     const readKilobytes = field => {
-        const match = status.match(new RegExp(`^${field}:\\s+(\\d+)\\s+kB$`, 'm'));
+        const match = status.match(new RegExp(\`^\${field}:\\s+(\\d+)\\s+kB$\`, 'm'));
         if (!match)
             return null;
 
@@ -11,9 +11,9 @@ export function parseProcessStatus(status) {
         return Number.isSafeInteger(bytes) ? bytes : null;
     };
     const readCounter = field => {
-        const line = status.split('\\n').find(entry => entry.startsWith(`${field}:`));
+        const line = status.split('\n').find(entry => entry.startsWith(\`\${field}:\`));
         const value = line?.slice(field.length + 1).trim();
-        if (!value || !/^\\d+$/.test(value))
+        if (!value || !/^\d+$/.test(value))
             return null;
 
         const counter = Number(value);
@@ -33,8 +33,8 @@ export function parseProcessCpuTime(schedstat) {
     if (typeof schedstat !== 'string')
         return null;
 
-    const runtime = schedstat.trim().split(/\\s+/, 1)[0];
-    if (!/^\\d+$/.test(runtime))
+    const runtime = schedstat.trim().split(/\s+/, 1)[0];
+    if (!/^\d+$/.test(runtime))
         return null;
 
     const nanoseconds = Number(runtime);

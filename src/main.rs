@@ -3133,6 +3133,126 @@ fn performance_metric(title: &str) -> (gtk::Frame, gtk::Label) {
     (frame, value)
 }
 
+fn draw_performance_chart(
+    context: &gtk::cairo::Context,
+    width: i32,
+    height: i32,
+    values: &[Option<f64>],
+    color: (f64, f64, f64),
+) {
+    let width = width as f64;
+    let height = height as f64;
+    if width <= 16.0 || height <= 16.0 {
+        return;
+    }
+
+    let left = 8.0;
+    let right = width - 8.0;
+    let top = 8.0;
+    let bottom = height - 8.0;
+
+    context.set_line_width(1.0);
+    context.set_source_rgba(0.5, 0.5, 0.5, 0.25);
+    for row in 0..=4 {
+        let y = top + (bottom - top) * row as f64 / 4.0;
+        context.move_to(left, y);
+        context.line_to(right, y);
+    }
+    let _ = context.stroke();
+
+    let max_value = values
+        .iter()
+        .flatten()
+        .copied()
+        .filter(|value| value.is_finite() && *value >= 0.0)
+        .fold(0.0, f64::max)
+        .max(1.0);
+
+    context.set_source_rgb(color.0, color.1, color.2);
+    context.set_line_width(2.0);
+    let denominator = values.len().saturating_sub(1).max(1) as f64;
+    let mut drawing = false;
+
+    for (index, value) in values.iter().enumerate() {
+        let Some(value) = (*value).filter(|value| value.is_finite() && *value >= 0.0) else {
+            if drawing {
+                let _ = context.stroke();
+                drawing = false;
+            }
+            continue;
+        };
+        let x = left + (right - left) * index as f64 / denominator;
+        let y = bottom - (bottom - top) * (value / max_value);
+        if drawing {
+            context.line_to(x, y);
+        } else {
+            context.move_to(x, y);
+            drawing = true;
+        }
+    }
+    if drawing {
+        let _ = context.stroke();
+    } else {
+        context.set_source_rgba(0.5, 0.5, 0.5, 0.8);
+        context.move_to(left + 4.0, height / 2.0);
+        let _ = context.show_text("Aucun échantillon disponible");
+    }
+}
+
+fn performance_history_values(
+    report: &serde_json::Value,
+    key: &str,
+    divisor: f64,
+) -> Vec<Option<f64>> {
+    report
+        .get("performanceHistory")
+        .and_then(serde_json::Value::as_array)
+        .map(|samples| {
+            samples
+                .iter()
+                .map(|sample| {
+                    sample
+                        .get(key)
+                        .and_then(serde_json::Value::as_f64)
+                        .filter(|value| value.is_finite() && *value >= 0.0)
+                        .map(|value| value / divisor)
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn performance_chart(
+    title: &str,
+    color: (f64, f64, f64),
+) -> (gtk::Frame, Rc<RefCell<Vec<Option<f64>>>>, gtk::DrawingArea) {
+    let heading = gtk::Label::new(Some(title));
+    heading.set_halign(gtk::Align::Start);
+    heading.add_css_class("heading");
+
+    let values = Rc::new(RefCell::new(Vec::new()));
+    let chart_values = values.clone();
+    let drawing = gtk::DrawingArea::new();
+    drawing.set_content_height(140);
+    drawing.set_hexpand(true);
+    drawing.set_draw_func(move |_, context, width, height| {
+        draw_performance_chart(context, width, height, &chart_values.borrow(), color);
+    });
+
+    let content = gtk::Box::new(gtk::Orientation::Vertical, 8);
+    content.set_margin_top(12);
+    content.set_margin_bottom(12);
+    content.set_margin_start(12);
+    content.set_margin_end(12);
+    content.append(&heading);
+    content.append(&drawing);
+
+    let frame = gtk::Frame::new(None);
+    frame.set_hexpand(true);
+    frame.set_child(Some(&content));
+    (frame, values, drawing)
+}
+
 fn performance_page() -> gtk::Box {
     let page = gtk::Box::new(gtk::Orientation::Vertical, 12);
     page.append(&page_heading(
@@ -3188,19 +3308,18 @@ fn performance_page() -> gtk::Box {
     status.set_margin_start(24);
     status.add_css_class("dim-label");
 
-    let history = gtk::TextView::new();
-    history.set_editable(false);
-    history.set_cursor_visible(false);
-    history.set_monospace(true);
-    history.set_wrap_mode(gtk::WrapMode::None);
-    history.set_left_margin(12);
-    history.set_top_margin(12);
-    let history_scroll = gtk::ScrolledWindow::builder()
-        .min_content_height(180)
-        .vexpand(true)
-        .hexpand(true)
-        .child(&history)
-        .build();
+    let (cpu_chart, cpu_history, cpu_chart_area) =
+        performance_chart("CPU du thread principal (%)", (0.22, 0.55, 0.88));
+    let (memory_chart, memory_history, memory_chart_area) =
+        performance_chart("Mémoire résidente (MiB)", (0.30, 0.68, 0.48));
+    let (fps_chart, fps_history, fps_chart_area) =
+        performance_chart("Images rendues / seconde (FPS)", (0.82, 0.48, 0.20));
+    let charts = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    charts.set_margin_start(24);
+    charts.set_margin_end(24);
+    charts.append(&cpu_chart);
+    charts.append(&memory_chart);
+    charts.append(&fps_chart);
 
     let refresh = gtk::Button::with_label("Actualiser les mesures");
     refresh.add_css_class("suggested-action");
@@ -3218,7 +3337,12 @@ fn performance_page() -> gtk::Box {
     let threads_value = threads.clone();
     let voluntary_switches_value = voluntary_switches.clone();
     let involuntary_switches_value = involuntary_switches.clone();
-    let history_value = history.clone();
+    let cpu_history_values = cpu_history.clone();
+    let cpu_chart_area_value = cpu_chart_area.clone();
+    let memory_history_values = memory_history.clone();
+    let memory_chart_area_value = memory_chart_area.clone();
+    let fps_history_values = fps_history.clone();
+    let fps_chart_area_value = fps_chart_area.clone();
     let status_value = status.clone();
 
     refresh.connect_clicked(move |_| {
@@ -3298,38 +3422,18 @@ fn performance_page() -> gtk::Box {
                         .unwrap_or_else(|| "Indisponible".to_string()),
                 );
 
-                let rows = report
-                    .get("performanceHistory")
-                    .and_then(serde_json::Value::as_array)
-                    .map(|samples| {
-                        let mut output = String::from("Images     FPS    CPU %    RSS MiB\n");
-                        for sample in samples {
-                            let count = sample
-                                .get("renderedFrames")
-                                .and_then(serde_json::Value::as_u64)
-                                .map(|value| value.to_string())
-                                .unwrap_or_else(|| "—".to_string());
-                            let rate = sample
-                                .get("framesPerSecond")
-                                .and_then(serde_json::Value::as_f64)
-                                .map(|value| format!("{value:.1}"))
-                                .unwrap_or_else(|| "—".to_string());
-                            let cpu = sample
-                                .get("cpuPercent")
-                                .and_then(serde_json::Value::as_f64)
-                                .map(|value| format!("{value:.1}"))
-                                .unwrap_or_else(|| "—".to_string());
-                            let resident = sample
-                                .get("residentMemoryBytes")
-                                .and_then(serde_json::Value::as_u64)
-                                .map(|bytes| format!("{:.1}", bytes as f64 / (1024.0 * 1024.0)))
-                                .unwrap_or_else(|| "—".to_string());
-                            output.push_str(&format!("{count:>8}  {rate:>6}  {cpu:>6}  {resident:>8}\n"));
-                        }
-                        output
-                    })
-                    .unwrap_or_else(|| "Aucun échantillon disponible.".to_string());
-                history_value.buffer().set_text(&rows);
+                *cpu_history_values.borrow_mut() =
+                    performance_history_values(&report, "cpuPercent", 1.0);
+                *memory_history_values.borrow_mut() = performance_history_values(
+                    &report,
+                    "residentMemoryBytes",
+                    1024.0 * 1024.0,
+                );
+                *fps_history_values.borrow_mut() =
+                    performance_history_values(&report, "framesPerSecond", 1.0);
+                cpu_chart_area_value.queue_draw();
+                memory_chart_area_value.queue_draw();
+                fps_chart_area_value.queue_draw();
                 let incomplete = report
                     .get("incomplete")
                     .and_then(serde_json::Value::as_bool)
@@ -3357,7 +3461,7 @@ fn performance_page() -> gtk::Box {
     actions.set_margin_end(24);
     actions.append(&refresh);
 
-    let history_title = gtk::Label::new(Some("Historique récent"));
+    let history_title = gtk::Label::new(Some("Historique récent · 60 derniers échantillons"));
     history_title.add_css_class("title-3");
     history_title.set_halign(gtk::Align::Start);
     history_title.set_margin_start(24);
@@ -3366,7 +3470,7 @@ fn performance_page() -> gtk::Box {
     page.append(&actions);
     page.append(&status);
     page.append(&history_title);
-    page.append(&history_scroll);
+    page.append(&charts);
     page
 }
 

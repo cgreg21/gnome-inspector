@@ -15,7 +15,7 @@ extension. The extension provides access to Shell-specific APIs over session D-B
 - **Themes:** inspect active stylesheet paths and reload custom stylesheets.
 - **GJS console:** run JavaScript in the connected Shell session.
 - **Diagnostics:** inspect Shell, session, display and extension information.
-- **Performance:** view scene-capture metrics, rendered-frame-rate history, main-thread CPU usage, thread count, context switches, cumulative CPU time and GNOME Shell memory usage.
+- **Performance:** view scene-capture metrics, native CPU/memory/FPS history charts, main-thread CPU usage, thread count, context switches, cumulative CPU time and GNOME Shell memory usage.
 
 Inspection is read-only by default. Changes are explicit and limited to supported
 properties and user-owned stylesheets. Actor snapshots are bounded and may be

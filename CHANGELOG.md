@@ -8,12 +8,14 @@
 - Main-thread CPU utilization, cumulative CPU time and context-switch counters.
 - GNOME Shell process resident memory, peak resident memory and thread count.
 - A bounded 60-sample performance history containing the available metrics.
+- Idempotent monitoring startup and safe timer shutdown when the extension is disabled.
 
 ### Notes
 
 - CPU time and context-switch counters describe the Shell main thread.
 - Memory and thread-count metrics describe the Shell process.
-- Metrics remain unavailable when the corresponding procfs data cannot be read.
+- Metrics remain unavailable when the corresponding procfs data cannot be read; partial status files preserve independently available fields.
+- A missing CPU sample resets the baseline, so the next valid sample re-establishes it before CPU utilization is reported.
 
 ## 0.1.0-alpha.1
 

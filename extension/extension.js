@@ -348,6 +348,9 @@ export default class GnomeInspectorExtension extends Extension {
     }
 
     _startPerformanceMonitoring() {
+        if (this._performanceTimer || this._performanceSignalId)
+            return;
+
         this._performance = {
             renderedFrames: 0,
             lastRenderedFrames: 0,
@@ -365,6 +368,9 @@ export default class GnomeInspectorExtension extends Extension {
             GLib.PRIORITY_DEFAULT,
             1,
             () => {
+                if (!this._performance)
+                    return GLib.SOURCE_REMOVE;
+
                 const now = GLib.get_monotonic_time();
                 const elapsedUs = now - this._performance.lastSampleAt;
                 const frames = this._performance.renderedFrames

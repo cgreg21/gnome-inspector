@@ -3154,6 +3154,11 @@ fn performance_page() -> gtk::Box {
     let (peak_memory_card, peak_memory) = performance_metric("Pic mémoire résidente");
     let (cpu_card, cpu) = performance_metric("CPU du thread principal Shell");
     let (cpu_time_card, cpu_time) = performance_metric("Temps CPU cumulé du thread principal");
+    let (threads_card, threads) = performance_metric("Threads du processus Shell");
+    let (voluntary_switches_card, voluntary_switches) =
+        performance_metric("Changements de contexte volontaires (thread principal)");
+    let (involuntary_switches_card, involuntary_switches) =
+        performance_metric("Changements de contexte involontaires (thread principal)");
 
     for (index, card) in [
         &fps_card,
@@ -3166,6 +3171,9 @@ fn performance_page() -> gtk::Box {
         &peak_memory_card,
         &cpu_card,
         &cpu_time_card,
+        &threads_card,
+        &voluntary_switches_card,
+        &involuntary_switches_card,
     ]
     .into_iter()
     .enumerate()
@@ -3205,6 +3213,9 @@ fn performance_page() -> gtk::Box {
     let peak_memory_value = peak_memory.clone();
     let cpu_value = cpu.clone();
     let cpu_time_value = cpu_time.clone();
+    let threads_value = threads.clone();
+    let voluntary_switches_value = voluntary_switches.clone();
+    let involuntary_switches_value = involuntary_switches.clone();
     let history_value = history.clone();
     let status_value = status.clone();
 
@@ -3275,6 +3286,21 @@ fn performance_page() -> gtk::Box {
                 cpu_time_value.set_text(
                     &number("cpuTimeNs")
                         .map(|value| format!("{:.2} s", value as f64 / 1_000_000_000.0))
+                        .unwrap_or_else(|| "Indisponible".to_string()),
+                );
+                threads_value.set_text(
+                    &number("threadCount")
+                        .map(|value| value.to_string())
+                        .unwrap_or_else(|| "Indisponible".to_string()),
+                );
+                voluntary_switches_value.set_text(
+                    &number("voluntaryContextSwitches")
+                        .map(|value| value.to_string())
+                        .unwrap_or_else(|| "Indisponible".to_string()),
+                );
+                involuntary_switches_value.set_text(
+                    &number("involuntaryContextSwitches")
+                        .map(|value| value.to_string())
                         .unwrap_or_else(|| "Indisponible".to_string()),
                 );
 

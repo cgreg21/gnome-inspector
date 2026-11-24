@@ -159,10 +159,16 @@ class MockInspector {
             peakResidentMemoryBytes: 301989888,
             cpuPercent: 18.4,
             cpuTimeNs: 123456789000,
+            threadCount: 14,
+            voluntaryContextSwitches: 1200,
+            involuntaryContextSwitches: 35,
             performanceHistory: history.map((sample, index) => ({
                 ...sample,
                 cpuPercent: 12 + index * 0.8,
                 cpuTimeNs: 110000000000 + index * 1000000000,
+                threadCount: 14,
+                voluntaryContextSwitches: 1180 + index * 20,
+                involuntaryContextSwitches: 30 + index,
                 residentMemoryBytes: 260000000 + index * 1000000,
                 peakResidentMemoryBytes: 301989888
             }))

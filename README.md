@@ -15,7 +15,7 @@ extension. The extension provides access to Shell-specific APIs over session D-B
 - **Themes:** inspect active stylesheet paths and reload custom stylesheets.
 - **GJS console:** run JavaScript in the connected Shell session.
 - **Diagnostics:** inspect Shell, session, display and extension information.
-- **Performance:** view scene-capture metrics and rendered-frame-rate history.
+- **Performance:** view scene-capture metrics, native CPU/memory/FPS history charts, main-thread CPU usage, thread count, context switches, cumulative CPU time and GNOME Shell memory usage.
 
 Inspection is read-only by default. Changes are explicit and limited to supported
 properties and user-owned stylesheets. Actor snapshots are bounded and may be
@@ -168,10 +168,18 @@ dbus-run-session -- bash scripts/test-gnome-shell-51.sh
 privileges. They can change or disrupt the desktop session and access data available
 to Shell. Run only code you trust.
 
-This alpha targets GNOME Shell 51 and currently packages Linux x86_64. CPU and memory
-history and global theme stylesheet editing are not implemented. Actor inspection is
-bounded and may return incomplete data. See [CHANGELOG.md](CHANGELOG.md) for release
+This alpha targets GNOME Shell 51 and currently packages Linux x86_64. CPU usage
+and context-switch counters describe the Shell main thread and are read from
+`/proc/thread-self/`; RSS, peak RSS and thread count describe the whole Shell process.
+Metrics are unavailable when the corresponding procfs data cannot be read.
+Global theme stylesheet editing is not implemented. Actor
+inspection is bounded and may return incomplete data. See [CHANGELOG.md](CHANGELOG.md) for release
 details.
+
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for the current development priorities and
+completed milestones.
 
 ## Design
 

@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Main-thread CPU utilization, cumulative CPU time and context-switch counters.
+- GNOME Shell process resident memory, peak resident memory and thread count.
+- A bounded 60-sample performance history containing the available metrics.
+
+### Notes
+
+- CPU time and context-switch counters describe the Shell main thread.
+- Memory and thread-count metrics describe the Shell process.
+- Metrics remain unavailable when the corresponding procfs data cannot be read.
+
 ## 0.1.0-alpha.1
 
 First distributable alpha for GNOME Shell 51.
@@ -14,7 +28,7 @@ First distributable alpha for GNOME Shell 51.
 - GJS console, session diagnostics and basic scene/frame performance metrics.
 - Per-user install and uninstall scripts, plus a prebuilt Linux archive.
 
-### Known limitations
+### Known limitations in this release
 
 - GNOME Shell 51 is the only supported Shell version.
 - The release workflow currently builds Linux x86_64 archives on Ubuntu.

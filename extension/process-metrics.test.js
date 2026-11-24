@@ -42,6 +42,23 @@ test('returns null for unavailable or invalid scheduler runtime', () => {
     assert.equal(parseProcessCpuTime(null), null);
 });
 
+test('rejects process metrics outside the safe integer range', () => {
+    const result = parseProcessStatus([
+        'VmRSS: 9007199254740992 kB',
+        'VmHWM: 320000 kB',
+        'Threads: 9007199254740992',
+        'voluntary_ctxt_switches: 9007199254740992',
+        'nonvoluntary_ctxt_switches: 35',
+    ].join('\\n'));
+
+    assert.equal(result.residentBytes, null);
+    assert.equal(result.peakResidentBytes, 320000 * 1024);
+    assert.equal(result.threadCount, null);
+    assert.equal(result.voluntaryContextSwitches, null);
+    assert.equal(result.involuntaryContextSwitches, 35);
+    assert.equal(parseProcessCpuTime('9007199254740992 42 7'), null);
+});
+
 test('calculates main-thread CPU utilization from elapsed time', () => {
     assert.equal(calculateCpuPercent(500_000_000, 1_000_000), 50);
     assert.equal(calculateCpuPercent(125_000_000, 1_000_000), 12.5);

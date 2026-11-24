@@ -1,46 +1,35 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { parseProcessActivity, parseProcessCpuTime, parseProcessMemory } from './process-metrics.js';
+import { parseProcessCpuTime, parseProcessStatus } from './process-metrics.js';
 
-test('parses resident and peak process memory from proc status', () => {
-    const result = parseProcessMemory([
+test('parses process memory, thread and context-switch counters', () => {
+    const result = parseProcessStatus([
         'Name:\tgnome-shell',
-        'VmPeak:\t900000 kB',
         'VmHWM:\t320000 kB',
         'VmRSS:\t280000 kB',
-        'Threads:\t12',
+        'Threads:\t14',
+        'voluntary_ctxt_switches:\t1200',
+        'nonvoluntary_ctxt_switches:\t35',
     ].join('\n'));
 
     assert.deepEqual(result, {
         residentBytes: 280000 * 1024,
         peakResidentBytes: 320000 * 1024,
-    });
-});
-
-test('returns null when process memory fields are unavailable', () => {
-    assert.equal(parseProcessMemory('Name:\tgnome-shell\nVmRSS:\t12 kB'), null);
-    assert.equal(parseProcessMemory(null), null);
-});
-
-test('parses process thread and context-switch counters', () => {
-    assert.deepEqual(parseProcessActivity([
-        'Threads:\\t14',
-        'voluntary_ctxt_switches:\\t1200',
-        'nonvoluntary_ctxt_switches:\\t35',
-    ].join('\\n')), {
         threadCount: 14,
         voluntaryContextSwitches: 1200,
         involuntaryContextSwitches: 35,
     });
 });
 
-test('returns null counters when process activity fields are unavailable', () => {
-    assert.deepEqual(parseProcessActivity('Name:\\tgnome-shell'), {
+test('keeps unavailable process status counters null', () => {
+    assert.deepEqual(parseProcessStatus('Name:\tgnome-shell'), {
+        residentBytes: null,
+        peakResidentBytes: null,
         threadCount: null,
         voluntaryContextSwitches: null,
         involuntaryContextSwitches: null,
     });
-    assert.equal(parseProcessActivity(null), null);
+    assert.equal(parseProcessStatus(null), null);
 });
 
 test('parses scheduler runtime in nanoseconds', () => {

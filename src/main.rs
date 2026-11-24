@@ -3153,6 +3153,7 @@ fn performance_page() -> gtk::Box {
     let (memory_card, memory) = performance_metric("Mémoire résidente");
     let (peak_memory_card, peak_memory) = performance_metric("Pic mémoire résidente");
     let (cpu_card, cpu) = performance_metric("CPU du thread principal Shell");
+    let (cpu_time_card, cpu_time) = performance_metric("Temps CPU cumulé du thread principal");
 
     for (index, card) in [
         &fps_card,
@@ -3164,6 +3165,7 @@ fn performance_page() -> gtk::Box {
         &memory_card,
         &peak_memory_card,
         &cpu_card,
+        &cpu_time_card,
     ]
     .into_iter()
     .enumerate()
@@ -3202,6 +3204,7 @@ fn performance_page() -> gtk::Box {
     let memory_value = memory.clone();
     let peak_memory_value = peak_memory.clone();
     let cpu_value = cpu.clone();
+    let cpu_time_value = cpu_time.clone();
     let history_value = history.clone();
     let status_value = status.clone();
 
@@ -3267,6 +3270,11 @@ fn performance_page() -> gtk::Box {
                         .get("cpuPercent")
                         .and_then(serde_json::Value::as_f64)
                         .map(|value| format!("{value:.1} %"))
+                        .unwrap_or_else(|| "Indisponible".to_string()),
+                );
+                cpu_time_value.set_text(
+                    &number("cpuTimeNs")
+                        .map(|value| format!("{:.2} s", value as f64 / 1_000_000_000.0))
                         .unwrap_or_else(|| "Indisponible".to_string()),
                 );
 

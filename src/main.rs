@@ -3254,18 +3254,10 @@ fn performance_page() -> gtk::Box {
                 );
                 let dimensions = report
                     .get("stage")
-                    .map(|stage| {
-                        format!(
-                            "{} × {} px",
-                            stage
-                                .get("width")
-                                .and_then(serde_json::Value::as_u64)
-                                .unwrap_or(0),
-                            stage
-                                .get("height")
-                                .and_then(serde_json::Value::as_u64)
-                                .unwrap_or(0),
-                        )
+                    .and_then(|stage| {
+                        let width = stage.get("width").and_then(serde_json::Value::as_u64)?;
+                        let height = stage.get("height").and_then(serde_json::Value::as_u64)?;
+                        Some(format!("{width} × {height} px"))
                     })
                     .unwrap_or_else(|| "—".to_string());
                 stage_value.set_text(&dimensions);
@@ -3313,11 +3305,13 @@ fn performance_page() -> gtk::Box {
                             let count = sample
                                 .get("renderedFrames")
                                 .and_then(serde_json::Value::as_u64)
-                                .unwrap_or(0);
+                                .map(|value| value.to_string())
+                                .unwrap_or_else(|| "—".to_string());
                             let rate = sample
                                 .get("framesPerSecond")
                                 .and_then(serde_json::Value::as_f64)
-                                .unwrap_or(0.0);
+                                .map(|value| format!("{value:.1}"))
+                                .unwrap_or_else(|| "—".to_string());
                             let cpu = sample
                                 .get("cpuPercent")
                                 .and_then(serde_json::Value::as_f64)
@@ -3328,7 +3322,7 @@ fn performance_page() -> gtk::Box {
                                 .and_then(serde_json::Value::as_u64)
                                 .map(|bytes| format!("{:.1}", bytes as f64 / (1024.0 * 1024.0)))
                                 .unwrap_or_else(|| "—".to_string());
-                            output.push_str(&format!("{count:>8}  {rate:>6.1}  {cpu:>6}  {resident:>8}\n"));
+                            output.push_str(&format!("{count:>8}  {rate:>6}  {cpu:>6}  {resident:>8}\n"));
                         }
                         output
                     })

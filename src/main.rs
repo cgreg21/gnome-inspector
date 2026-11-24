@@ -2723,6 +2723,10 @@ fn styles_page() -> gtk::Box {
     let search_for_tabs = search.clone();
     let picker_for_keys = pick_actor.clone();
     inspector_keys.connect_key_pressed(move |_, key, _, modifiers| {
+        if key == gtk::gdk::Key::Escape && !search_for_tabs.text().is_empty() {
+            search_for_tabs.set_text("");
+            return glib::Propagation::Stop;
+        }
         if modifiers.contains(gtk::gdk::ModifierType::CONTROL_MASK)
             && modifiers.contains(gtk::gdk::ModifierType::SHIFT_MASK)
             && (key == gtk::gdk::Key::c || key == gtk::gdk::Key::C)
@@ -2746,9 +2750,9 @@ fn styles_page() -> gtk::Box {
         }
         glib::Propagation::Stop
     });
-    inspector_tabs.add_controller(inspector_keys);
+    page.add_controller(inspector_keys);
     inspector_tabs.set_tooltip_text(Some(
-        "Raccourcis : Ctrl+1 Styles · Ctrl+2 Computed · Ctrl+3 Layout · Ctrl+F rechercher · Ctrl+Maj+C sélectionner un acteur",
+        "Raccourcis : Ctrl+1 Styles · Ctrl+2 Computed · Ctrl+3 Layout · Ctrl+F rechercher · Échap effacer la recherche · Ctrl+Maj+C sélectionner un acteur",
     ));
 
     let declarations_heading = gtk::Label::new(Some("Déclarations de element.style"));

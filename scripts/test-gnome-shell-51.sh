@@ -228,8 +228,10 @@ grep -q 'actorCount' <<<"$performance"
 grep -q 'monitorCount' <<<"$performance"
 grep -q 'renderedFrames' <<<"$performance"
 grep -q 'framesPerSecond' <<<"$performance"
+grep -q 'residentMemoryBytes' <<<"$performance"
+grep -q 'peakResidentMemoryBytes' <<<"$performance"
 grep -q 'performanceHistory' <<<"$performance"
-echo "GNOME Shell rolling rendered-frame-rate history: OK"
+echo "GNOME Shell frame-rate and process-memory history: OK"
 
 style_update="$(timeout 10s gdbus call --session \
     --dest io.github.cgreg21.GnomeInspector.Shell \

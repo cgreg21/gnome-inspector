@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { parseProcessCpuTime, parseProcessStatus } from './process-metrics.js';
+import { calculateCpuPercent, parseProcessCpuTime, parseProcessStatus } from './process-metrics.js';
 
 test('parses process memory, thread and context-switch counters', () => {
     const result = parseProcessStatus([
@@ -40,4 +40,16 @@ test('returns null for unavailable or invalid scheduler runtime', () => {
     assert.equal(parseProcessCpuTime(''), null);
     assert.equal(parseProcessCpuTime('not-a-number 42 7'), null);
     assert.equal(parseProcessCpuTime(null), null);
+});
+
+test('calculates main-thread CPU utilization from elapsed time', () => {
+    assert.equal(calculateCpuPercent(500_000_000, 1_000_000), 50);
+    assert.equal(calculateCpuPercent(125_000_000, 1_000_000), 12.5);
+});
+
+test('returns null when CPU utilization cannot be measured', () => {
+    assert.equal(calculateCpuPercent(null, 1_000_000), null);
+    assert.equal(calculateCpuPercent(-1, 1_000_000), null);
+    assert.equal(calculateCpuPercent(100, 0), null);
+    assert.equal(calculateCpuPercent(100, -1), null);
 });

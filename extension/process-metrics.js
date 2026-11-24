@@ -12,3 +12,15 @@ export function parseProcessMemory(status) {
         peakResidentBytes: Number(peak[1]) * 1024,
     };
 }
+
+export function parseProcessCpuTime(schedstat) {
+    if (typeof schedstat !== 'string')
+        return null;
+
+    const runtime = schedstat.trim().split(/\s+/, 1)[0];
+    if (!/^\d+$/.test(runtime))
+        return null;
+
+    const nanoseconds = Number(runtime);
+    return Number.isFinite(nanoseconds) ? nanoseconds : null;
+}

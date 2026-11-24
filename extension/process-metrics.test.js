@@ -71,13 +71,12 @@ test('returns null when CPU utilization cannot be measured', () => {
     assert.equal(calculateCpuPercent(100, -1), null);
 });
 
-
 test('keeps independently readable fields when procfs status is partial', () => {
     assert.deepEqual(parseProcessStatus([
-        'VmRSS:\\t128 kB',
-        'Threads:\\t3',
-        'voluntary_ctxt_switches:\\t9',
-    ].join('\\n')), {
+        'VmRSS:\t128 kB',
+        'Threads:\t3',
+        'voluntary_ctxt_switches:\t9',
+    ].join('\n')), {
         residentBytes: 128 * 1024,
         peakResidentBytes: null,
         threadCount: 3,

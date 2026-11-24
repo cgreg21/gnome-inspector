@@ -169,9 +169,9 @@ privileges. They can change or disrupt the desktop session and access data avail
 to Shell. Run only code you trust.
 
 This alpha targets GNOME Shell 51 and currently packages Linux x86_64. CPU usage
-measures the Shell main thread through Linux scheduler statistics; process memory uses
-RSS, thread count and context-switch counters are read from procfs. Context-switch
-counters describe the main thread; the thread count covers the whole Shell process.
+and context-switch counters describe the Shell main thread and are read from
+`/proc/thread-self/`; RSS, peak RSS and thread count describe the whole Shell process.
+Metrics are unavailable when the corresponding procfs data cannot be read.
 Global theme stylesheet editing is not implemented. Actor
 inspection is bounded and may return incomplete data. See [CHANGELOG.md](CHANGELOG.md) for release
 details.

@@ -407,7 +407,7 @@ export default class GnomeInspectorExtension extends Extension {
 
     _readProcessStatus() {
         try {
-            const [ok, contents] = GLib.file_get_contents('/proc/self/status');
+            const [ok, contents] = GLib.file_get_contents('/proc/thread-self/status');
             if (!ok)
                 return null;
             return parseProcessStatus(new TextDecoder().decode(contents));
@@ -418,7 +418,7 @@ export default class GnomeInspectorExtension extends Extension {
 
     _readProcessCpuTime() {
         try {
-            const [ok, contents] = GLib.file_get_contents('/proc/self/schedstat');
+            const [ok, contents] = GLib.file_get_contents('/proc/thread-self/schedstat');
             if (!ok)
                 return null;
             return parseProcessCpuTime(new TextDecoder().decode(contents));

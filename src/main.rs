@@ -3296,7 +3296,7 @@ fn performance_page() -> gtk::Box {
                 status_value.set_text(if incomplete || truncated {
                     "Mesure actualisée — capture de scène partielle ou limitée."
                 } else {
-                    "Mesure actualisée. Le RSS correspond à la mémoire résidente de GNOME Shell."
+                    "Mesure actualisée. FPS agrégé sur les vues des moniteurs ; RSS du processus Shell."
                 });
                 status_value.remove_css_class("error");
             }

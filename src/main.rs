@@ -3150,6 +3150,8 @@ fn performance_page() -> gtk::Box {
     let (actors_card, actors) = performance_metric("Acteurs");
     let (stage_card, stage) = performance_metric("Dimensions de la scène");
     let (monitors_card, monitors) = performance_metric("Moniteurs");
+    let (memory_card, memory) = performance_metric("Mémoire résidente");
+    let (peak_memory_card, peak_memory) = performance_metric("Pic mémoire résidente");
 
     for (index, card) in [
         &fps_card,
@@ -3158,6 +3160,8 @@ fn performance_page() -> gtk::Box {
         &actors_card,
         &stage_card,
         &monitors_card,
+        &memory_card,
+        &peak_memory_card,
     ]
     .into_iter()
     .enumerate()
@@ -3193,6 +3197,8 @@ fn performance_page() -> gtk::Box {
     let actors_value = actors.clone();
     let stage_value = stage.clone();
     let monitors_value = monitors.clone();
+    let memory_value = memory.clone();
+    let peak_memory_value = peak_memory.clone();
     let history_value = history.clone();
     let status_value = status.clone();
 
@@ -3203,6 +3209,11 @@ fn performance_page() -> gtk::Box {
         match result {
             Ok(report) => {
                 let number = |key: &str| report.get(key).and_then(serde_json::Value::as_u64);
+                let memory_text = |key: &str| {
+                    number(key)
+                        .map(|bytes| format!("{:.1} MiB", bytes as f64 / (1024.0 * 1024.0)))
+                        .unwrap_or_else(|| "Indisponible".to_string())
+                };
                 let fps = report
                     .get("framesPerSecond")
                     .and_then(serde_json::Value::as_f64)
@@ -3246,12 +3257,14 @@ fn performance_page() -> gtk::Box {
                         .map(|value| value.to_string())
                         .unwrap_or_else(|| "—".to_string()),
                 );
+                memory_value.set_text(&memory_text("residentMemoryBytes"));
+                peak_memory_value.set_text(&memory_text("peakResidentMemoryBytes"));
 
                 let rows = report
                     .get("performanceHistory")
                     .and_then(serde_json::Value::as_array)
                     .map(|samples| {
-                        let mut output = String::from("Images rendues     FPS\n");
+                        let mut output = String::from("Images     FPS    RSS MiB\n");
                         for sample in samples {
                             let count = sample
                                 .get("renderedFrames")
@@ -3261,7 +3274,12 @@ fn performance_page() -> gtk::Box {
                                 .get("framesPerSecond")
                                 .and_then(serde_json::Value::as_f64)
                                 .unwrap_or(0.0);
-                            output.push_str(&format!("{count:>14}  {rate:>6.1}\n"));
+                            let resident = sample
+                                .get("residentMemoryBytes")
+                                .and_then(serde_json::Value::as_u64)
+                                .map(|bytes| format!("{:.1}", bytes as f64 / (1024.0 * 1024.0)))
+                                .unwrap_or_else(|| "—".to_string());
+                            output.push_str(&format!("{count:>8}  {rate:>6.1}  {resident:>8}\n"));
                         }
                         output
                     })
@@ -3278,7 +3296,7 @@ fn performance_page() -> gtk::Box {
                 status_value.set_text(if incomplete || truncated {
                     "Mesure actualisée — capture de scène partielle ou limitée."
                 } else {
-                    "Mesure actualisée. Le débit d’images est agrégé sur les vues des moniteurs."
+                    "Mesure actualisée. Le RSS correspond à la mémoire résidente de GNOME Shell."
                 });
                 status_value.remove_css_class("error");
             }

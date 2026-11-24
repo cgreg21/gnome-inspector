@@ -11,7 +11,7 @@ import { buildActorTree } from './actor-tree.js';
 import { findActorPath } from './actor-picker.js';
 import { buildComputedStyle, buildStyleTree, resolveActorPath } from './style-tree.js';
 import { setActorProperty } from './property-editor.js';
-import { parseProcessCpuTime, parseProcessStatus } from './process-metrics.js';
+import { calculateCpuPercent, parseProcessCpuTime, parseProcessStatus } from './process-metrics.js';
 import {
     readCustomStylesheet,
     reloadCustomStylesheets,
@@ -374,9 +374,7 @@ export default class GnomeInspectorExtension extends Extension {
                 const cpuDeltaNs = cpuTimeNs !== null && this._performance.lastCpuTimeNs !== null
                     ? cpuTimeNs - this._performance.lastCpuTimeNs
                     : null;
-                const cpuPercent = elapsedUs > 0 && cpuDeltaNs !== null && cpuDeltaNs >= 0
-                    ? Math.round(cpuDeltaNs / (elapsedUs * 1000) * 10000) / 100
-                    : null;
+                const cpuPercent = calculateCpuPercent(cpuDeltaNs, elapsedUs);
                 if (elapsedUs > 0) {
                     this._performance.history.push({
                         sampledAt: GLib.get_real_time(),

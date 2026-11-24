@@ -41,6 +41,40 @@ fn inspector_section(title: &str, child: &impl IsA<gtk::Widget>, expanded: bool)
     section
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum InspectorShortcut {
+    ClearSearch,
+    PickActor,
+    FocusSearch,
+    SelectTab(u32),
+}
+
+fn inspector_shortcut(
+    key: gtk::gdk::Key,
+    modifiers: gtk::gdk::ModifierType,
+) -> Option<InspectorShortcut> {
+    if key == gtk::gdk::Key::Escape {
+        return Some(InspectorShortcut::ClearSearch);
+    }
+
+    let control = modifiers.contains(gtk::gdk::ModifierType::CONTROL_MASK);
+    let shift = modifiers.contains(gtk::gdk::ModifierType::SHIFT_MASK);
+    if control && shift && matches!(key.to_unicode(), Some('c' | 'C')) {
+        return Some(InspectorShortcut::PickActor);
+    }
+    if !control || shift {
+        return None;
+    }
+
+    match key.to_unicode() {
+        Some('1') => Some(InspectorShortcut::SelectTab(0)),
+        Some('2') => Some(InspectorShortcut::SelectTab(1)),
+        Some('3') => Some(InspectorShortcut::SelectTab(2)),
+        Some('f' | 'F') => Some(InspectorShortcut::FocusSearch),
+        _ => None,
+    }
+}
+
 fn text_view_contents(view: &gtk::TextView) -> String {
     let buffer = view.buffer();
     buffer
@@ -2723,32 +2757,25 @@ fn styles_page() -> gtk::Box {
     let search_for_tabs = search.clone();
     let picker_for_keys = pick_actor.clone();
     inspector_keys.connect_key_pressed(move |_, key, _, modifiers| {
-        if key == gtk::gdk::Key::Escape && !search_for_tabs.text().is_empty() {
-            search_for_tabs.set_text("");
-            return glib::Propagation::Stop;
-        }
-        if modifiers.contains(gtk::gdk::ModifierType::CONTROL_MASK)
-            && modifiers.contains(gtk::gdk::ModifierType::SHIFT_MASK)
-            && (key == gtk::gdk::Key::c || key == gtk::gdk::Key::C)
-        {
-            picker_for_keys.emit_clicked();
-            return glib::Propagation::Stop;
-        }
-        if !modifiers.contains(gtk::gdk::ModifierType::CONTROL_MASK) {
-            return glib::Propagation::Proceed;
-        }
-
-        match key.to_unicode() {
-            Some('1') => tabs_for_keys.set_current_page(Some(0)),
-            Some('2') => tabs_for_keys.set_current_page(Some(1)),
-            Some('3') => tabs_for_keys.set_current_page(Some(2)),
-            Some('f') | Some('F') => {
-                search_for_tabs.grab_focus();
-                return glib::Propagation::Stop;
+        match inspector_shortcut(key, modifiers) {
+            Some(InspectorShortcut::ClearSearch) if !search_for_tabs.text().is_empty() => {
+                search_for_tabs.set_text("");
+                glib::Propagation::Stop
             }
-            _ => return glib::Propagation::Proceed,
+            Some(InspectorShortcut::PickActor) => {
+                picker_for_keys.emit_clicked();
+                glib::Propagation::Stop
+            }
+            Some(InspectorShortcut::FocusSearch) => {
+                search_for_tabs.grab_focus();
+                glib::Propagation::Stop
+            }
+            Some(InspectorShortcut::SelectTab(index)) => {
+                tabs_for_keys.set_current_page(Some(index));
+                glib::Propagation::Stop
+            }
+            _ => glib::Propagation::Proceed,
         }
-        glib::Propagation::Stop
     });
     inspector_keys.set_propagation_phase(gtk::PropagationPhase::Capture);
     page.add_controller(inspector_keys);
@@ -3558,7 +3585,7 @@ mod tests {
         actor_breadcrumb, actor_detail_summary, actor_first_child_index, actor_index_by_path,
         actor_inspector_title, actor_matches, actor_parent_path, actor_path,
         actor_property_has_changed, actor_selection_index, actor_style_summary,
-        computed_style_entries, editable_actor_properties, extension_is_discovered, flatten_actors,
+        inspector_shortcut, InspectorShortcut, computed_style_entries, editable_actor_properties, extension_is_discovered, flatten_actors,
         format_actor_details, format_actor_details_filtered, format_computed_style,
         format_console_entry, layout_metric, remember_console_command, string_reply, text_differs,
         update_inline_declaration,
@@ -3798,6 +3825,41 @@ mod tests {
         assert_eq!(layout_metric(&value, "paddingLeft"), "3 px");
         assert_eq!(layout_metric(&value, "paddingBottom"), "—");
         assert_eq!(layout_metric(&value, "unknown"), "—");
+    }
+
+    #[test]
+    fn maps_inspector_keyboard_shortcuts_without_intercepting_other_keys() {
+        use gtk::gdk::{Key, ModifierType};
+
+        let control = ModifierType::CONTROL_MASK;
+        let control_shift = control | ModifierType::SHIFT_MASK;
+
+        assert_eq!(
+            inspector_shortcut(Key::_1, control),
+            Some(InspectorShortcut::SelectTab(0))
+        );
+        assert_eq!(
+            inspector_shortcut(Key::_2, control),
+            Some(InspectorShortcut::SelectTab(1))
+        );
+        assert_eq!(
+            inspector_shortcut(Key::_3, control),
+            Some(InspectorShortcut::SelectTab(2))
+        );
+        assert_eq!(
+            inspector_shortcut(Key::f, control),
+            Some(InspectorShortcut::FocusSearch)
+        );
+        assert_eq!(
+            inspector_shortcut(Key::c, control_shift),
+            Some(InspectorShortcut::PickActor)
+        );
+        assert_eq!(
+            inspector_shortcut(Key::Escape, ModifierType::empty()),
+            Some(InspectorShortcut::ClearSearch)
+        );
+        assert_eq!(inspector_shortcut(Key::x, control), None);
+        assert_eq!(inspector_shortcut(Key::f, ModifierType::empty()), None);
     }
 
     #[test]
